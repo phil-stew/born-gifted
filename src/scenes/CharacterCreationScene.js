@@ -1,0 +1,228 @@
+import Phaser from 'phaser';
+import { STARTING_SPORTS, sportById, TALENTS, ELEMENTS, createStarterUnit, newGame } from '../data/gameState.js';
+
+// New-game flow: pick a starting sport, then a role in it (if the sport has
+// 2+ roles), then an element, then pick 2 talents (repeats allowed). Each
+// talent pick doubles that stat's level-up growth — picking the same talent
+// twice quadruples it.
+export class CharacterCreationScene extends Phaser.Scene {
+  constructor() { super({ key: 'CharacterCreationScene' }); }
+
+  init() {
+    this.step = 'sport'; // 'sport' | 'role' | 'element' | 'talent1' | 'talent2' | 'confirm'
+    this.chosenSport = null;
+    this.chosenRole = null;
+    this.chosenElement = null;
+    this.chosenTalents = [];
+  }
+
+  create() {
+    const { width, height } = this.scale;
+    this.W = width; this.H = height;
+
+    this.bg = this.add.graphics();
+    this.bg.fillStyle(0x0a0a18, 1);
+    this.bg.fillRect(0, 0, width, height);
+
+    this.headerText = this.add.text(width / 2, 30, '', {
+      fontSize: '18px', fontFamily: 'Georgia, serif', fontStyle: 'bold', color: '#ffffff',
+    }).setOrigin(0.5);
+
+    this.subText = this.add.text(width / 2, 54, '', {
+      fontSize: '11px', fontFamily: 'monospace', color: '#7788aa',
+    }).setOrigin(0.5);
+
+    this.con = this.add.container(0, 0);
+    this.cameras.main.fadeIn(300, 0, 0, 0);
+    this.render();
+  }
+
+  render() {
+    this.con.removeAll(true);
+    if (this.step === 'sport')   this.renderSportStep();
+    if (this.step === 'role')    this.renderRoleStep();
+    if (this.step === 'element') this.renderElementStep();
+    if (this.step === 'talent1') this.renderTalentStep(1);
+    if (this.step === 'talent2') this.renderTalentStep(2);
+    if (this.step === 'confirm') this.renderConfirmStep();
+  }
+
+  makeButton(x, y, w, h, label, sub, onClick) {
+    const g = this.add.graphics();
+    const draw = (hover) => {
+      g.clear();
+      g.fillStyle(hover ? 0x16203a : 0x0e1424, 1);
+      g.fillRoundedRect(x - w / 2, y - h / 2, w, h, 6);
+      g.lineStyle(1, hover ? 0x4488ff : 0x223355, 1);
+      g.strokeRoundedRect(x - w / 2, y - h / 2, w, h, 6);
+    };
+    draw(false);
+    this.con.add(g);
+
+    this.con.add(this.add.text(x, y - (sub ? 8 : 0), label, {
+      fontSize: '13px', fontFamily: 'monospace', fontStyle: 'bold', color: '#ddddee',
+    }).setOrigin(0.5));
+    if (sub) {
+      this.con.add(this.add.text(x, y + 10, sub, {
+        fontSize: '9px', fontFamily: 'monospace', color: '#5577aa',
+      }).setOrigin(0.5));
+    }
+
+    const z = this.add.zone(x, y, w, h).setInteractive({ useHandCursor: true });
+    z.on('pointerover', () => draw(true));
+    z.on('pointerout',  () => draw(false));
+    z.on('pointerdown', onClick);
+    this.con.add(z);
+  }
+
+  renderSportStep() {
+    this.headerText.setText('CHOOSE YOUR STARTING SPORT');
+    this.subText.setText('This is who you are — your talent picks (next) only affect stat growth');
+
+    const cols = 2, bw = 220, bh = 44, gapX = 20, gapY = 12;
+    const totalW = cols * bw + (cols - 1) * gapX;
+    const startX = this.W / 2 - totalW / 2 + bw / 2;
+    const startY = 100;
+
+    STARTING_SPORTS.forEach((sportId, i) => {
+      const sport = sportById(sportId);
+      const col = i % cols, row = Math.floor(i / cols);
+      const x = startX + col * (bw + gapX);
+      const y = startY + row * (bh + gapY);
+      this.makeButton(x, y, bw, bh, sport.name, null, () => {
+        this.chosenSport = sportId;
+        this.chosenRole = null;
+        this.step = sport.roles.length >= 2 ? 'role' : 'element';
+        if (sport.roles.length === 1) this.chosenRole = sport.roles[0].id;
+        this.render();
+      });
+    });
+  }
+
+  renderRoleStep() {
+    const sport = sportById(this.chosenSport);
+    this.headerText.setText(`CHOOSE YOUR ROLE`);
+    this.subText.setText(`${sport.name} — your in-sport position`);
+
+    const bw = 260, bh = 56, gap = 16;
+    const startY = this.H / 2 - (sport.roles.length * (bh + gap) - gap) / 2;
+
+    sport.roles.forEach((role, i) => {
+      const y = startY + i * (bh + gap);
+      this.makeButton(this.W / 2, y, bw, bh, role.name, role.designations.join(' / '), () => {
+        this.chosenRole = role.id;
+        this.step = 'element';
+        this.render();
+      });
+    });
+
+    this.con.add(this.add.text(20, this.H - 24, '◀ back', {
+      fontSize: '11px', fontFamily: 'monospace', color: '#556688',
+    }).setInteractive({ useHandCursor: true }).on('pointerdown', () => {
+      this.step = 'sport';
+      this.render();
+    }));
+  }
+
+  renderElementStep() {
+    this.headerText.setText('CHOOSE YOUR ELEMENT');
+    this.subText.setText('Your affinity — shown alongside your class');
+
+    const cols = 3, bw = 140, bh = 70, gapX = 16, gapY = 16;
+    const totalW = cols * bw + (cols - 1) * gapX;
+    const startX = this.W / 2 - totalW / 2 + bw / 2;
+    const startY = 130;
+
+    ELEMENTS.forEach((el, i) => {
+      const col = i % cols, row = Math.floor(i / cols);
+      const x = startX + col * (bw + gapX);
+      const y = startY + row * (bh + gapY);
+      this.makeButton(x, y, bw, bh, `${el.icon}  ${el.name}`, null, () => {
+        this.chosenElement = el.name;
+        this.step = 'talent1';
+        this.render();
+      });
+    });
+
+    // Back button — skip the role step if this sport only had one role
+    const sport = sportById(this.chosenSport);
+    this.con.add(this.add.text(20, this.H - 24, '◀ back', {
+      fontSize: '11px', fontFamily: 'monospace', color: '#556688',
+    }).setInteractive({ useHandCursor: true }).on('pointerdown', () => {
+      this.step = sport.roles.length >= 2 ? 'role' : 'sport';
+      this.render();
+    }));
+  }
+
+  renderTalentStep(which) {
+    const prev = which === 2 ? this.chosenTalents[0] : null;
+    this.headerText.setText(`PICK TALENT ${which} OF 2`);
+    this.subText.setText(
+      prev
+        ? `First pick: ${prev}. Picking it again quadruples its growth instead of doubling.`
+        : 'Each talent doubles that stat\'s growth per level-up.'
+    );
+
+    const bw = 260, bh = 56, gap = 16;
+    const startY = this.H / 2 - (TALENTS.length * (bh + gap) - gap) / 2;
+
+    TALENTS.forEach((t, i) => {
+      const y = startY + i * (bh + gap);
+      const willStack = prev === t;
+      const mult = willStack ? '×4 growth' : '×2 growth';
+      this.makeButton(this.W / 2, y, bw, bh, t, `${mult}${willStack ? '  (stacks with pick 1)' : ''}`, () => {
+        this.chosenTalents[which - 1] = t;
+        this.step = which === 1 ? 'talent2' : 'confirm';
+        this.render();
+      });
+    });
+
+    // Back button
+    this.con.add(this.add.text(20, this.H - 24, '◀ back', {
+      fontSize: '11px', fontFamily: 'monospace', color: '#556688',
+    }).setInteractive({ useHandCursor: true }).on('pointerdown', () => {
+      this.step = which === 1 ? 'element' : 'talent1';
+      this.render();
+    }));
+  }
+
+  renderConfirmStep() {
+    this.headerText.setText('CONFIRM YOUR GIFT');
+    const sport = sportById(this.chosenSport);
+    const role = sport.roles.find(r => r.id === this.chosenRole);
+    const elIcon = ELEMENTS.find(e => e.name === this.chosenElement)?.icon ?? '';
+    this.subText.setText(`${sport.name} · ${role.name}  ·  ${elIcon} ${this.chosenElement}  ·  ${this.chosenTalents.join(' + ')}`);
+
+    const STAT_TALENT = { speed: 'Speed', strength: 'Strength', endurance: 'Endurance', stamina: 'Stamina' };
+    let y = 110;
+    for (const [stat, talent] of Object.entries(STAT_TALENT)) {
+      const picks = this.chosenTalents.filter(t => t === talent).length;
+      const mult = Math.pow(2, picks);
+      this.con.add(this.add.text(this.W / 2 - 120, y, stat.toUpperCase(), {
+        fontSize: '12px', fontFamily: 'monospace', color: '#8899bb',
+      }));
+      this.con.add(this.add.text(this.W / 2 + 120, y, `growth ×${mult}`, {
+        fontSize: '12px', fontFamily: 'monospace', fontStyle: mult > 1 ? 'bold' : 'normal',
+        color: mult >= 4 ? '#ffcc44' : mult === 2 ? '#44ccff' : '#556677',
+      }).setOrigin(1, 0));
+      y += 26;
+    }
+
+    this.makeButton(this.W / 2, y + 50, 220, 46, 'BEGIN', null, () => {
+      const starter = createStarterUnit({
+        t1Sport: this.chosenSport, t1Role: this.chosenRole,
+        talents: this.chosenTalents, element: this.chosenElement,
+      });
+      newGame(starter);
+      this.cameras.main.fadeOut(500, 0, 0, 0);
+      this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start('WorldMapScene'));
+    });
+
+    this.con.add(this.add.text(20, this.H - 24, '◀ back', {
+      fontSize: '11px', fontFamily: 'monospace', color: '#556688',
+    }).setInteractive({ useHandCursor: true }).on('pointerdown', () => {
+      this.step = 'talent2';
+      this.render();
+    }));
+  }
+}
