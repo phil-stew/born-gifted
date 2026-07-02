@@ -4,15 +4,19 @@
 
 export const HERO_SPRITES = {
   // ── T1 ────────────────────────────────────────────────────────────────────
-  'Runner':           { file:'heroes/t1/runner1t1.png',    cols:12, rows:6, fw:128, fh:170, skip:2 },
-  'Ice Skater':       { file:'heroes/t1/maleiceskater.png',cols:6, rows:6, fw:256, fh:170 },
-  'Boxer':            { file:'heroes/t1/boxer1t1.png',     cols:6, rows:7, fw:256, fh:146 },
-  'Dart Player':      { file:'heroes/t1/Dart.png',         cols:8, rows:5, fw:192, fh:204 },
-  'Dancer':           { file:'heroes/t1/dancer.png',       cols:5, rows:5, fw:153, fh:204 },
-  'Netballer':        { file:'heroes/t1/netballer.png',    cols:6, rows:7, fw:256, fh:146 },
-  'Rollerskater':     { file:'heroes/t1/rollerblade.png',  cols:6, rows:6, fw:256, fh:170 },
-  'Lacrosse Player':  { file:'heroes/t1/lecrosse.png',     cols:6, rows:7, fw:256, fh:146 },
-  'Softball Pitcher': { file:'heroes/t1/s-pitcher.png',    cols:6, rows:7, fw:256, fh:146 },
+  // New art as of 2026-07-02 — grids measured by eye per file, not uniform.
+  'Runner':             { file:'heroes/t1/runnerboy.png',         cols:6, rows:6, fw:249, fh:175 },
+  'Ice Skater':         { file:'heroes/t1/iceskatergirl.png',      cols:6, rows:6, fw:249, fh:175 },
+  'Boxer':              { file:'heroes/t1/boxerlightweight.png',  cols:6, rows:6, fw:249, fh:175 },
+  'Boxer Heavyweight':  { file:'heroes/t1/boxerheavyweight.png',  cols:6, rows:6, fw:249, fh:175 },
+  'Dart Player':        { file:'heroes/t1/Dartarrowchucker.png',  cols:6, rows:6, fw:249, fh:175 },
+  'Dancer':             { file:'heroes/t1/Dancerdance.png',       cols:8, rows:6, fw:175, fh:187 },
+  'Netballer':          { file:'heroes/t1/netGoalattack.png',     cols:6, rows:6, fw:249, fh:175 },
+  'Netballer Defence':  { file:'heroes/t1/netGaoldefence.png',    cols:6, rows:6, fw:249, fh:175 },
+  'Lacrosse Player':    { file:'heroes/t1/lacrosseAceattacker.png', cols:6, rows:6, fw:249, fh:175 },
+  'Lacrosse Goalkeeper':{ file:'heroes/t1/LacrosseGoalkeeper.png', cols:6, rows:6, fw:249, fh:175 },
+  'Softball Batter':    { file:'heroes/t1/softbatter.png',        cols:6, rows:6, fw:249, fh:175 },
+  'Softball Pitcher':   { file:'heroes/t1/softpitcher.png',       cols:6, rows:6, fw:249, fh:175 },
 
   // ── T2 ────────────────────────────────────────────────────────────────────
   'Striker':          { file:'heroes/t2/striker1.png',      cols:6, rows:6, fw:256, fh:170 },
@@ -52,11 +56,11 @@ export const HERO_SPRITES = {
 export const ROLE_SPRITE_KEY = {
   // T1
   runner: 'Runner', skater_ice: 'Ice Skater',
-  lightweight_box: 'Boxer', heavyweight_box: null,
-  goal_attack: 'Netballer', goal_defence: null,
-  ace_attacker_lax: 'Lacrosse Player', goalkeeper_lax: null,
+  lightweight_box: 'Boxer', heavyweight_box: 'Boxer Heavyweight',
+  goal_attack: 'Netballer', goal_defence: 'Netballer Defence',
+  ace_attacker_lax: 'Lacrosse Player', goalkeeper_lax: 'Lacrosse Goalkeeper',
   arrow_chucker: 'Dart Player',
-  batter_softball: null, pitcher_softball: 'Softball Pitcher',
+  batter_softball: 'Softball Batter', pitcher_softball: 'Softball Pitcher',
   dancer: 'Dancer',
   // T2
   striker: 'Striker', goalkeeper_soccer: null,
