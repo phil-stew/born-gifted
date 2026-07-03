@@ -33,6 +33,17 @@ export const ITEMS = [
   { id:'gold_ore',   name:'Gold Ore',   type:'material', slot:null, rarity:'epic',      oreTier:3, cost:250, stats:{}, desc:'A rich seam of gold ore. Crafts Epic gear.' },
   { id:'mystic_ore', name:'Mystic Ore', type:'material', slot:null, rarity:'legendary', oreTier:4, cost:700, stats:{}, desc:'Ore humming with unexplained energy. Crafts Legendary gear.' },
 
+  // ── Herbs & Tonics (July 2026 art) ───────────────────────────────────────
+  // Sellable flavor materials, same as heal_herb — no consume/use mechanic
+  // exists yet for ANY item in this game (heal_herb itself is inert despite
+  // the name), so these are wired the same way: icon + sell value only.
+  { id:'mint_sprig',     name:'Mint Sprig',     type:'material', slot:null, rarity:'common',   cost:15, stats:{}, desc:'A hardy green sprig with a sharp, clean scent.' },
+  { id:'lavender_bloom', name:'Lavender Bloom', type:'material', slot:null, rarity:'common',   cost:20, stats:{}, desc:'A flowering herb prized for its calming scent.' },
+  { id:'wild_berries',   name:'Wild Berries',   type:'material', slot:null, rarity:'common',   cost:20, stats:{}, desc:'Sweet berries picked from a hardy bramble.' },
+  { id:'health_potion',  name:'Health Potion',  type:'material', slot:null, rarity:'uncommon', cost:45, stats:{}, desc:'A brewed red tonic, warm to the touch.' },
+  { id:'focus_potion',   name:'Focus Potion',   type:'material', slot:null, rarity:'uncommon', cost:45, stats:{}, desc:'A brewed blue tonic said to sharpen the mind.' },
+  { id:'vitality_potion',name:'Vitality Potion',type:'material', slot:null, rarity:'uncommon', cost:45, stats:{}, desc:'A brewed green tonic with a faint herbal shimmer.' },
+
   // ══════════════════════════════════════════════════════════════════════════
   // SOCCER  (Reno · Sela)
   // ══════════════════════════════════════════════════════════════════════════
@@ -240,9 +251,7 @@ export function gearFrameName(sport, slot) {
 // layout (not a uniform grid: row 1 has 4 icons, row 2 has 4, row 3 has 5),
 // so each material is an explicit [x, y, w, h] crop measured off the sheet's
 // own content bounds (a few px padding each side), same convention as the
-// old gearset10.png ITEM_FRAMES. Only the 7 Gear & Forge materials this game
-// actually uses are wired — the sheet also has a leaf sprig, two flowering
-// herbs, and 3 potion bottles with no corresponding item in ITEMS yet.
+// old gearset10.png ITEM_FRAMES.
 export const MATERIAL_ICON_FRAME = {
   skin:       [144, 60,  274, 267],
   fur:        [441, 60,  288, 267],
@@ -251,6 +260,12 @@ export const MATERIAL_ICON_FRAME = {
   silver_ore: [132, 359, 276, 284],
   gold_ore:   [450, 359, 290, 284],
   mystic_ore: [782, 359, 303, 284],
+  mint_sprig:     [1132, 359, 254, 284],
+  lavender_bloom: [137, 655, 217, 298],
+  wild_berries:   [397, 655, 236, 298],
+  health_potion:  [694, 655, 199, 298],
+  focus_potion:   [940, 655, 199, 298],
+  vitality_potion:[1191, 655, 201, 298],
 };
 
 export function materialFrameName(id) {

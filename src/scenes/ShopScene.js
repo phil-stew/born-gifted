@@ -9,7 +9,7 @@ const SLOT_LABEL = { weapon:'Weapon', footwear:'Shoes', handwear:'Gloves', chest
 const SHOP_INVENTORY = {
   town_sirblanc: [
     // Materials
-    'heal_herb',
+    'heal_herb', 'mint_sprig', 'lavender_bloom', 'wild_berries',
     // Universal basics
     'basic_headband', 'basic_gloves', 'iron_boots', 'leather_vest',
     // Soccer (Reno's hometown gear)
@@ -32,7 +32,7 @@ const SHOP_INVENTORY = {
 
   academy_hilbert: [
     // Materials
-    'heal_herb', 'iron_scrap',
+    'heal_herb', 'iron_scrap', 'health_potion', 'focus_potion', 'vitality_potion',
     // Universal uncommon
     'swift_helm', 'power_wraps', 'chain_vest',
     // Soccer pro
