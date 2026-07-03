@@ -1,9 +1,10 @@
 import Phaser from 'phaser';
 import {
   state, effectiveStats, maxHp as gsMaxHp, elementIcon, currentRoleId, currentDesignations,
+  currentSport, sportById,
   DESIGNATION_BEATS, designationIcon, DESIGNATION_CYCLE, ELEMENT_CYCLE, ELEMENT_BEATS,
 } from '../data/gameState.js';
-import { ATTACK, THROW, getUnitSpecials, getUnitSkills } from '../data/abilities.js';
+import { ATTACK, THROW, getUnitSpecials, getUnitSkills, getEquippedPassives } from '../data/abilities.js';
 import { loadHeroSprites, createHeroAnims, stripHeroBackground, heroKey, getSpriteInfo, firstFrame, spriteKeyForRole } from '../data/heroSprites.js';
 
 const COLS = 10, ROWS = 10;
@@ -176,7 +177,9 @@ const calcAtk    = u => Math.round((u.strength + Math.round(u.speed * 0.5) + ran
 function attackDesignations(attacker, ability) {
   const desigs = attacker.designations ?? [];
   if (!desigs.length) return [];
-  const isMelee = (ability.range ?? 1) <= 1;
+  // exactRange abilities (3-Point) have no plain .range at all — fall back
+  // to it before the ?? 1 default so they aren't misread as melee.
+  const isMelee = (ability.exactRange ?? ability.range ?? 1) <= 1;
   const live = [];
   if (isMelee && desigs.includes('C'))  live.push('C');
   if (!isMelee && desigs.includes('Rg')) live.push('Rg');
@@ -203,6 +206,24 @@ function elementMultiplier(attacker, defender) {
   if (ELEMENT_BEATS[a] === d) return 1.5;
   if (ELEMENT_BEATS[d] === a) return 0.8;
   return 1.0;
+}
+
+// ── Distance-dependent damage scaling (single-target ability casts) ────────
+// scaleByRange (Blitz: "RNG1=2.0/RNG2=1.5/RNG3=1.0") is a discrete lookup by
+// the exact cast distance, straight from the sheet's given numbers.
+// rangeFalloff (Extreme Speed: "loses damage the further away", infinite
+// range) is an ASSUMPTION — the sheet never gives a curve, so this applies
+// exponential decay, -15% per tile beyond the first, multiplier =
+// ability.multiplier * 0.85^(dist-1). That never reaches exactly zero
+// (matching "infinite range" — always a hit, just a weak one), but rounds
+// down to 0 actual damage well before the far edge of a 10x10 board.
+// Abilities with neither field just use their flat ability.multiplier, so
+// this is a no-op for everything else.
+const RANGE_FALLOFF_DECAY_PER_TILE = 0.85;
+function distanceMultiplier(ability, dist) {
+  if (ability.scaleByRange) return ability.scaleByRange[dist] ?? ability.multiplier ?? 0;
+  if (ability.rangeFalloff) return (ability.multiplier ?? 0) * Math.pow(RANGE_FALLOFF_DECAY_PER_TILE, Math.max(0, dist - 1));
+  return ability.multiplier ?? 0;
 }
 
 export class BattleScene extends Phaser.Scene {
@@ -309,15 +330,28 @@ export class BattleScene extends Phaser.Scene {
       if (talents.includes('Stamina') || talents.includes('Endurance')) {
         maxSp = Math.max(maxSp, 4 + Math.floor((eff.stamina + eff.endurance) / 4));
       }
+      // Sports-partner adjacency ("same dis") is keyed off the unit's CURRENT
+      // class grouping (SPORTS[*].class — Ball/Racquet/Bat & Ball/...), not
+      // its accumulated history.
+      const classGrouping = sportById(currentSport(gs))?.class ?? null;
       return {
         id: gs.id, name: gs.name, initials: gs.initials, color: gs.color, element: gs.element,
-        t1Role: gs.t1Role, roleId: currentRoleId(gs), designations: currentDesignations(gs),
+        // t2Role/t3Role are carried (not just t1Role) so getUnitSpecials/
+        // getUnitSkills/getEquippedPassives — which all walk unlockedRoleIds,
+        // itself gated on unit.t1Role/t2Role/t3Role/level — see promoted-tier
+        // content in battle too. Previously only T1-tier abilities showed up
+        // for promoted units; incidental fix, needed for Set Up's follow-up
+        // to pick a correct fallback ability from a promoted partner's kit.
+        t1Role: gs.t1Role, t2Role: gs.t2Role, t3Role: gs.t3Role,
+        roleId: currentRoleId(gs), designations: currentDesignations(gs),
+        classGrouping, equippedPassives: getEquippedPassives({ ...gs, designations: currentDesignations(gs) }),
         moveSpeed: gs.moveSpeed, baseMoveSpeed: gs.moveSpeed, col, row, team: 'player',
         speed: eff.speed, strength: eff.strength, stamina: eff.stamina, endurance: eff.endurance,
         hp, maxHp: hp, isDone: false, isDead: false, hitFlash: false,
         sp: maxSp, maxSp, hasActed: false, hasMoved: false, facing: 'right', level: gs.level ?? 1,
         talents: [...(gs.talents ?? [])],
         classSkills: [...(gs.classSkills ?? [])], skillCooldowns: {}, skillUses: {},
+        setUpUsedThisTurn: false, duoFreeMoveUsed: false, duoBonusUsed: false,
       };
     });
     for (const u of this.playerUnits) {
@@ -499,7 +533,7 @@ export class BattleScene extends Phaser.Scene {
     } else if (this.phase === 'ability_targeting') {
       const u    = this.selectedUnit;
       const dist = Math.abs(t.col - u.col) + Math.abs(t.row - u.row);
-      if (dist <= this.activeAbility.range && occupant?.team === this.activeAbility.targetType) {
+      if (this.abilityRangeMatches(u, this.activeAbility, dist) && occupant?.team === this.activeAbility.targetType) {
         this.executeAbility(this.activeAbility, u, occupant);
       } else {
         // Cancel targeting — reopen the menu
@@ -551,7 +585,9 @@ export class BattleScene extends Phaser.Scene {
     if (allDone) this.time.delayedCall(400, () => this.startEnemyTurn());
   }
 
-  moveUnit(unit, col, row) {
+  // `free: true` (Duo's free move to a sports partner) repositions the unit
+  // without consuming its normal move for the turn.
+  moveUnit(unit, col, row, { free = false } = {}) {
     // Track facing direction for future use
     if (unit.portrait && unit.team === 'player') {
       const { x: srcX } = this.gridToScreen(unit.col, unit.row);
@@ -561,7 +597,7 @@ export class BattleScene extends Phaser.Scene {
 
     this.unitMap.delete(`${unit.col},${unit.row}`);
     unit.col = col; unit.row = row;
-    unit.hasMoved = true;
+    if (!free) unit.hasMoved = true;
     this.unitMap.set(`${col},${row}`, unit);
 
     const { x: tx, y: ty } = this.gridToScreen(col, row);
@@ -599,6 +635,169 @@ export class BattleScene extends Phaser.Scene {
     return Math.abs(unit.col - tile.col) + Math.abs(unit.row - tile.row) === 1;
   }
 
+  // ── Sports-partner adjacency ("same dis") ───────────────────────────────────
+  // Only player units carry classGrouping (enemies aren't modeled with a
+  // sport/class), so this is a player-party mechanic only.
+  hasPassive(unit, id) {
+    return unit.equippedPassives?.some(p => p.id === id) ?? false;
+  }
+  sportsPartnerAdjacent(unit) {
+    if (!unit.classGrouping) return false;
+    return this.playerUnits.some(o =>
+      o !== unit && !o.isDead && o.classGrouping === unit.classGrouping && this.isAdjacent(unit, o)
+    );
+  }
+  // Damage-DEALT multiplier from an equipped partner-adjacency passive —
+  // 2 for 2 (Bat & Ball) and Doubles (Racquet) double damage; the sheet gives
+  // Doubles no explicit number of its own, so it's assumed to match the "same
+  // dis: damage double" definition given at the top of the Ability Revised
+  // doc (ASSUMPTION — confirm). Lock-On (Target) adds +50% instead. A unit
+  // can, via cross-class promotion chains (e.g. lacrosse→cricket crosses
+  // Racquet→Bat & Ball), end up with more than one of these equipped at
+  // once — NOT stacked multiplicatively; take the single best bonus.
+  partnerAttackMultiplier(unit) {
+    if (!this.sportsPartnerAdjacent(unit)) return 1.0;
+    if (this.hasPassive(unit, 'two_for_two') || this.hasPassive(unit, 'doubles')) return 2.0;
+    if (this.hasPassive(unit, 'lock_on')) return 1.5;
+    return 1.0;
+  }
+  // Damage-TAKEN multiplier from an equipped partner-adjacency passive.
+  // Training Buddy (Martial Arts) is unconditional every hit. Set Up (Ball)
+  // is explicitly capped "1 time per turn" on the sheet — tracked via
+  // unit.setUpUsedThisTurn, reset once per round in startPlayerTurn(). The
+  // flag lives on the DEFENDER, so it correctly caps at one reduction total
+  // per round even if multiple different enemies hit this unit before its
+  // next turn (not once per attacker).
+  partnerDefenseMultiplier(unit) {
+    if (!this.sportsPartnerAdjacent(unit)) return 1.0;
+    if (this.hasPassive(unit, 'training_buddy')) return 0.5;
+    if (this.hasPassive(unit, 'set_up') && !unit.setUpUsedThisTurn) {
+      unit.setUpUsedThisTurn = true;
+      return 0.5;
+    }
+    return 1.0;
+  }
+  // Extra range from Lock-On while beside a sports partner.
+  partnerRangeBonus(unit) {
+    return (this.sportsPartnerAdjacent(unit) && this.hasPassive(unit, 'lock_on')) ? 3 : 0;
+  }
+  effectiveRange(unit, ability) {
+    return (ability.range ?? 1) + this.partnerRangeBonus(unit);
+  }
+  // Whether `dist` (Manhattan distance from `unit`) is a valid target
+  // distance for `ability`. Exact-range abilities (3-Point: "RNG is EXACTLY
+  // 3 spaces — no more, no less — confirmed donut targeting") require dist
+  // to match precisely, not just fall within a max — a ring, not a filled
+  // diamond. Everything else keeps the normal <=effectiveRange check exactly
+  // as before (no added lower bound — some ally-support abilities are
+  // clickable on the caster's own tile at dist 0).
+  abilityRangeMatches(unit, ability, dist) {
+    if (ability.exactRange != null) return dist === ability.exactRange + this.partnerRangeBonus(unit);
+    return dist <= this.effectiveRange(unit, ability);
+  }
+  // Gracefulness (Performance): "when adjacent same-sports, all effects are
+  // doubled" — read literally per the user's own confirmation (a 20% heal
+  // becomes 40%, a 10% buff becomes 20%): doubles the numeric magnitude of
+  // ANY percentage/multiplier-based effect this unit casts while beside its
+  // sports partner (restoreSp/Cheer, atkBuffAlly/Routine,
+  // restoreSpAndHpPct/Refresh) — not restricted to Performance-class
+  // abilities specifically, matching "ALL effects". Doesn't apply to
+  // binary/positional effects with no magnitude to double (guard,
+  // teleportToAlly), or to plain damage (Stunt) — this file already treats
+  // "effect" as the distinct non-damage category (see the category note at
+  // the top of abilities.js).
+  gracefulnessMultiplier(unit) {
+    return (this.hasPassive(unit, 'gracefulness') && this.sportsPartnerAdjacent(unit)) ? 2.0 : 1.0;
+  }
+
+  // ── Duo (Athletics) ──────────────────────────────────────────────────────
+  // A sports partner within 5 blocks but NOT already adjacent (distance 1
+  // has nothing to gain from the free move — see useDuoFreeMove).
+  findDuoPartner(unit) {
+    if (!unit.classGrouping) return null;
+    return this.playerUnits.find(o => {
+      if (o === unit || o.isDead || o.classGrouping !== unit.classGrouping) return false;
+      const dist = Math.abs(unit.col - o.col) + Math.abs(unit.row - o.row);
+      return dist >= 2 && dist <= 5;
+    }) ?? null;
+  }
+  // Free move to a sports partner within range — doesn't consume the unit's
+  // normal move (see moveUnit's `free` option). Sets duoFreeMoveUsed (once
+  // per round, reset in startPlayerTurn) so it can't be spammed for
+  // ordinary repositioning, and arms the "attack twice" bonus checked in
+  // finishAbilityTurn.
+  useDuoFreeMove(unit) {
+    if (unit.duoFreeMoveUsed) return;
+    const partner = this.findDuoPartner(unit);
+    if (!partner) return;
+    const dest = this.findFreeTileNear(partner.col, partner.row);
+    if (!dest) return;
+    this.hideActionMenu();
+    this.moveUnit(unit, dest.col, dest.row, { free: true });
+    unit.duoFreeMoveUsed = true;
+    const { x, y } = this.gridToScreen(dest.col, dest.row);
+    this.showEffect(x, y + TH2, 'DUO!', '#44ffdd');
+    this.redraw();
+    this.showActionMenu(unit);
+  }
+
+  // Set Up's follow-up half (Ability Revised ruling g): when a Set-Up-
+  // equipped unit lands a single-target hit while beside its sports partner,
+  // the partner immediately makes a bonus attack on the same target — using
+  // the SAME ability if the partner knows it, otherwise the partner's own
+  // known damage-dealing ability whose multiplier is closest to the
+  // original's. This is a bonus proc, not the partner taking their turn: no
+  // SP/cooldown cost and no hasActed change for the partner. Damage is
+  // computed inline here (not via doAttack/executeAbility), so it cannot
+  // itself chain into another follow-up.
+  // Only wired for doAttack/executeAbility (both always resolve to exactly
+  // one target) — not executeDirectionalAbility's multi-target AoE/pierce
+  // path, which no current Ball-class ability actually uses.
+  triggerSetUpFollowUp(attacker, ability, target) {
+    if (!this.hasPassive(attacker, 'set_up')) return;
+    if (target.isDead || target.hp <= 0) return;
+    const partner = this.playerUnits.find(o =>
+      o !== attacker && !o.isDead && o.classGrouping === attacker.classGrouping && this.isAdjacent(attacker, o)
+    );
+    if (!partner) return;
+
+    const known = [ATTACK, THROW, ...getUnitSpecials(partner), ...getUnitSkills(partner)]
+      .filter(ab => ab.targetType === 'enemy' && !ab.directional && (ab.multiplier ?? 0) > 0);
+    if (!known.length) return;
+
+    const power = ab => (ab.multiplier ?? 0) * (ab.hits ?? 1);
+    let followUp = known.find(ab => ab.id === ability.id);
+    if (!followUp) {
+      const origPower = power(ability);
+      followUp = known.reduce((best, ab) =>
+        Math.abs(power(ab) - origPower) < Math.abs(power(best) - origPower) ? ab : best
+      );
+    }
+
+    const hits = followUp.hits ?? 1;
+    const followUpDist = Math.abs(partner.col - target.col) + Math.abs(partner.row - target.row);
+    const followUpMult = distanceMultiplier(followUp, followUpDist);
+    const desigMult = designationMultiplier(partner, target, followUp);
+    const elemMult = elementMultiplier(partner, target);
+    let dmg = 0;
+    for (let h = 0; h < hits; h++) dmg += Math.round(calcAtk(partner) * followUpMult * desigMult * elemMult);
+    dmg = Math.round(dmg * this.partnerDefenseMultiplier(target));
+    target.hp = Math.max(0, target.hp - dmg);
+
+    const { x, y } = this.gridToScreen(target.col, target.row);
+    this.showEffect(x, y + TH2 - 22, 'FOLLOW-UP', '#ffdd44');
+    this.showDamage(x, y + TH2, dmg, '#ffcc44');
+    if (target.sprite) {
+      target.sprite.setTint(0xff3300);
+      this.time.delayedCall(180, () => {
+        if (!target.isDead && target.sprite) {
+          if (target.enemyTint) target.sprite.setTint(target.enemyTint);
+          else target.sprite.clearTint();
+        }
+      });
+    }
+  }
+
   // ── Combat ────────────────────────────────────────────────────────────────
 
   doAttack(attacker, defender) {
@@ -617,7 +816,9 @@ export class BattleScene extends Phaser.Scene {
       return;
     }
 
-    let dmg = Math.round(calcAtk(attacker) * designationMultiplier(attacker, defender, ATTACK) * elementMultiplier(attacker, defender));
+    let dmg = Math.round(calcAtk(attacker) * designationMultiplier(attacker, defender, ATTACK) * elementMultiplier(attacker, defender)
+      * this.partnerAttackMultiplier(attacker));
+    dmg = Math.round(dmg * this.partnerDefenseMultiplier(defender));
     if (defender.damageReduction) {
       dmg = Math.max(0, dmg - defender.damageReduction.amount);
     }
@@ -649,6 +850,7 @@ export class BattleScene extends Phaser.Scene {
       this.time.delayedCall(200, () => { defender.hitFlash = false; this.redraw(); });
     }
 
+    if (defender.hp > 0) this.triggerSetUpFollowUp(attacker, ATTACK, defender);
     if (defender.hp <= 0) this.killUnit(defender);
     else this.redraw();
   }
@@ -815,7 +1017,7 @@ export class BattleScene extends Phaser.Scene {
   }
 
   buildMenuItems(unit, specials, skills) {
-    return [
+    const items = [
       { icon: '📘', label: 'Playbook', sub: null,
         disabled: unit.hasActed,
         action: () => this.showAbilitySubmenu(unit, [ATTACK, THROW, ...specials, ...skills]) },
@@ -823,7 +1025,20 @@ export class BattleScene extends Phaser.Scene {
       { icon: '→', label: 'Move', sub: unit.hasMoved ? 'done' : null,
         disabled: unit.hasMoved,
         action: () => { this.hideActionMenu(); this.phase = 'unit_selected'; this.actionHint.setText('Select a tile to move to'); this.redraw(); } },
+    ];
 
+    // Duo (Athletics) — only shown to units that actually have it equipped,
+    // rather than a permanently-disabled placeholder for everyone else.
+    if (this.hasPassive(unit, 'duo')) {
+      items.push({
+        icon: '👯', label: 'To Partner',
+        sub: unit.duoFreeMoveUsed ? 'used' : null,
+        disabled: unit.duoFreeMoveUsed || !this.findDuoPartner(unit),
+        action: () => this.useDuoFreeMove(unit),
+      });
+    }
+
+    items.push(
       { icon: '◈', label: 'Items',
         disabled: true,
         action: () => {} },
@@ -835,23 +1050,35 @@ export class BattleScene extends Phaser.Scene {
       { icon: '⏹', label: 'Wait', separator: true,
         disabled: false,
         action: () => { this.hideActionMenu(); this.endUnitTurn(unit); } },
-    ];
+    );
+    return items;
   }
 
   // Whether an ability can currently be used (SP for Special Attacks, cooldown for Skills — both slot-free)
-  // SP cost after The Show's -20%-style cost reduction (spCostMult), if active
+  // SP cost after The Show's -20%-style cost reduction (spCostMult), if
+  // active. cost: 'ALL' (Quick Fire/Blitz Ball/Extreme Speed) always spends
+  // every point the unit currently has — spCostMult doesn't apply to it
+  // (there's no base number left to discount).
   effectiveSpCost(unit, ab) {
+    if (ab.cost === 'ALL') return unit.sp;
     return Math.round((ab.cost ?? 0) * (unit.spCostMult ?? 1.0));
   }
 
   abilityUsable(unit, ab) {
     if (unit.hasActed) return false;
     if (ab.mustBeforeMove && unit.hasMoved) return false;
+    // usesPerBattle (Inner Focus, Extreme Speed) is authored on 'special'
+    // abilities too, not just 'skill' ones — checked here regardless of
+    // category so it's actually enforced for both.
+    if (ab.usesPerBattle != null && (unit.skillUses[ab.id] ?? 0) >= ab.usesPerBattle) return false;
+    // Blitz Ball's anti-synergy gate: "can only be used when NO sports
+    // partner present" — the solo-build counterweight to every other Ball
+    // passive rewarding adjacency.
+    if (ab.requiresNoPartner && this.sportsPartnerAdjacent(unit)) return false;
     if (ab.category === 'skill') {
-      if ((unit.skillCooldowns[ab.id] ?? 0) > 0) return false;
-      if (ab.usesPerBattle != null && (unit.skillUses[ab.id] ?? 0) >= ab.usesPerBattle) return false;
-      return true;
+      return (unit.skillCooldowns[ab.id] ?? 0) <= 0;
     }
+    if (ab.cost === 'ALL') return unit.sp > 0;
     return unit.sp >= this.effectiveSpCost(unit, ab);
   }
 
@@ -866,15 +1093,24 @@ export class BattleScene extends Phaser.Scene {
       }
       return 'Ready';
     }
+    if (ab.usesPerBattle != null) {
+      const used = unit.skillUses[ab.id] ?? 0;
+      if (used >= ab.usesPerBattle) return 'Used';
+    }
+    if (ab.cost === 'ALL') return unit.sp > 0 ? `${unit.sp} SP (ALL)` : 'No SP';
     const cost = this.effectiveSpCost(unit, ab);
     return cost === 0 ? 'Free' : `${cost} SP`;
   }
 
-  // Deduct the resource an ability uses — SP for specials, cooldown/uses for class skills
+  // Deduct the resource an ability uses — SP for specials, cooldown/uses for
+  // class skills. usesPerBattle is tracked the same way regardless of
+  // category (see abilityUsable).
   consumeAbilityResource(unit, ab) {
+    if (ab.usesPerBattle != null) unit.skillUses[ab.id] = (unit.skillUses[ab.id] ?? 0) + 1;
     if (ab.category === 'skill') {
       if (ab.cooldown != null) unit.skillCooldowns[ab.id] = ab.cooldown;
-      if (ab.usesPerBattle != null) unit.skillUses[ab.id] = (unit.skillUses[ab.id] ?? 0) + 1;
+    } else if (ab.cost === 'ALL') {
+      unit.sp = 0;
     } else {
       unit.sp = Math.max(0, unit.sp - this.effectiveSpCost(unit, ab));
     }
@@ -1035,7 +1271,14 @@ export class BattleScene extends Phaser.Scene {
     if (ability.directional) { this.startDirectionalTargeting(ability); return; }
     this.activeAbility = ability;
     this.phase = 'ability_targeting';
-    this.actionHint.setText(`${ability.icon ?? '◈'} ${ability.name}  ·  range ${ability.range}  ·  pick target`);
+    let rangeLabel;
+    if (ability.exactRange != null) {
+      rangeLabel = `exactly ${ability.exactRange + this.partnerRangeBonus(this.selectedUnit)}`;
+    } else {
+      const range = this.effectiveRange(this.selectedUnit, ability);
+      rangeLabel = range === Infinity ? '∞' : range;
+    }
+    this.actionHint.setText(`${ability.icon ?? '◈'} ${ability.name}  ·  range ${rangeLabel}  ·  pick target`);
     this.redraw();
   }
 
@@ -1088,8 +1331,10 @@ export class BattleScene extends Phaser.Scene {
     this.playAttackAnim(unit, ability.id);
     this.consumeAbilityResource(unit, ability);
 
+    const partnerAtkMult = this.partnerAttackMultiplier(unit);
     const applyHit = (target, mult) => {
-      const dmg = Math.round(calcAtk(unit) * mult * designationMultiplier(unit, target, ability) * elementMultiplier(unit, target));
+      let dmg = Math.round(calcAtk(unit) * mult * designationMultiplier(unit, target, ability) * elementMultiplier(unit, target) * partnerAtkMult);
+      dmg = Math.round(dmg * this.partnerDefenseMultiplier(target));
       target.hp = Math.max(0, target.hp - dmg);
       const { x, y } = this.gridToScreen(target.col, target.row);
       this.showDamage(x, y + TH2, dmg, '#ffaa22');
@@ -1143,16 +1388,9 @@ export class BattleScene extends Phaser.Scene {
       unit.hasMoved = true;
     }
 
-    unit.hasActed = true;
-    this.activeAbility = null;
     this.hideActionMenu();
     this.redraw();
-
-    if (unit.hasMoved) {
-      this.endUnitTurn(unit);
-    } else {
-      this.showActionMenu(unit);
-    }
+    this.finishAbilityTurn(unit);
   }
 
   executeSelfAbility(ability) {
@@ -1227,6 +1465,8 @@ export class BattleScene extends Phaser.Scene {
     } else if (ability.effect === 'extraTurn') {
       const { x, y } = this.gridToScreen(unit.col, unit.row);
       this.showEffect(x, y + TH2, 'FREESTYLE!', '#ff44cc');
+    } else if (ability.hitsAllUnitsOnField) {
+      this.castBlitzBall(unit, ability);
     }
 
     if (ability.effect === 'extraTurn') {
@@ -1243,6 +1483,53 @@ export class BattleScene extends Phaser.Scene {
     } else {
       this.showActionMenu(unit);
     }
+  }
+
+  // Blitz Ball: hits every "ball player" within range, on EITHER team, at
+  // once — the doc's "per-unit-on-field scaling" (more targets in range =
+  // more total damage out of this one cast). ASSUMPTION: this engine's
+  // enemies (wolves/boars) carry no sport/class data at all, so there's no
+  // way to check whether an enemy is a "ball player" — the closest workable
+  // reading of "including enemies" given that gap is to always include
+  // every enemy in range unconditionally, while allies are still filtered
+  // to actual Ball-classGrouping members. The caster itself is excluded.
+  castBlitzBall(unit, ability) {
+    const range = ability.range ?? 3;
+    const targets = [...this.playerUnits, ...this.enemyUnits].filter(o => {
+      if (o === unit || o.isDead) return false;
+      if (Math.abs(unit.col - o.col) + Math.abs(unit.row - o.row) > range) return false;
+      return o.team === 'enemy' || o.classGrouping === 'Ball';
+    });
+
+    const hits = ability.hits ?? 1;
+    for (const target of targets) {
+      const desigMult = designationMultiplier(unit, target, ability);
+      const elemMult = elementMultiplier(unit, target);
+      let dmg = 0;
+      for (let h = 0; h < hits; h++) dmg += Math.round(calcAtk(unit) * ability.multiplier * desigMult * elemMult);
+      dmg = Math.round(dmg * this.partnerDefenseMultiplier(target));
+      target.hp = Math.max(0, target.hp - dmg);
+
+      const { x, y } = this.gridToScreen(target.col, target.row);
+      this.showDamage(x, y + TH2, dmg, target.team === 'player' ? '#ff5555' : '#ffaa22');
+      if (target.sprite) {
+        target.sprite.setTint(0xff3300);
+        this.time.delayedCall(180, () => {
+          if (!target.isDead && target.sprite) {
+            if (target.enemyTint) target.sprite.setTint(target.enemyTint);
+            else target.sprite.clearTint();
+          }
+        });
+      }
+      if (target.team === 'player') {
+        target.hitFlash = true;
+        this.time.delayedCall(200, () => { target.hitFlash = false; this.redraw(); });
+      }
+      if (target.hp <= 0) this.killUnit(target);
+    }
+
+    const { x, y } = this.gridToScreen(unit.col, unit.row);
+    this.showEffect(x, y + TH2, targets.length ? `BLITZ BALL ×${targets.length}` : 'NO TARGETS', '#ff8844');
   }
 
   showEffect(x, y, text, color) {
@@ -1283,9 +1570,26 @@ export class BattleScene extends Phaser.Scene {
   // Shared tail of an ability use: mark acted, clear targeting state, then
   // either end the unit's turn (if it already moved) or reopen its menu.
   // Callers handle their own redraw/kill-check before calling this.
+  //
+  // Duo's "attack twice" (Ability Revised): after the free move
+  // (duoFreeMoveUsed), the FIRST action taken grants exactly one bonus
+  // follow-up action instead of ending/handing back to a normal move — but
+  // it locks hasMoved=true so the unit can't ALSO take its normal move
+  // afterward. That makes "attack twice" and "move again and attack"
+  // mutually exclusive, matching the sheet: acting first spends the bonus
+  // slot as a 2nd attack; moving first (hasMoved already true by the time
+  // this runs) spends it as the normal move instead, and this branch never
+  // triggers.
   finishAbilityTurn(attacker) {
     attacker.hasActed = true;
     this.activeAbility = null;
+    if (attacker.duoFreeMoveUsed && !attacker.duoBonusUsed && !attacker.hasMoved) {
+      attacker.duoBonusUsed = true;
+      attacker.hasActed = false;
+      attacker.hasMoved = true;
+      this.showActionMenu(attacker);
+      return;
+    }
     if (attacker.hasMoved) {
       this.endUnitTurn(attacker);
     } else {
@@ -1324,7 +1628,7 @@ export class BattleScene extends Phaser.Scene {
       return;
     }
     if (ability.effect === 'restoreSp') {
-      const restored = Math.round(target.maxSp * ability.restorePct);
+      const restored = Math.round(target.maxSp * ability.restorePct * this.gracefulnessMultiplier(attacker));
       target.sp = Math.min(target.maxSp, target.sp + restored);
       const { x, y } = this.gridToScreen(target.col, target.row);
       this.showEffect(x, y + TH2, `+${restored} SP`, '#4499ff');
@@ -1340,12 +1644,48 @@ export class BattleScene extends Phaser.Scene {
       this.finishAbilityTurn(attacker);
       return;
     }
+    // Routine (Performance): ally's ATK +200% for 1 turn — reuses the same
+    // atkBuff field/reset-every-player-turn mechanism as the self-cast
+    // 'atkBuff' effect below, just applied to an ally instead of the caster.
+    if (ability.effect === 'atkBuffAlly') {
+      const bonus = ability.atkMultiplier * this.gracefulnessMultiplier(attacker);
+      target.atkBuff = (target.atkBuff ?? 1.0) * (1 + bonus);
+      const { x, y } = this.gridToScreen(target.col, target.row);
+      this.showEffect(x, y + TH2, `+${Math.round(bonus * 100)}% ATK`, '#ffcc44');
+      this.redraw();
+      this.finishAbilityTurn(attacker);
+      return;
+    }
+    // Refresh (Performance): heals SP+HP by a % in a radius around the
+    // clicked ally tile (aoeRadius, default 1 = 3x3), including that ally.
+    if (ability.effect === 'restoreSpAndHpPct') {
+      const amount = ability.amount * this.gracefulnessMultiplier(attacker);
+      const radius = ability.aoeRadius ?? 1;
+      const affected = this.playerUnits.filter(o =>
+        !o.isDead && Math.abs(o.col - target.col) + Math.abs(o.row - target.row) <= radius
+      );
+      for (const ally of affected) {
+        const hpDelta = Math.round(ally.maxHp * amount);
+        const spDelta = Math.round((ally.maxSp ?? 0) * amount);
+        ally.hp = Math.min(ally.maxHp, ally.hp + hpDelta);
+        ally.sp = Math.min(ally.maxSp ?? ally.sp, (ally.sp ?? 0) + spDelta);
+        const { x, y } = this.gridToScreen(ally.col, ally.row);
+        this.showEffect(x, y + TH2, `+${hpDelta} HP +${spDelta} SP`, '#44ffaa');
+      }
+      this.redraw();
+      this.finishAbilityTurn(attacker);
+      return;
+    }
 
     const hits = ability.hits ?? 1;
+    const dist = Math.abs(attacker.col - target.col) + Math.abs(attacker.row - target.row);
+    const mult = distanceMultiplier(ability, dist);
     const desigMult = designationMultiplier(attacker, target, ability);
     const elemMult = elementMultiplier(attacker, target);
+    const partnerAtkMult = this.partnerAttackMultiplier(attacker);
     let dmg = 0;
-    for (let h = 0; h < hits; h++) dmg += Math.round(calcAtk(attacker) * ability.multiplier * desigMult * elemMult);
+    for (let h = 0; h < hits; h++) dmg += Math.round(calcAtk(attacker) * mult * desigMult * elemMult * partnerAtkMult);
+    dmg = Math.round(dmg * this.partnerDefenseMultiplier(target));
     target.hp  = Math.max(0, target.hp - dmg);
 
     const { x, y } = this.gridToScreen(target.col, target.row);
@@ -1378,6 +1718,7 @@ export class BattleScene extends Phaser.Scene {
       this.showDamage(x, y + TH2 - 22, `${stat.toUpperCase()} DOWN`, '#ff88ff');
     }
 
+    if (target.hp > 0) this.triggerSetUpFollowUp(attacker, ability, target);
     if (target.hp <= 0) this.killUnit(target);
     else this.redraw();
     this.finishAbilityTurn(attacker);
@@ -1419,6 +1760,9 @@ export class BattleScene extends Phaser.Scene {
         u.sp = Math.min(u.maxSp, u.sp + 1);
         u.moveSpeed = u.baseMoveSpeed; // reset move buff
         u.atkBuff   = 1.0;            // reset atk buff
+        u.setUpUsedThisTurn = false;  // Set Up's "-50% dmg taken, 1×/turn" cap
+        u.duoFreeMoveUsed = false;    // Duo's free move to partner, once/round
+        u.duoBonusUsed = false;       // Duo's "attack twice" bonus, once/round
         if (u.overdriveTurns > 0) {
           u.overdriveTurns--;
           if (u.overdriveTurns <= 0 && u.overdriveBase) {
@@ -1661,13 +2005,14 @@ export class BattleScene extends Phaser.Scene {
       }
     }
 
-    // Ability range highlight
+    // Ability range highlight — a ring (not a filled diamond) for exact-range
+    // abilities like 3-Point.
     if (this.phase === 'ability_targeting' && this.selectedUnit && this.activeAbility) {
       const { col: uc, row: ur } = this.selectedUnit;
       for (let col = 0; col < COLS; col++) {
         for (let row = 0; row < ROWS; row++) {
           const dist = Math.abs(col - uc) + Math.abs(row - ur);
-          if (dist < 1 || dist > this.activeAbility.range) continue;
+          if (dist < 1 || !this.abilityRangeMatches(this.selectedUnit, this.activeAbility, dist)) continue;
           const { x, y } = this.gridToScreen(col, row);
           const occ = this.unitMap.get(`${col},${row}`);
           const isTarget = occ?.team === this.activeAbility.targetType;
