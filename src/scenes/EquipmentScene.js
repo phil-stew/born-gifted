@@ -1,10 +1,14 @@
 import Phaser from 'phaser';
-import { state, equipItem, unequipSlot, effectiveStats, roleDisplayLabel } from '../data/gameState.js';
-import { rarityColor, gearFrameName, basicFrameName, GEAR_GRID, ITEM_FRAMES, BASIC_FRAMES } from '../data/items.js';
+import { state, equipItem, unequipSlot, effectiveStats, roleDisplayLabel, gearLayoutForUnit } from '../data/gameState.js';
+import { rarityColor, gearFrameName, materialFrameName, GEAR_SHEET, GEAR_CLASS_COL, GEAR_SLOT_ROW, MATERIAL_SHEET, MATERIAL_ICON_CELL } from '../data/items.js';
+import { stripBackgroundByKey } from '../data/heroSprites.js';
 
-const SLOTS      = ['weapon', 'footwear', 'handwear', 'chest', 'headwear'];
-const SLOT_ICONS = { weapon:'⚔', footwear:'👟', handwear:'🧤', chest:'🛡', headwear:'⛑' };
-const SLOT_LABEL = { weapon:'WEAPON', footwear:'SHOES', handwear:'GLOVES', chest:'CHEST', headwear:'HEADGEAR' };
+// 'weapon' is stored-data's name for what the Gear & Forge redesign calls
+// the Class Item (see gearLayoutForUnit/CLASS_GEAR_LAYOUT in gameState.js —
+// the stored slot key wasn't renamed to avoid touching ~80 items' sprite-
+// frame data; this is the display-label rename).
+const SLOT_ICONS = { weapon:'🏆', footwear:'👟', handwear:'🧤', chest:'🛡', headwear:'⛑' };
+const SLOT_LABEL = { weapon:'CLASS ITEM', footwear:'SHOES', handwear:'GLOVES', chest:'CHEST', headwear:'HEADGEAR' };
 
 const ICON_W = 56, ICON_H = 44; // display size for gear set thumbnail
 const TEXT_X_OFF = 62;           // text left offset when icon is present
@@ -13,8 +17,8 @@ export class EquipmentScene extends Phaser.Scene {
   constructor() { super({ key: 'EquipmentScene' }); }
 
   preload() {
-    if (!this.textures.exists('gears'))     this.load.image('gears',     'gears/gearset10.png');
-    if (!this.textures.exists('basicgear')) this.load.image('basicgear', 'gears/basicgear.png');
+    if (!this.textures.exists('gears'))     this.load.image('gears',     'gears/gearitems.png');
+    if (!this.textures.exists('materials')) this.load.image('materials', 'items/rawmaterials.png');
   }
 
   create() {
@@ -24,8 +28,11 @@ export class EquipmentScene extends Phaser.Scene {
     this.selectedSlot    = null;
     this.hitZones        = [];
 
+    // Icon sheets are baked with a solid black background (no alpha channel).
+    stripBackgroundByKey(this, 'gears',     { cols: GEAR_SHEET.cols,     rows: GEAR_SHEET.rows });
+    stripBackgroundByKey(this, 'materials', { cols: MATERIAL_SHEET.cols, rows: MATERIAL_SHEET.rows });
     this._registerGearFrames();
-    this._registerBasicFrames();
+    this._registerMaterialFrames();
 
     // Background
     const bg = this.add.graphics();
@@ -55,43 +62,46 @@ export class EquipmentScene extends Phaser.Scene {
   _registerGearFrames() {
     if (!this.textures.exists('gears')) return;
     const tex = this.textures.get('gears');
-    const { labelW, headerH, cellW, cellH, sportRow, rarityCol } = GEAR_GRID;
-    for (const [sport, slots] of Object.entries(ITEM_FRAMES)) {
-      const row = sportRow[sport];
-      if (row === undefined) continue;
-      for (const [slot, [rx, ry, rw, rh]] of Object.entries(slots)) {
-        for (const [rarity, col] of Object.entries(rarityCol)) {
-          const name = `gear_${sport}_${slot}_${rarity}`;
-          if (!tex.has(name)) {
-            tex.add(name, 0, labelW + col * cellW + rx, headerH + row * cellH + ry, rw, rh);
-          }
-        }
+    const { cellW, cellH } = GEAR_SHEET;
+    for (const [cls, col] of Object.entries(GEAR_CLASS_COL)) {
+      for (const [slot, row] of Object.entries(GEAR_SLOT_ROW)) {
+        const name = `gear_${cls}_${slot}`;
+        if (!tex.has(name)) tex.add(name, 0, col * cellW, row * cellH, cellW, cellH);
       }
     }
   }
 
-  _registerBasicFrames() {
-    if (!this.textures.exists('basicgear')) return;
-    const tex = this.textures.get('basicgear');
-    for (const [slot, entries] of Object.entries(BASIC_FRAMES)) {
-      for (const { rarity, x, y, w, h } of entries) {
-        const name = `basic_${slot}_${rarity}`;
-        if (!tex.has(name)) tex.add(name, 0, x, y, w, h);
-      }
+  _registerMaterialFrames() {
+    if (!this.textures.exists('materials')) return;
+    const tex = this.textures.get('materials');
+    const { cellW, cellH } = MATERIAL_SHEET;
+    for (const [id, [row, col]] of Object.entries(MATERIAL_ICON_CELL)) {
+      const name = `material_${id}`;
+      if (!tex.has(name)) tex.add(name, 0, col * cellW, row * cellH, cellW, cellH);
     }
   }
 
   _gearIcon(x, y, item, w = ICON_W, h = ICON_H) {
     let texKey, frame;
-    if (item?.sport) {
+    if (item?.type === 'material') {
+      texKey = 'materials';
+      frame  = materialFrameName(item.id);
+    } else if (item?.sport) {
       texKey = 'gears';
-      frame  = gearFrameName(item.sport, item.slot, item.rarity);
+      frame  = gearFrameName(item.sport, item.slot);
     } else {
-      texKey = 'basicgear';
-      frame  = basicFrameName(item?.slot, item?.rarity);
+      return null;
     }
     if (!frame || !this.textures.exists(texKey) || !this.textures.get(texKey).has(frame)) return null;
     return this.add.image(x, y, texKey, frame).setDisplaySize(w, h).setOrigin(0, 0.5);
+  }
+
+  // Formats an item's flat stat lines AND (new, rolled gear only) its
+  // damage/affinity/designation multiplier lines into one bonus string.
+  _bonusLineText(item) {
+    const flat = Object.entries(item.stats ?? {}).map(([k, v]) => `+${v} ${k[0].toUpperCase() + k.slice(1)}`);
+    const mult = Object.entries(item.multipliers ?? {}).map(([k, v]) => `+${Math.round(v * 100)}% ${k[0].toUpperCase() + k.slice(1)}`);
+    return [...flat, ...mult].join('  ');
   }
 
   renderAll() {
@@ -131,8 +141,9 @@ export class EquipmentScene extends Phaser.Scene {
       const nameText  = this.add.text(36, y + 10, unit.name.split(' ')[0], { fontSize:'12px', fontFamily:'monospace', color: selected ? '#ffffff' : '#aaaaaa' });
       const lvlText   = this.add.text(12, y + 30, `Lv.${unit.level}  ${roleDisplayLabel(unit)}`, { fontSize:'9px', fontFamily:'monospace', color:'#555577' });
 
-      const equipped  = SLOTS.filter(s => unit.equip[s]).length;
-      const eqText    = this.add.text(12, y + 44, `${equipped}/5 equipped`, { fontSize:'9px', fontFamily:'monospace', color: equipped > 0 ? '#446644' : '#333344' });
+      const layout    = gearLayoutForUnit(unit);
+      const equipped  = layout.slots.filter(s => unit.equip[s]).length;
+      const eqText    = this.add.text(12, y + 44, `${equipped}/${layout.slots.length} equipped`, { fontSize:'9px', fontFamily:'monospace', color: equipped > 0 ? '#446644' : '#333344' });
 
       const eff       = effectiveStats(unit);
       const statText  = this.add.text(12, y + 58, `Spd:${eff.speed} Str:${eff.strength}`, { fontSize:'9px', fontFamily:'monospace', color:'#334455' });
@@ -148,6 +159,16 @@ export class EquipmentScene extends Phaser.Scene {
 
   renderSlots() {
     const unit = state.party[this.selectedUnitIdx];
+    const layout = gearLayoutForUnit(unit);
+    // Show every slot this unit's class actually has, PLUS any slot that
+    // happens to already hold gear from before this redesign (equipment was
+    // never class-restricted, so an existing save could have e.g. a
+    // Performance-class unit with legacy footwear equipped) — so nothing
+    // equipped becomes invisible or unreachable to unequip.
+    const visibleSlots = [
+      ...layout.slots,
+      ...Object.keys(unit.equip).filter(s => unit.equip[s] && !layout.slots.includes(s)),
+    ];
     const sx = 168, sw = 288;
     let y = 50;
 
@@ -157,7 +178,7 @@ export class EquipmentScene extends Phaser.Scene {
     this.slotsContainer.add(header);
     y += 24;
 
-    SLOTS.forEach((slot) => {
+    visibleSlots.forEach((slot) => {
       const item     = unit.equip[slot];
       const selected = slot === this.selectedSlot;
       const rColor   = item ? rarityColor(item.rarity) : 0x333344;
@@ -169,8 +190,14 @@ export class EquipmentScene extends Phaser.Scene {
       gfx.strokeRect(sx, y, sw, 64);
       this.slotsContainer.add(gfx);
 
+      // Class Item's stat multiplier (×2 Martial Arts, ×3 Performance) is
+      // called out right on the slot label so it's clear why that slot
+      // matters more for those classes.
+      const label = (slot === 'weapon' && layout.classItemMultiplier > 1)
+        ? `${SLOT_LABEL[slot]} ×${layout.classItemMultiplier}`
+        : (SLOT_LABEL[slot] ?? slot.toUpperCase());
       const slotIcon = this.add.text(sx + 10, y + 8, SLOT_ICONS[slot] ?? '?', { fontSize:'16px' });
-      const slotLbl  = this.add.text(sx + 32, y + 8, SLOT_LABEL[slot] ?? slot.toUpperCase(), { fontSize:'9px', fontFamily:'monospace', color:'#555577' });
+      const slotLbl  = this.add.text(sx + 32, y + 8, label, { fontSize:'9px', fontFamily:'monospace', color:'#555577' });
       this.slotsContainer.add([slotIcon, slotLbl]);
 
       if (item) {
@@ -180,7 +207,7 @@ export class EquipmentScene extends Phaser.Scene {
         if (icon) this.slotsContainer.add(icon);
         const tx = icon ? sx + 62 : sx + 10;
         const itemName = this.add.text(tx, y + 26, item.name, { fontSize:'12px', fontFamily:'monospace', fontStyle:'bold', color:rc });
-        const bonus    = Object.entries(item.stats ?? {}).map(([k,v]) => `+${v} ${k[0].toUpperCase()+k.slice(1)}`).join('  ');
+        const bonus    = this._bonusLineText(item);
         const bonusT   = this.add.text(tx, y + 46, bonus, { fontSize:'9px', fontFamily:'monospace', color:'#446644' });
         this.slotsContainer.add([itemName, bonusT]);
       } else {
@@ -198,12 +225,18 @@ export class EquipmentScene extends Phaser.Scene {
   renderInventory() {
     const { height } = this.scale;
     const unit = state.party[this.selectedUnitIdx];
+    const layout = gearLayoutForUnit(unit);
     const ix = 468, iw = 320;
     let y = 50;
 
+    // Browsing a specific slot always shows everything of that slot type
+    // (including a legacy slot outside this unit's current layout, if one's
+    // already equipped there — see renderSlots). Browsing "all" hides gear
+    // for slots this unit's class doesn't have at all, so it can't be
+    // equipped into a slot that doesn't exist for them.
     const filteredItems = this.selectedSlot
       ? state.inventory.filter(item => item.slot === this.selectedSlot)
-      : state.inventory;
+      : state.inventory.filter(item => item.slot == null || layout.slots.includes(item.slot));
 
     const headerStr = this.selectedSlot
       ? `INVENTORY — ${SLOT_LABEL[this.selectedSlot] ?? this.selectedSlot.toUpperCase()}`
@@ -239,7 +272,7 @@ export class EquipmentScene extends Phaser.Scene {
 
       const rColor = rarityColor(item.rarity);
       const rc     = '#' + rColor.toString(16).padStart(6, '0');
-      const hasIcon = !!(item.sport && gearFrameName(item.sport, item.rarity));
+      const hasIcon = item.type === 'material' ? !!materialFrameName(item.id) : !!(item.sport && gearFrameName(item.sport, item.slot));
       const textX  = ix + (hasIcon ? TEXT_X_OFF : 10);
 
       const gfx = this.add.graphics();
@@ -259,7 +292,7 @@ export class EquipmentScene extends Phaser.Scene {
       const slotT  = this.add.text(textX, y + 23, item.slot ? (SLOT_LABEL[item.slot] ?? item.slot.toUpperCase()) : 'MATERIAL', {
         fontSize: '9px', fontFamily: 'monospace', color: item.type === 'material' ? '#668844' : '#555577',
       });
-      const bonus  = Object.entries(item.stats ?? {}).map(([k,v]) => `+${v} ${k[0].toUpperCase()+k.slice(1)}`).join('  ');
+      const bonus  = this._bonusLineText(item);
       const bonusT = this.add.text(textX, y + 38, bonus, { fontSize:'9px', fontFamily:'monospace', color:'#446644' });
       const costT  = this.add.text(ix + iw - 10, y + 8, `${item.cost}T`, { fontSize:'10px', fontFamily:'monospace', color:'#665500' }).setOrigin(1, 0);
 

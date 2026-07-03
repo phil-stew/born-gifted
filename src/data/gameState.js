@@ -190,6 +190,45 @@ export function sportById(sportId) {
   return SPORTS[sportId] ?? null;
 }
 
+// ── Gear slots per class (Gear & Forge, July 2026) ──────────────────────────
+// Replaces the old uniform 5-slot system with per-class slot COUNTS/layouts.
+// The slot KEYS themselves are unchanged ('weapon'/'headwear'/'footwear'/
+// 'chest'/'handwear' — see items.js/EquipmentScene.js) to avoid touching the
+// ~80 existing hand-authored items and their sprite-frame coordinates
+// (ITEM_FRAMES in items.js is keyed by these exact slot names); 'weapon' is
+// simply the slot the redesign calls the "Class Item" — that's a rename at
+// the display/label level for a later UI pass, not a stored-data rename.
+// classItemMultiplier is the stat multiplier applied to a Class Item's own
+// rolled lines (see rollGearItem in items.js) — classes with fewer slots
+// get a stronger Class Item to compensate.
+export const CLASS_GEAR_LAYOUT = {
+  'Bat & Ball':   { slots: ['weapon', 'headwear', 'footwear', 'chest', 'handwear'], classItemMultiplier: 1 },
+  'Ball':         { slots: ['weapon', 'headwear', 'footwear', 'chest', 'handwear'], classItemMultiplier: 1 },
+  'Racquet':      { slots: ['weapon', 'headwear', 'footwear', 'chest', 'handwear'], classItemMultiplier: 1 },
+  'Target':       { slots: ['weapon', 'headwear', 'footwear', 'chest', 'handwear'], classItemMultiplier: 1 },
+  'Athletics':    { slots: ['weapon', 'headwear', 'chest', 'handwear'], classItemMultiplier: 1 },
+  'Martial Arts': { slots: ['weapon', 'chest', 'footwear', 'headwear'], classItemMultiplier: 2 },
+  'Performance':  { slots: ['weapon', 'chest'], classItemMultiplier: 3 },
+};
+// Fallback for any class grouping that somehow doesn't match above — full
+// 5-slot layout, no bonus. Shouldn't be hit in practice (every SPORTS class
+// grouping is covered above).
+const DEFAULT_GEAR_LAYOUT = { slots: ['weapon', 'headwear', 'footwear', 'chest', 'handwear'], classItemMultiplier: 1 };
+// Figure Skater (Performance class, per SPORTS.figure_skating) is CONFIRMED
+// to use the Athletics 4-slot layout instead of Performance's 2-slot one —
+// "skating heritage from the Ice Skating chain roots," per the sheet.
+// Keyed by sportId (not roleId — figure_skating has a single role anyway).
+const GEAR_LAYOUT_SPORT_OVERRIDE = { figure_skating: 'Athletics' };
+
+// The gear slot layout that applies to a unit right now, based on its
+// CURRENT class grouping (same current-tier-only philosophy as
+// currentDesignations — see that function's comment).
+export function gearLayoutForUnit(unit) {
+  const sportId = currentSport(unit);
+  const layoutKey = GEAR_LAYOUT_SPORT_OVERRIDE[sportId] ?? sportById(sportId)?.class;
+  return CLASS_GEAR_LAYOUT[layoutKey] ?? DEFAULT_GEAR_LAYOUT;
+}
+
 // ── Promotion chains ─────────────────────────────────────────────────────────
 // T1 + secondary talent → T2 → T3. Chains are preserved exactly from the old
 // CLASS_TREES (same id/primary/secondary/t1 pairing) — only the T1/T2/T3
@@ -380,22 +419,51 @@ function levelUpGains(unit) {
   return gains;
 }
 
-// Get effective stats (base + all equipped item bonuses)
+// Get effective stats (base + all equipped item bonuses). bonusHp/bonusSp
+// are new (Gear & Forge redesign) — a gear line can now roll flat HP or SP
+// directly (Head's main stat is "HP or SP"), on top of the existing 4 core
+// stats. bonusHp already flows into maxHp() below; bonusSp does NOT yet
+// reach a unit's actual max SP — that's computed ad hoc in BattleScene.js's
+// battle-unit construction (a talent-stat formula, not this function) and
+// still needs a follow-up wiring pass to add bonusSp in.
 export function effectiveStats(unit) {
-  let s = { speed: unit.speed, strength: unit.strength, stamina: unit.stamina, endurance: unit.endurance };
+  let s = {
+    speed: unit.speed, strength: unit.strength, stamina: unit.stamina, endurance: unit.endurance,
+    bonusHp: 0, bonusSp: 0,
+  };
   for (const item of Object.values(unit.equip)) {
     if (!item) continue;
     s.speed      += item.stats?.speed      ?? 0;
     s.strength   += item.stats?.strength   ?? 0;
     s.stamina    += item.stats?.stamina    ?? 0;
     s.endurance  += item.stats?.endurance  ?? 0;
+    s.bonusHp    += item.stats?.hp         ?? 0;
+    s.bonusSp    += item.stats?.sp         ?? 0;
   }
   return s;
 }
 
 export function maxHp(unit) {
   const s = effectiveStats(unit);
-  return (s.endurance + s.stamina) * (2 + unit.level);
+  return (s.endurance + s.stamina) * (2 + unit.level) + s.bonusHp;
+}
+
+// Aggregate item-line damage/affinity/designation multiplier bonuses across
+// all of a unit's equipped gear (new gear-line stat types — see the "Stat
+// pool for gear lines" note in items.js). Returned as decimal fractions
+// (0.05 = +5%), summed additively across items/lines.
+// ENGINE TODO: not yet folded into BattleScene.js's calcAtk/
+// designationMultiplier/elementMultiplier — those still compute damage
+// without any gear-multiplier input. That's the follow-up wiring pass.
+export function equipMultipliers(unit) {
+  const m = { damage: 0, affinity: 0, designation: 0 };
+  for (const item of Object.values(unit.equip)) {
+    if (!item) continue;
+    m.damage      += item.multipliers?.damage      ?? 0;
+    m.affinity    += item.multipliers?.affinity    ?? 0;
+    m.designation += item.multipliers?.designation ?? 0;
+  }
+  return m;
 }
 
 // Equip an item (from inventory) into a unit's slot.

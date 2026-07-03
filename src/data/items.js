@@ -1,24 +1,37 @@
 // Item database — slots: weapon | footwear | handwear | chest | headwear
-// `sport` maps to gearset10.png row for icon display:
-//   Basketball=0, Soccer=1, Football=2, Baseball=3, Tennis=4,
-//   Volleyball=5, Hockey=6, Boxing=7, Track=8, Golf=9
-// Rarity maps to column: common=white, uncommon=green, rare=blue, epic=purple, legendary=gold
+// `sport` drives icon lookup via gearFrameName (see ITEM_SPORT_TO_CLASS /
+// GEAR_CLASS_COL / GEAR_SLOT_ROW below) — rarity is shown separately via
+// rarityColor(), not baked into the icon art.
+
+import { TALENT_STAT_KEY } from './gameState.js';
 
 export const ITEMS = [
 
   // ── Materials ─────────────────────────────────────────────────────────────
   { id:'heal_herb',    name:'Heal Herb',    type:'material', slot:null, rarity:'common',   cost:15,  stats:{}, desc:'A medicinal herb found in forest clearings.' },
-  { id:'wolf_pelt',    name:'Wolf Pelt',    type:'material', slot:null, rarity:'common',   cost:25,  stats:{}, desc:'A rough pelt stripped from a forest wolf.' },
-  { id:'boar_hide',    name:'Boar Hide',    type:'material', slot:null, rarity:'common',   cost:30,  stats:{}, desc:'Thick hide from a territorial forest boar.' },
   { id:'iron_scrap',   name:'Iron Scrap',   type:'material', slot:null, rarity:'common',   cost:20,  stats:{}, desc:'Salvaged metal, useful for forging.' },
   { id:'crystal_shard',name:'Crystal Shard',type:'material', slot:null, rarity:'uncommon', cost:60,  stats:{}, desc:'A shard of elemental crystal.' },
-  // M3 craft materials
-  { id:'iron_ore',     name:'Iron Ore',     type:'material', slot:null, rarity:'common',   cost:30,  stats:{}, desc:'Raw iron pulled from the plains. Used to craft gear.' },
   { id:'leather_strip',name:'Leather Strip',type:'material', slot:null, rarity:'common',   cost:25,  stats:{}, desc:'Cured hide strips. Flexible and durable.' },
   { id:'wood_plank',   name:'Wood Plank',   type:'material', slot:null, rarity:'common',   cost:18,  stats:{}, desc:'Treated wood boards salvaged from the borderlands.' },
-  // M4 upgrade materials
+  // M4 upgrade materials (feed the existing Forge reinforcement mechanic —
+  // kept as-is, see FORGE_RECIPES below for the separate new crafting system)
   { id:'cave_crystal', name:'Cave Crystal', type:'material', slot:null, rarity:'uncommon', cost:75,  stats:{}, desc:'A luminous crystal formed deep in the caves. Enhances gear.' },
   { id:'shadow_ore',   name:'Shadow Ore',   type:'material', slot:null, rarity:'uncommon', cost:80,  stats:{}, desc:'Dark alloy found only in hollow cave veins. Ideal for upgrades.' },
+
+  // ── Monster drops (Gear & Forge, July 2026) ─────────────────────────────
+  // Generalized, replacing the old per-monster wolf_pelt/boar_hide (every
+  // monster now drops from this same generic pool — see getKillDrops).
+  { id:'skin', name:'Skin', type:'material', slot:null, rarity:'common', cost:25, stats:{}, desc:'Cured monster skin. A Forge crafting material.' },
+  { id:'fur',  name:'Fur',  type:'material', slot:null, rarity:'common', cost:25, stats:{}, desc:'Coarse monster fur. A Forge crafting material.' },
+  { id:'bone', name:'Bone', type:'material', slot:null, rarity:'common', cost:25, stats:{}, desc:'A sturdy monster bone. A Forge crafting material.' },
+
+  // ── Cave ore (Gear & Forge, July 2026) — Forge crafting materials, tiered
+  // T1-T4. oreTier drives the rarity of whatever gear a recipe crafts with
+  // it (see ORE_TIER_TO_RARITY / FORGE_RECIPES below).
+  { id:'iron_ore',   name:'Iron Ore',   type:'material', slot:null, rarity:'uncommon',  oreTier:1, cost:30,  stats:{}, desc:'Raw iron pulled from cave veins. Crafts Uncommon gear.' },
+  { id:'silver_ore', name:'Silver Ore', type:'material', slot:null, rarity:'rare',      oreTier:2, cost:90,  stats:{}, desc:'A vein of silver ore. Crafts Rare gear.' },
+  { id:'gold_ore',   name:'Gold Ore',   type:'material', slot:null, rarity:'epic',      oreTier:3, cost:250, stats:{}, desc:'A rich seam of gold ore. Crafts Epic gear.' },
+  { id:'mystic_ore', name:'Mystic Ore', type:'material', slot:null, rarity:'legendary', oreTier:4, cost:700, stats:{}, desc:'Ore humming with unexplained energy. Crafts Legendary gear.' },
 
   // ══════════════════════════════════════════════════════════════════════════
   // SOCCER  (Reno · Sela)
@@ -157,116 +170,83 @@ const RARITY_COLORS = {
   rare:      0x4488ff,
   epic:      0xaa44ff,
   legendary: 0xffaa00,
+  // "God tier" (Gear & Forge, July 2026) — above legendary, presumably
+  // unique/quest-tier per the sheet. Not part of the normal drop/craft
+  // rarity ladder below it (see rollGodTierClassItem).
+  god:       0xff3366,
 };
 
 export function rarityColor(rarity) { return RARITY_COLORS[rarity] ?? 0xffffff; }
 
-// gearset10.png grid layout (1536×1024)
-// Columns (left→right): common(white), uncommon(green), rare(blue), epic(purple), legendary(gold)
-// Rows (top→bottom): Basketball, Soccer, Football, Baseball, Tennis, Volleyball, Hockey, Boxing, Track, Golf
-export const GEAR_GRID = {
-  labelW: 185, headerH: 52,
-  cellW: Math.round((1536 - 185) / 6),
-  cellH: Math.round((1024 - 52) / 10),
-  sportRow:  { Basketball:0, Soccer:1, Football:2, Baseball:3, Tennis:4, Volleyball:5, Hockey:6, Boxing:7, Track:8, Golf:9 },
-  rarityCol: { common:0, uncommon:1, rare:2, epic:3, legendary:4 },
+// Ladder order for the normal roll system (god tier is a separate fixed
+// template, not part of this progression — see rollGodTierClassItem).
+export const RARITY_ORDER = ['common', 'uncommon', 'rare', 'epic', 'legendary'];
+
+// Cave-ore tier → the rarity a Forge recipe crafts when that ore is used
+// (Gear & Forge: "Ore tier drives result rarity — e.g. Bone(T3) + Gold =
+// Epic Chest").
+export const ORE_TIER_TO_RARITY = { 1: 'uncommon', 2: 'rare', 3: 'epic', 4: 'legendary' };
+
+// Inventory stack cap for materials (Gear & Forge: "Stack cap: 25 per item").
+// NOTE: not yet enforced anywhere — the current inventory model stores N
+// separate copies of a material as N separate array entries (see
+// getKillDrops below), not a single counted stack. Enforcing this cap needs
+// an inventory-model change (grouping by id with a count), which is UI/
+// engine wiring, not data — deferred to a follow-up pass.
+export const MATERIAL_STACK_CAP = 25;
+
+// gears/gearitems.png grid layout (1536×1024, 7 cols × 5 rows) — replaces the
+// old gearset10.png/basicgear.png sport×rarity scheme (July 2026 art redo).
+// This sheet has ONE icon per {class grouping, slot} — no per-rarity art —
+// so rarity is conveyed separately via rarityColor() (border/text tint),
+// not baked into the icon.
+//
+// Columns are the same 7 "class" groupings already used for sports-partner
+// adjacency (see SPORTS[*].class in gameState.js): Bat & Ball, Racquet,
+// Target, Athletics, Martial Arts, Ball, Performance.
+// Rows are slots: weapon(class item), headwear, footwear, chest, handwear.
+export const GEAR_SHEET = {
+  cols: 7, rows: 5,
+  cellW: 1536 / 7,
+  cellH: 1024 / 5,
+};
+export const GEAR_CLASS_COL = {
+  'Bat & Ball': 0, 'Racquet': 1, 'Target': 2, 'Athletics': 3,
+  'Martial Arts': 4, 'Ball': 5, 'Performance': 6,
+};
+export const GEAR_SLOT_ROW = { weapon: 0, headwear: 1, footwear: 2, chest: 3, handwear: 4 };
+
+// items.js's existing `sport` field predates the class-grouping system and
+// uses its own display strings (Basketball, Soccer, ...) — map each to the
+// class grouping whose column art fits it, so ~80 existing items don't need
+// per-item rewrites. Universal (no-sport) items have no matching column and
+// get no icon, same as before this rework.
+export const ITEM_SPORT_TO_CLASS = {
+  Basketball: 'Ball', Soccer: 'Ball', Football: 'Ball', Volleyball: 'Ball', Hockey: 'Ball',
+  Baseball: 'Bat & Ball',
+  Tennis: 'Racquet', Golf: 'Racquet',
+  Boxing: 'Martial Arts',
+  Track: 'Athletics',
 };
 
-// Per-sport, per-slot item crop coordinates [relX, relY, w, h] within a cell
-// Coordinates measured from the pixel analysis of gearset10.png (1536×1024)
-export const ITEM_FRAMES = {
-  Basketball: {
-    chest:    [26,  15, 47, 78],  // tank jersey
-    footwear: [132, 38, 40, 55],  // high-top shoes
-    weapon:   [163, 40, 40, 39],  // basketball
-  },
-  Soccer: {
-    chest:    [17,  17, 72, 66],  // jersey
-    footwear: [103, 47, 52, 36],  // cleats
-    weapon:   [160, 43, 39, 39],  // soccer ball
-  },
-  Football: {
-    headwear: [14,  11, 47, 58],  // helmet
-    chest:    [70,  10, 49, 59],  // jersey #10
-    weapon:   [165, 39, 38, 32],  // football
-  },
-  Baseball: {
-    headwear: [13,   1, 47, 36],  // cap
-    chest:    [67,   0, 59, 68],  // jersey
-    footwear: [23,  40, 47, 28],  // cleats
-    weapon:   [154,  3, 48, 64],  // bat
-  },
-  Tennis: {
-    chest:    [13,   0, 63, 60],  // polo shirt
-    footwear: [130, 50, 55, 47],  // sneakers (below racket)
-    weapon:   [137,  0, 51, 45],  // racket
-  },
-  Volleyball: {
-    chest:    [28,   0, 46, 54],  // jersey
-    footwear: [131, 21, 40, 38],  // shoes
-    weapon:   [167, 15, 36, 36],  // volleyball
-  },
-  Hockey: {
-    headwear: [13,   0, 47, 51],  // cage helmet
-    chest:    [64,   0, 64, 58],  // jersey
-    handwear: [132,  0, 38, 58],  // gloves
-    weapon:   [170,  0, 55, 58],  // stick + puck
-  },
-  Boxing: {
-    headwear: [16,   0, 45, 35],  // headgear
-    chest:    [73,   0, 44, 49],  // tank top
-    weapon:   [130,  0, 70, 41],  // L + R gloves
-  },
-  Track: {
-    chest:    [24,   0, 43, 38],  // singlet
-    footwear: [17,  63, 60, 34],  // spike shoes
-    weapon:   [171,  0, 33, 35],  // stopwatch
-  },
-  Golf: {
-    chest:    [29,   0, 38, 32],  // polo shirt
-    weapon:   [133,  0, 50, 33],  // golf club
-  },
-};
-
-// Returns the Phaser frame name for a specific item icon (sport + slot + rarity)
-export function gearFrameName(sport, slot, rarity) {
-  if (!sport || !slot) return null;
-  if (!GEAR_GRID.sportRow.hasOwnProperty(sport)) return null;
-  if (!GEAR_GRID.rarityCol.hasOwnProperty(rarity)) return null;
-  if (!ITEM_FRAMES[sport]?.[slot]) return null;
-  return `gear_${sport}_${slot}_${rarity}`;
+// Returns the Phaser frame name for a specific item icon (sport + slot)
+export function gearFrameName(sport, slot) {
+  const cls = ITEM_SPORT_TO_CLASS[sport];
+  if (!cls || !GEAR_SLOT_ROW.hasOwnProperty(slot)) return null;
+  return `gear_${cls}_${slot}`;
 }
 
-// basicgear.png (1536×1024) — absolute pixel coordinates per slot × rarity
-// Rows: HEADBAND(0) | SHORTS(1) | PANTS(2) | GLOVE(3) | SHOES(4)
-// Columns (left→right): common(white) | uncommon(green) | rare(blue) | epic(purple)
-export const BASIC_FRAMES = {
-  headwear: [
-    { rarity:'common',   x:323,  y:76,  w:147, h:72  },
-    { rarity:'uncommon', x:585,  y:76,  w:148, h:72  },
-    { rarity:'rare',     x:858,  y:76,  w:148, h:72  },
-    { rarity:'epic',     x:1127, y:76,  w:151, h:72  },
-  ],
-  handwear: [
-    { rarity:'common',   x:338,  y:632, w:126, h:137 },
-    { rarity:'uncommon', x:602,  y:632, w:126, h:137 },
-    { rarity:'rare',     x:876,  y:632, w:125, h:137 },
-    { rarity:'epic',     x:1146, y:632, w:127, h:137 },
-  ],
-  footwear: [
-    { rarity:'common',   x:302,  y:821, w:206, h:111 },
-    { rarity:'uncommon', x:568,  y:821, w:205, h:111 },
-    { rarity:'rare',     x:839,  y:821, w:204, h:111 },
-    { rarity:'epic',     x:1113, y:821, w:205, h:111 },
-  ],
-  // chest (vest) — to be added when basicgear.png is updated
+// items/rawmaterials.png grid layout (1536×1024, 3 cols × 3 rows) — one icon
+// per Gear & Forge crafting material (only 7 of the 9 cells are used).
+export const MATERIAL_SHEET = { cols: 3, rows: 3, cellW: 1536 / 3, cellH: 1024 / 3 };
+export const MATERIAL_ICON_CELL = {
+  skin:       [0, 0], fur:        [0, 1], bone:       [0, 2],
+  iron_ore:   [1, 0], silver_ore: [1, 1], gold_ore:   [1, 2],
+  mystic_ore: [2, 0],
 };
 
-export function basicFrameName(slot, rarity) {
-  const entries = BASIC_FRAMES[slot];
-  if (!entries) return null;
-  const entry = entries.find(e => e.rarity === rarity);
-  return entry ? `basic_${slot}_${rarity}` : null;
+export function materialFrameName(id) {
+  return MATERIAL_ICON_CELL[id] ? `material_${id}` : null;
 }
 
 // Guaranteed material drops per mission clear
@@ -276,20 +256,20 @@ export const MISSION_MATERIALS = {
   M4:  ['cave_crystal', 'shadow_ore'],
 };
 
-// Per-kill drops keyed by enemy name
-export const ENEMY_KILL_DROPS = {
-  Wolf: 'wolf_pelt',
-  Boar: 'boar_hide',
-};
+// Generic monster-drop pool (Gear & Forge, July 2026 — replaces the old
+// per-monster wolf_pelt/boar_hide mapping). ASSUMPTION: the sheet lists
+// "Skin/Fur/Bone" as one flat "Monster drops" category with no per-monster
+// breakdown, so every kill picks uniformly at random from this pool rather
+// than a fixed drop per enemy name.
+export const MONSTER_DROP_MATERIALS = ['skin', 'fur', 'bone'];
 
 export function getKillDrops(killsByType) {
   const drops = [];
   for (const [name, count] of Object.entries(killsByType)) {
-    const id = ENEMY_KILL_DROPS[name];
-    if (!id) continue;
-    const item = getItem(id);
-    if (item) {
-      for (let i = 0; i < count; i++) drops.push({ ...item });
+    for (let i = 0; i < count; i++) {
+      const id = MONSTER_DROP_MATERIALS[Math.floor(Math.random() * MONSTER_DROP_MATERIALS.length)];
+      const item = getItem(id);
+      if (item) drops.push({ ...item });
     }
   }
   return drops;
@@ -315,4 +295,157 @@ export function randomLoot(missionId) {
   const id = pool[Math.floor(Math.random() * pool.length)];
   const item = getItem(id);
   return item ? { ...item } : null;
+}
+
+// ── Forge crafting recipes (Gear & Forge, July 2026) ────────────────────────
+// A separate system from ForgeScene's existing reinforcement mechanic (kept
+// as-is, per decision — reinforcement upgrades an equipped item's stats,
+// this crafts a NEW item from materials). Material kind names here are
+// abstract; 'ore' resolves to whichever specific ore item (iron/silver/
+// gold/mystic) the player supplies — its oreTier drives the result's
+// rarity via ORE_TIER_TO_RARITY (e.g. Bone + Gold Ore(T3) → Epic Chest).
+// Craft costs: TBD per the sheet's own open item — not modeled yet.
+export const FORGE_RECIPES = [
+  { id: 'craft_class_item', resultSlots: ['weapon'],                materials: ['bone', 'skin', 'ore'], desc: 'Bone + Skin + Ore → Class Item' },
+  { id: 'craft_chest',      resultSlots: ['chest'],                  materials: ['bone', 'ore'],         desc: 'Bone + Ore → Chest' },
+  { id: 'craft_hand_head',  resultSlots: ['handwear', 'headwear'],   materials: ['skin', 'ore'],         desc: 'Skin + Ore → Hand & Head (pick one)' },
+  { id: 'craft_foot',       resultSlots: ['footwear'],               materials: ['fur', 'bone'],         desc: 'Fur + Bone → Foot' },
+];
+
+// ── Gear stat rolls (Gear & Forge, July 2026) ───────────────────────────────
+// Replaces fixed-stat items with a roll system: a main stat (fixed per slot)
+// plus stat LINES that vary by rarity. Talent lines roll toward the unit's
+// own 2 talents (via TALENT_STAT_KEY); R = a random line from the full stat
+// pool. RESOLVED per the sheet: lines are rolled once at DROP time and
+// fixed on the item from then on — this module only generates the item
+// once; nothing re-rolls it later.
+//
+// Numeric ranges: flat lines roll 1-20, multiplier lines roll 1%-10% — the
+// sheet says these are "based on rarity" without an exact formula.
+// ASSUMPTION: each rarity gets an even 1/5th band of the full range, common
+// lowest through legendary highest (e.g. flat: common 1-4 ... legendary
+// 17-20; multiplier: common 1-2% ... legendary 9-10%).
+const RARITY_TIER_INDEX = { common: 0, uncommon: 1, rare: 2, epic: 3, legendary: 4 };
+function rollFlatStat(rarity) {
+  const tier = RARITY_TIER_INDEX[rarity] ?? 0;
+  const band = 20 / RARITY_ORDER.length;
+  const min = Math.round(1 + tier * band);
+  const max = Math.round(min + band - 1);
+  return min + Math.floor(Math.random() * (max - min + 1));
+}
+function rollMultiplierStat(rarity) {
+  const tier = RARITY_TIER_INDEX[rarity] ?? 0;
+  const band = 10 / RARITY_ORDER.length;
+  const min = 1 + tier * band;
+  const max = min + band - 1;
+  const pct = min + Math.floor(Math.random() * (max - min + 1));
+  return pct / 100;
+}
+
+// Stat pool for Random (R) lines: "everything that already exists (core
+// stats, HP, SP) plus damage/affinity/designation multiplier."
+const FLAT_STAT_POOL = ['speed', 'strength', 'stamina', 'endurance', 'hp', 'sp'];
+const MULTIPLIER_STAT_POOL = ['damage', 'affinity', 'designation'];
+
+function rollRandomLine(rarity) {
+  const pool = [...FLAT_STAT_POOL, ...MULTIPLIER_STAT_POOL];
+  const stat = pool[Math.floor(Math.random() * pool.length)];
+  if (MULTIPLIER_STAT_POOL.includes(stat)) return { kind: 'multiplier', stat, value: rollMultiplierStat(rarity) };
+  return { kind: 'flat', stat, value: rollFlatStat(rarity) };
+}
+function rollTalentLine(talent, rarity) {
+  const stat = TALENT_STAT_KEY[talent];
+  if (!stat) return rollRandomLine(rarity); // no talent picked for this slot — fall back to a random line
+  return { kind: 'flat', stat, value: rollFlatStat(rarity) };
+}
+function applyLine(item, line, mult = 1) {
+  if (line.kind === 'flat') item.stats[line.stat] = (item.stats[line.stat] ?? 0) + Math.round(line.value * mult);
+  else item.multipliers[line.stat] = (item.multipliers[line.stat] ?? 0) + line.value * mult;
+}
+
+// Main stat per slot (see the sheet's "Gear Stat Layout" table). Head
+// ("HP or SP") and Chest ("End/Stm") are each an either/or on the sheet —
+// ASSUMPTION: each individual rolled item picks one of the two at random,
+// not both. Class Item's main is "ALL stats" — read as a flat bonus applied
+// equally to all 4 core stats at once.
+function rollMainLine(slot, rarity) {
+  if (slot === 'weapon')   return { kind: 'flat-all', value: rollFlatStat(rarity) };
+  if (slot === 'headwear') return { kind: 'flat', stat: Math.random() < 0.5 ? 'hp' : 'sp', value: rollFlatStat(rarity) };
+  if (slot === 'footwear') return { kind: 'flat', stat: 'speed', value: rollFlatStat(rarity) };
+  if (slot === 'chest')    return { kind: 'flat', stat: Math.random() < 0.5 ? 'endurance' : 'stamina', value: rollFlatStat(rarity) };
+  if (slot === 'handwear') return { kind: 'multiplier', stat: 'damage', value: rollMultiplierStat(rarity) };
+  return { kind: 'flat', stat: 'speed', value: rollFlatStat(rarity) };
+}
+
+function defaultGearName(slot, rarity) {
+  const rarityLabel = rarity.charAt(0).toUpperCase() + rarity.slice(1);
+  const slotLabel = { weapon: 'Class Item', headwear: 'Headwear', footwear: 'Footwear', chest: 'Chest Gear', handwear: 'Handwear' }[slot] ?? slot;
+  return `${rarityLabel} ${slotLabel}`;
+}
+
+// Rolls a full gear item for `slot` at `rarity`, for a unit with the given
+// `talents` (its 2 picked talents) and `classItemMultiplier` (1/2/3 — see
+// CLASS_GEAR_LAYOUT in gameState.js; only applied when slot === 'weapon').
+export function rollGearItem({ slot, rarity, talents = [], classItemMultiplier = 1, name, desc, cost = 0 }) {
+  const item = {
+    id: `${slot}_${rarity}_${Date.now()}_${Math.floor(Math.random() * 1e6)}`,
+    name: name ?? defaultGearName(slot, rarity), slot, rarity, type: 'equipment', cost,
+    stats: {}, multipliers: {}, desc: desc ?? '',
+  };
+  const mult = slot === 'weapon' ? classItemMultiplier : 1;
+
+  const main = rollMainLine(slot, rarity);
+  if (main.kind === 'flat-all') {
+    for (const stat of ['speed', 'strength', 'stamina', 'endurance']) applyLine(item, { kind: 'flat', stat, value: main.value }, mult);
+  } else {
+    applyLine(item, main, mult);
+  }
+
+  if (slot === 'weapon') {
+    // Class Item: Talent1, then progressively more Random lines gated by
+    // rarity tier — ASSUMPTION, reading "Talent 1 · Random(rare) ·
+    // Random(epic) · Random(legendary)" as a rarity-gated line COUNT (2
+    // lines at uncommon, 3 at rare, 4 at epic, 5 at legendary), not 4 fixed
+    // lines always present regardless of rarity.
+    applyLine(item, rollTalentLine(talents[0], rarity), mult);
+    const extraLines = Math.max(0, (RARITY_TIER_INDEX[rarity] ?? 0) - 1); // rare=1, epic=2, legendary=3
+    for (let i = 0; i < extraLines; i++) applyLine(item, rollRandomLine(rarity), mult);
+  } else {
+    // Head/Foot/Chest/Hand: Talent1 · Talent2 · R · R · R — always all 5.
+    applyLine(item, rollTalentLine(talents[0], rarity));
+    applyLine(item, rollTalentLine(talents[1], rarity));
+    applyLine(item, rollRandomLine(rarity));
+    applyLine(item, rollRandomLine(rarity));
+    applyLine(item, rollRandomLine(rarity));
+  }
+  return item;
+}
+
+// God Tier Class Item (above Legendary) — a FIXED template per the sheet,
+// not part of the normal rarity roll ladder. Main stats are flat 40+40 on
+// the unit's own 2 talents (not rolled), plus 5 flat +20% multipliers.
+// "Power" is read as Strength (same convention used for Flex's "Power +10"
+// in the Ability Revised talent tree). `power`/`hp` percentage multipliers
+// are new fields unique to this item — equipMultipliers() in gameState.js
+// only aggregates damage/affinity/designation today, not these two; that's
+// a follow-up if God Tier items get wired into a live drop/craft flow.
+// Drop source and one-per-unit status are open items on the sheet (TBD).
+export function rollGodTierClassItem(unit) {
+  const talents = unit.talents ?? [];
+  const item = {
+    id: `god_class_item_${unit.id}_${Date.now()}`, name: 'God Tier Class Item',
+    slot: 'weapon', rarity: 'god', type: 'equipment', cost: 0,
+    stats: {}, multipliers: {},
+    desc: 'An artifact-grade Class Item, beyond Legendary.',
+  };
+  const stat1 = TALENT_STAT_KEY[talents[0]];
+  const stat2 = TALENT_STAT_KEY[talents[1]];
+  if (stat1) item.stats[stat1] = (item.stats[stat1] ?? 0) + 40;
+  if (stat2) item.stats[stat2] = (item.stats[stat2] ?? 0) + 40;
+  item.multipliers.damage      = 0.20;
+  item.multipliers.power       = 0.20;
+  item.multipliers.hp          = 0.20;
+  item.multipliers.affinity    = 0.20;
+  item.multipliers.designation = 0.20;
+  return item;
 }

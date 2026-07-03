@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { state } from '../data/gameState.js';
-import { getItem, rarityColor, gearFrameName, basicFrameName, GEAR_GRID, ITEM_FRAMES, BASIC_FRAMES } from '../data/items.js';
+import { getItem, rarityColor, gearFrameName, materialFrameName, GEAR_SHEET, GEAR_CLASS_COL, GEAR_SLOT_ROW, MATERIAL_SHEET, MATERIAL_ICON_CELL } from '../data/items.js';
+import { stripBackgroundByKey } from '../data/heroSprites.js';
 
 const SLOT_LABEL = { weapon:'Weapon', footwear:'Shoes', handwear:'Gloves', chest:'Chest', headwear:'Headgear' };
 
@@ -66,8 +67,8 @@ export class ShopScene extends Phaser.Scene {
   constructor() { super({ key: 'ShopScene' }); }
 
   preload() {
-    if (!this.textures.exists('gears'))     this.load.image('gears',     'gears/gearset10.png');
-    if (!this.textures.exists('basicgear')) this.load.image('basicgear', 'gears/basicgear.png');
+    if (!this.textures.exists('gears'))     this.load.image('gears',     'gears/gearitems.png');
+    if (!this.textures.exists('materials')) this.load.image('materials', 'items/rawmaterials.png');
   }
 
   init(data) {
@@ -81,6 +82,8 @@ export class ShopScene extends Phaser.Scene {
     const { width, height } = this.scale;
     this.W = width; this.H = height;
 
+    stripBackgroundByKey(this, 'gears',     { cols: GEAR_SHEET.cols,     rows: GEAR_SHEET.rows });
+    stripBackgroundByKey(this, 'materials', { cols: MATERIAL_SHEET.cols, rows: MATERIAL_SHEET.rows });
     this._registerFrames();
 
     // ── Fantasy market background ─────────────────────────────────────────
@@ -237,37 +240,34 @@ export class ShopScene extends Phaser.Scene {
   _registerFrames() {
     if (this.textures.exists('gears')) {
       const tex = this.textures.get('gears');
-      const { labelW, headerH, cellW, cellH, sportRow, rarityCol } = GEAR_GRID;
-      for (const [sport, slots] of Object.entries(ITEM_FRAMES)) {
-        const row = sportRow[sport];
-        if (row === undefined) continue;
-        for (const [slot, [rx, ry, rw, rh]] of Object.entries(slots)) {
-          for (const [rarity, col] of Object.entries(rarityCol)) {
-            const name = `gear_${sport}_${slot}_${rarity}`;
-            if (!tex.has(name)) tex.add(name, 0, labelW + col * cellW + rx, headerH + row * cellH + ry, rw, rh);
-          }
+      const { cellW, cellH } = GEAR_SHEET;
+      for (const [cls, col] of Object.entries(GEAR_CLASS_COL)) {
+        for (const [slot, row] of Object.entries(GEAR_SLOT_ROW)) {
+          const name = `gear_${cls}_${slot}`;
+          if (!tex.has(name)) tex.add(name, 0, col * cellW, row * cellH, cellW, cellH);
         }
       }
     }
-    if (this.textures.exists('basicgear')) {
-      const tex = this.textures.get('basicgear');
-      for (const [slot, entries] of Object.entries(BASIC_FRAMES)) {
-        for (const { rarity, x, y, w, h } of entries) {
-          const name = `basic_${slot}_${rarity}`;
-          if (!tex.has(name)) tex.add(name, 0, x, y, w, h);
-        }
+    if (this.textures.exists('materials')) {
+      const tex = this.textures.get('materials');
+      const { cellW, cellH } = MATERIAL_SHEET;
+      for (const [id, [row, col]] of Object.entries(MATERIAL_ICON_CELL)) {
+        const name = `material_${id}`;
+        if (!tex.has(name)) tex.add(name, 0, col * cellW, row * cellH, cellW, cellH);
       }
     }
   }
 
   _getIcon(item, x, y, w, h) {
     let texKey, frame;
-    if (item?.sport) {
+    if (item?.type === 'material') {
+      texKey = 'materials';
+      frame  = materialFrameName(item.id);
+    } else if (item?.sport) {
       texKey = 'gears';
-      frame  = gearFrameName(item.sport, item.slot, item.rarity);
+      frame  = gearFrameName(item.sport, item.slot);
     } else {
-      texKey = 'basicgear';
-      frame  = basicFrameName(item?.slot, item?.rarity);
+      return null;
     }
     if (!frame || !this.textures.exists(texKey) || !this.textures.get(texKey).has(frame)) return null;
     return this.add.image(x, y, texKey, frame).setDisplaySize(w, h).setOrigin(0.5);

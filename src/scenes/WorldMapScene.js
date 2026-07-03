@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { state, saveGame } from '../data/gameState.js';
+import { stripBackgroundByKey } from '../data/heroSprites.js';
 
 const NODES = [
   { id:'M1',  x:120, y:160, arc:'Home',       name:'Sirblanc' },
@@ -38,11 +39,33 @@ const ARC_LABEL_POS = {
   Unknown:    { x: 130, y: 478 },
 };
 
+// tiles/mapasset/treesrock.png — 7 cols × 4 rows of decorative scenery icons
+// (trees / rock & ore piles / volcanoes / mountains). Only used here as
+// ambient corner dressing for the world map — named cells are just the
+// handful actually placed by drawScenery(), not the full sheet.
+const MAP_ASSET_SHEET = { cols: 7, rows: 4, cellW: 1536 / 7, cellH: 1024 / 4 };
+const MAP_ASSET_CELL = {
+  oak_tree:     [0, 0], pine_tree:   [0, 1], willow_tree: [0, 5],
+  mountain_snow:[3, 4], mountain_sand:[3, 5], pond:        [3, 6],
+};
+
 export class WorldMapScene extends Phaser.Scene {
   constructor() { super({ key: 'WorldMapScene' }); }
 
   preload() {
     // hero sprites loaded in BattleScene; WorldMap needs none
+    if (!this.textures.exists('mapscenery')) this.load.image('mapscenery', 'tiles/mapasset/treesrock.png');
+  }
+
+  _registerSceneryFrames() {
+    if (!this.textures.exists('mapscenery')) return;
+    stripBackgroundByKey(this, 'mapscenery', { cols: MAP_ASSET_SHEET.cols, rows: MAP_ASSET_SHEET.rows });
+    const tex = this.textures.get('mapscenery');
+    const { cellW, cellH } = MAP_ASSET_SHEET;
+    for (const [id, [row, col]] of Object.entries(MAP_ASSET_CELL)) {
+      const name = `scenery_${id}`;
+      if (!tex.has(name)) tex.add(name, 0, col * cellW, row * cellH, cellW, cellH);
+    }
   }
 
   create() {
@@ -50,13 +73,34 @@ export class WorldMapScene extends Phaser.Scene {
     saveGame();
 
     this.tooltipText = null;
+    this._registerSceneryFrames();
     this.bg = this.add.graphics();
     this.drawBackground(width, height);
+    this.drawScenery();
     this.drawConnections();
     this.drawArcLabels();
     this.drawNodes();
     this.drawUI(width, height);
     this.drawHeroMarker();
+  }
+
+  // Ambient corner dressing, tucked into the empty margins around the node
+  // cluster (nodes span roughly x:120-700, y:158-498) so nothing overlaps a
+  // mission node, arc label, or kingdom name.
+  drawScenery() {
+    if (!this.textures.exists('mapscenery')) return;
+    const placements = [
+      { id: 'oak_tree',      x: 46,  y: 540, scale: 0.16 },
+      { id: 'pine_tree',     x: 86,  y: 555, scale: 0.14 },
+      { id: 'willow_tree',   x: 754, y: 545, scale: 0.15 },
+      { id: 'mountain_snow', x: 748, y: 60,  scale: 0.16 },
+      { id: 'pond',          x: 60,  y: 60,  scale: 0.13 },
+    ];
+    for (const { id, x, y, scale } of placements) {
+      const frame = `scenery_${id}`;
+      if (!this.textures.get('mapscenery').has(frame)) continue;
+      this.add.image(x, y, 'mapscenery', frame).setScale(scale).setAlpha(0.8).setDepth(1);
+    }
   }
 
   drawBackground(width, height) {

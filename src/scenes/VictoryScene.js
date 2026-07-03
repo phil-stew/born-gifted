@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { state, addXP, xpToNext, completeMission, recruitCharacter } from '../data/gameState.js';
-import { randomLoot, getMissionMaterials, getKillDrops, rarityColor, ENEMY_KILL_DROPS } from '../data/items.js';
+import { randomLoot, getMissionMaterials, getKillDrops, rarityColor } from '../data/items.js';
 
 const XP_PER_ENEMY = 40;
 
@@ -110,14 +110,15 @@ export class VictoryScene extends Phaser.Scene {
     const drop = randomLoot(this.missionId);
     if (drop) state.inventory.push(drop);
 
-    // Group kill drops by name for display (e.g. Wolf Pelt × 3)
-    const killDropSummary = [];
-    for (const [name, count] of Object.entries(this.killsByType)) {
-      const id = ENEMY_KILL_DROPS[name];
-      if (!id) continue;
-      const item = killDrops.find(i => i.id === id);
-      if (item) killDropSummary.push({ item, count });
-    }
+    // Group kill drops by item id for display (e.g. Bone × 3) — kills no
+    // longer map to a fixed material per enemy name (see getKillDrops:
+    // every kill rolls randomly from the generic Skin/Fur/Bone pool), so
+    // grouping happens on whatever actually dropped instead.
+    const killDropCounts = new Map();
+    for (const item of killDrops) killDropCounts.set(item.id, (killDropCounts.get(item.id) ?? 0) + 1);
+    const killDropSummary = [...killDropCounts.entries()].map(([id, count]) => ({
+      item: killDrops.find(i => i.id === id), count,
+    }));
     this.allDrops = [
       ...killDropSummary,
       ...materials.map(item => ({ item, count: 1 })),

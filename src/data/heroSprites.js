@@ -19,30 +19,47 @@ export const HERO_SPRITES = {
   'Softball Pitcher':   { file:'heroes/t1/softpitcher.png',       cols:6, rows:6, fw:249, fh:175 },
 
   // ── T2 ────────────────────────────────────────────────────────────────────
-  'Striker':          { file:'heroes/t2/striker1.png',      cols:6, rows:6, fw:256, fh:170 },
-  'Long Jumper':      { file:'heroes/t2/jumper.png',        cols:6, rows:6, fw:256, fh:170 },
-  'Speed Skater':     { file:'heroes/t2/speedskater.png',   cols:8, rows:7, fw:192, fh:146 },
-  'Black Belt':       { file:'heroes/t2/blackbelt.png',     cols:6, rows:7, fw:256, fh:146 },
-  'Paintballer':      { file:'heroes/t2/paintball.png',     cols:6, rows:6, fw:256, fh:170 },
-  'Gymnast':          { file:'heroes/t2/Gymnist.png',       cols:5, rows:6, fw:217, fh:241 },
-  'Spiker':           { file:'heroes/t2/Spiker.png',        cols:6, rows:6, fw:256, fh:170 },
-  'Skate Boarder':    { file:'heroes/t2/skateboarder.png',  cols:6, rows:6, fw:256, fh:170 },
-  'Cricket Player':   { file:'heroes/t2/Cricket.png',       cols:6, rows:7, fw:256, fh:146 },
-  'Tennis Player':    { file:'heroes/t2/tennisplayer.png',  cols:6, rows:6, fw:256, fh:170 },
-  'Cheerleader':      { file:'heroes/t2/cheerleader.png',   cols:5, rows:5, fw:151, fh:204 },
+  // New art as of 2026-07-03 — same 6x6-grid pipeline as T1, grids measured
+  // per file (canvas dims aren't perfectly uniform, ~1491-1496 x 1050-1055).
+  'Striker':          { file:'heroes/t2/footballsoccerstrikerboy.png', cols:6, rows:6, fw:249, fh:175 },
+  'Soccer Goalkeeper':{ file:'heroes/t2/footballsoccergaolkeepboy.png',cols:6, rows:6, fw:249, fh:175 },
+  'Long Jumper':      { file:'heroes/t2/AltheticsJumper.png',   cols:6, rows:6, fw:248, fh:175 },
+  'High Jumper':      { file:'heroes/t2/athlticJumperhigh.png', cols:6, rows:6, fw:249, fh:175 },
+  'Speed Skater':     { file:'heroes/t2/skaterspeed.png',       cols:6, rows:6, fw:248, fh:175 },
+  'Black Belt':       { file:'heroes/t2/karatewado.png',        cols:6, rows:6, fw:249, fh:175 },
+  'Kyokushin':        { file:'heroes/t2/karatekyokushin.png',   cols:6, rows:6, fw:249, fh:175 },
+  'Paintballer':      { file:'heroes/t2/paintballsinper.png',   cols:6, rows:6, fw:248, fh:175 },
+  'Frontman':         { file:'heroes/t2/paintballfrontman.png', cols:6, rows:6, fw:248, fh:175 },
+  'Gymnast':          { file:'heroes/t2/Gymnatsic.png',         cols:6, rows:6, fw:248, fh:175 },
+  'Spiker':           { file:'heroes/t2/volleyballspiker.png',  cols:6, rows:6, fw:248, fh:175 },
+  'Setter':           { file:'heroes/t2/volleyballsetter.png',  cols:6, rows:6, fw:248, fh:175 },
+  // 'Skate Boarder' dropped — no role ever mapped to it and the old art file is gone.
+  'Cricket Player':   { file:'heroes/t2/cricketbatter.png',     cols:6, rows:6, fw:249, fh:175 },
+  'Cricket Pitcher':  { file:'heroes/t2/criketpitcher.png',     cols:6, rows:6, fw:249, fh:175 },
+  'Tennis Player':    { file:'heroes/t2/tennissigles.png',      cols:6, rows:6, fw:248, fh:175 },
+  'Tennis Doubles':   { file:'heroes/t2/tennisdoubles.png',     cols:6, rows:6, fw:248, fh:175 },
+  'Cheerleader':      { file:'heroes/t2/cheerleader.png',       cols:6, rows:6, fw:248, fh:175 },
 
   // ── T3 ────────────────────────────────────────────────────────────────────
-  'Rugger':           { file:'heroes/t3/rugger.png',        cols:6, rows:6, fw:256, fh:170 },
-  'Sprinter':         { file:'heroes/t3/Sprinter.png',      cols:8, rows:6, fw:192, fh:170 },
-  'Hockey Player':    { file:'heroes/t3/hockeyplayer.png',  cols:8, rows:8, fw:192, fh:128 },
-  'MMA':              { file:'heroes/t3/mma1t3.png',        cols:6, rows:7, fw:256, fh:146 },
-  'Archer':           { file:'heroes/t3/archery.png',       cols:8, rows:6, fw:192, fh:170 },
-  'Aerial Fitness':   { file:'heroes/t3/Arielfitness.png',  cols:5, rows:6, fw:217, fh:241 },
-  'Baller':           { file:'heroes/t3/baller.png',        cols:6, rows:7, fw:256, fh:146 },
-  'Parkour':          { file:'heroes/t3/pakourer.png',      cols:6, rows:6, fw:256, fh:170 },
-  'Baseball Player':  { file:'heroes/t3/baseball.png',      cols:6, rows:7, fw:256, fh:146 },
-  'Golfer':           { file:'heroes/t3/golfer.png',        cols:6, rows:6, fw:256, fh:170 },
-  'Figure Skater':    { file:'heroes/t3/figureskater.png',  cols:6, rows:6, fw:256, fh:170 },
+  'Rugger':             { file:'heroes/t3/rugbyaceforward.png',    cols:6, rows:6, fw:248, fh:175 },
+  'Rugby Defender':     { file:'heroes/t3/rugbyacedefender.png',   cols:6, rows:6, fw:249, fh:175 },
+  'Quarterback':        { file:'heroes/t3/amfootballqb.png',       cols:6, rows:6, fw:249, fh:175 },
+  'Am Football Defender':{ file:'heroes/t3/amfootballdefender.png',cols:6, rows:6, fw:249, fh:175 },
+  'Sprinter':           { file:'heroes/t3/sprinter starter.png',   cols:6, rows:6, fw:249, fh:175 },
+  'Sprinter Anchor':    { file:'heroes/t3/sprinterachor.png',      cols:6, rows:6, fw:249, fh:175 },
+  'Hockey Player':      { file:'heroes/t3/hockeyaceforward.png',   cols:6, rows:6, fw:249, fh:175 },
+  'Hockey Goalie':      { file:'heroes/t3/hockegoalie.png',        cols:6, rows:6, fw:249, fh:175 },
+  'MMA':                { file:'heroes/t3/mmaheavyweight.png',     cols:6, rows:6, fw:249, fh:175 },
+  'MMA Lightweight':    { file:'heroes/t3/mmalightweight.png',     cols:6, rows:6, fw:249, fh:175 },
+  'Kendo':              { file:'heroes/t3/masterkendo.png',        cols:6, rows:6, fw:249, fh:175 },
+  'Archer':             { file:'heroes/t3/archer.png',             cols:6, rows:6, fw:249, fh:175 },
+  'Aerial Fitness':     { file:'heroes/t3/airfitness.png',         cols:6, rows:6, fw:248, fh:175 },
+  'Baller':             { file:'heroes/t3/basketballaceforward.png',cols:6, rows:6, fw:249, fh:175 },
+  // 'Parkour' dropped — no role ever mapped to it and the old art file is gone.
+  'Baseball Player':    { file:'heroes/t3/baseballbatter.png',     cols:6, rows:6, fw:256, fh:170 },
+  'Baseball Pitcher':   { file:'heroes/t3/baseballpitcher.png',    cols:6, rows:6, fw:248, fh:175 },
+  'Golfer':             { file:'heroes/t3/gulfer.png',             cols:6, rows:6, fw:249, fh:175 },
+  'Figure Skater':      { file:'heroes/t3/figureskater.png',       cols:6, rows:6, fw:247, fh:176 },
 };
 
 // Role id → existing HERO_SPRITES key (unchanged old class-name strings —
@@ -62,25 +79,27 @@ export const ROLE_SPRITE_KEY = {
   arrow_chucker: 'Dart Player',
   batter_softball: 'Softball Batter', pitcher_softball: 'Softball Pitcher',
   dancer: 'Dancer',
-  // T2
-  striker: 'Striker', goalkeeper_soccer: null,
-  long_jumper: 'Long Jumper', high_jumper: null,
+  // T2 — goalkeeper_soccer/high_jumper/kyokushin/setter/pitcher_cricket/
+  // frontman/doubles filled in as of the 2026-07-03 art batch.
+  striker: 'Striker', goalkeeper_soccer: 'Soccer Goalkeeper',
+  long_jumper: 'Long Jumper', high_jumper: 'High Jumper',
   skater_speed: 'Speed Skater',
-  wado_ryu: 'Black Belt', kyokushin: null,
-  spiker: 'Spiker', setter: null,
-  batter_cricket: 'Cricket Player', pitcher_cricket: null,
-  sniper: 'Paintballer', frontman: null,
-  singles: 'Tennis Player', doubles: null,
+  wado_ryu: 'Black Belt', kyokushin: 'Kyokushin',
+  spiker: 'Spiker', setter: 'Setter',
+  batter_cricket: 'Cricket Player', pitcher_cricket: 'Cricket Pitcher',
+  sniper: 'Paintballer', frontman: 'Frontman',
+  singles: 'Tennis Player', doubles: 'Tennis Doubles',
   cheerleader: 'Cheerleader', gymnast: 'Gymnast',
-  // T3
-  ace_attacker_rugby: 'Rugger', ace_defender_rugby: null,
-  qb: null, defender_amfb: null,
-  starter: 'Sprinter', anchor: null,
-  ace_forward: 'Hockey Player', goalkeeper_hockey: null,
-  heavyweight_mma: 'MMA', lightweight_mma: null,
-  master: null, // Kendo — new sport, no sheet exists
-  ace_attack_bball: 'Baller', ace_defence_bball: null,
-  batter_baseball: 'Baseball Player', pitcher_baseball: null,
+  // T3 — ace_defender_rugby/qb/defender_amfb/anchor/goalkeeper_hockey/
+  // lightweight_mma/master/pitcher_baseball filled in as of the same batch.
+  ace_attacker_rugby: 'Rugger', ace_defender_rugby: 'Rugby Defender',
+  qb: 'Quarterback', defender_amfb: 'Am Football Defender',
+  starter: 'Sprinter', anchor: 'Sprinter Anchor',
+  ace_forward: 'Hockey Player', goalkeeper_hockey: 'Hockey Goalie',
+  heavyweight_mma: 'MMA', lightweight_mma: 'MMA Lightweight',
+  master: 'Kendo',
+  ace_attack_bball: 'Baller', ace_defence_bball: null, // still no basketball-defence art
+  batter_baseball: 'Baseball Player', pitcher_baseball: 'Baseball Pitcher',
   archer: 'Archer', golfer: 'Golfer',
   figure_skater: 'Figure Skater', aerial: 'Aerial Fitness',
 };
@@ -126,7 +145,43 @@ export function loadHeroSprites(scene, classNames) {
 export function stripHeroBackground(scene, className) {
   const info = HERO_SPRITES[className];
   if (!info) return;
-  const key = heroKey(className);
+  stripBackgroundByKey(scene, heroKey(className), { cols: info.cols, rows: info.rows });
+}
+
+// Some sheets (a subset of the 2026-07-03 batch, e.g. amfootballdefender.png,
+// rugbyacedefender.png) have a thin gray divider grid baked in — both between
+// cells AND as a decorative frame around the sheet's own outer edge. That
+// grid's color differs enough from true background-black that the flood
+// fill below can't cross it, so each cell's interior background stays
+// isolated from the sheet's outer seeds and never gets cleared — leaving a
+// black box behind the sprite. Fix: pre-clear a thin band at each cell
+// boundary INCLUDING the outer edge (i=0/cols, j=0/rows) — geometry, not
+// color, so it's blind to whatever the divider looks like — reconnecting
+// every cell's background to the rest of the sheet before flood-filling.
+// No-op on sheets with no divider — clearing an already-background band
+// changes nothing.
+function clearGridBoundaries(d, W, H, cols, rows, bandPx = 3) {
+  const cellW = W / cols, cellH = H / rows;
+  for (let i = 0; i <= cols; i++) {
+    const x0 = Math.round(i * cellW);
+    for (let x = Math.max(0, x0 - bandPx); x <= Math.min(W - 1, x0 + bandPx); x++) {
+      for (let y = 0; y < H; y++) d[(y * W + x) * 4 + 3] = 0;
+    }
+  }
+  for (let j = 0; j <= rows; j++) {
+    const y0 = Math.round(j * cellH);
+    for (let y = Math.max(0, y0 - bandPx); y <= Math.min(H - 1, y0 + bandPx); y++) {
+      for (let x = 0; x < W; x++) d[(y * W + x) * 4 + 3] = 0;
+    }
+  }
+}
+
+// Same flood-fill strip, keyed directly by an already-loaded texture key
+// rather than a HERO_SPRITES class name — used for non-hero sheets (e.g.
+// monster spritesheets) that share this baked-solid-background convention.
+// Pass { cols, rows } when the sheet is a character grid so the grid-divider
+// pre-pass above can run — harmless to omit on a single-frame image.
+export function stripBackgroundByKey(scene, key, { cols, rows } = {}) {
   if (!scene.textures.exists(key)) return;
 
   const src = scene.textures.get(key).source[0];
@@ -143,6 +198,8 @@ export function stripHeroBackground(scene, className) {
   const W = canvas.width, H = canvas.height;
 
   if (d[3] === 0) return; // already stripped
+
+  if (cols > 1 || rows > 1) clearGridBoundaries(d, W, H, cols || 1, rows || 1);
 
   const TOL = 30;
   const visited = new Uint8Array(W * H);
@@ -181,6 +238,29 @@ export function stripHeroBackground(scene, className) {
     [mx, 0], [mx, H-1], [0, my], [W-1, my],
   ]) {
     floodFill(sx, sy);
+  }
+
+  // A divider grid (see clearGridBoundaries above) makes each cell its own
+  // island — the sheet-edge seeds above can't reach a cell's interior
+  // through it (matches() requires alpha>0, so the now-transparent divider
+  // band is a wall, not a corridor). Seed each cell from all 4 of its own
+  // corners too (a wide silhouette — e.g. a mountain's base, or a character's
+  // planted feet — can block the flood between a cell's top and bottom, so
+  // top-only seeding left the occasional bottom strip uncleared).
+  if (cols > 1 || rows > 1) {
+    const cellW = W / (cols || 1), cellH = H / (rows || 1);
+    const inset = 6;
+    for (let r = 0; r < (rows || 1); r++) {
+      for (let c = 0; c < (cols || 1); c++) {
+        const x0 = Math.round(c * cellW), y0 = Math.round(r * cellH);
+        const x1 = Math.round((c + 1) * cellW) - 1;
+        const y1 = Math.round((r + 1) * cellH) - 1;
+        floodFill(Math.min(W - 1, x0 + inset), Math.min(H - 1, y0 + inset));
+        floodFill(Math.max(0, x1 - inset),     Math.min(H - 1, y0 + inset));
+        floodFill(Math.min(W - 1, x0 + inset), Math.max(0, y1 - inset));
+        floodFill(Math.max(0, x1 - inset),     Math.max(0, y1 - inset));
+      }
+    }
   }
 
   ctx.putImageData(imgData, 0, 0);

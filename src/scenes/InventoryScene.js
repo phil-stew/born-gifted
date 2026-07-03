@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { state, roleDisplayLabel } from '../data/gameState.js';
-import { rarityColor } from '../data/items.js';
+import { rarityColor, gearFrameName, materialFrameName, GEAR_SHEET, GEAR_CLASS_COL, GEAR_SLOT_ROW, MATERIAL_SHEET, MATERIAL_ICON_CELL } from '../data/items.js';
+import { stripBackgroundByKey } from '../data/heroSprites.js';
 
 const TABS = ['ALL', 'EQUIPMENT', 'MATERIALS'];
 
@@ -14,9 +15,54 @@ export class InventoryScene extends Phaser.Scene {
     this.equipUnit = null;
   }
 
+  preload() {
+    if (!this.textures.exists('gears'))     this.load.image('gears',     'gears/gearitems.png');
+    if (!this.textures.exists('materials')) this.load.image('materials', 'items/rawmaterials.png');
+  }
+
+  _registerFrames() {
+    stripBackgroundByKey(this, 'gears',     { cols: GEAR_SHEET.cols,     rows: GEAR_SHEET.rows });
+    stripBackgroundByKey(this, 'materials', { cols: MATERIAL_SHEET.cols, rows: MATERIAL_SHEET.rows });
+    if (this.textures.exists('gears')) {
+      const tex = this.textures.get('gears');
+      const { cellW, cellH } = GEAR_SHEET;
+      for (const [cls, col] of Object.entries(GEAR_CLASS_COL)) {
+        for (const [slot, row] of Object.entries(GEAR_SLOT_ROW)) {
+          const name = `gear_${cls}_${slot}`;
+          if (!tex.has(name)) tex.add(name, 0, col * cellW, row * cellH, cellW, cellH);
+        }
+      }
+    }
+    if (this.textures.exists('materials')) {
+      const tex = this.textures.get('materials');
+      const { cellW, cellH } = MATERIAL_SHEET;
+      for (const [id, [row, col]] of Object.entries(MATERIAL_ICON_CELL)) {
+        const name = `material_${id}`;
+        if (!tex.has(name)) tex.add(name, 0, col * cellW, row * cellH, cellW, cellH);
+      }
+    }
+  }
+
+  _itemIcon(x, y, item, w, h) {
+    let texKey, frame;
+    if (item?.type === 'material') {
+      texKey = 'materials';
+      frame  = materialFrameName(item.id);
+    } else if (item?.sport) {
+      texKey = 'gears';
+      frame  = gearFrameName(item.sport, item.slot);
+    } else {
+      return null;
+    }
+    if (!frame || !this.textures.exists(texKey) || !this.textures.get(texKey).has(frame)) return null;
+    return this.add.image(x, y, texKey, frame).setDisplaySize(w, h).setOrigin(0.5);
+  }
+
   create() {
     const { width, height } = this.scale;
     this.W = width; this.H = height;
+
+    this._registerFrames();
 
     const bg = this.add.graphics();
     bg.fillStyle(0x07080f, 1);
@@ -158,18 +204,24 @@ export class InventoryScene extends Phaser.Scene {
       draw(false);
       this.listCon.add(g);
 
-      const dot = this.add.graphics();
-      dot.fillStyle(rarityColor(item.rarity), 1);
-      dot.fillCircle(lx + 14, iy + 14, 5);
-      this.listCon.add(dot);
+      const icon = this._itemIcon(lx + 18, iy + 19, item, 30, 30);
+      if (icon) {
+        this.listCon.add(icon);
+      } else {
+        const dot = this.add.graphics();
+        dot.fillStyle(rarityColor(item.rarity), 1);
+        dot.fillCircle(lx + 14, iy + 14, 5);
+        this.listCon.add(dot);
+      }
+      const textLx = icon ? lx + 38 : lx + 26;
 
       const rlvl = item.reinforceLevel ?? 0;
       const nameStr = item.name + (rlvl ? ` ✦${rlvl}` : '') + (count > 1 ? ` ×${count}` : '');
-      this.listCon.add(this.add.text(lx + 26, iy + 5, nameStr, {
+      this.listCon.add(this.add.text(textLx, iy + 5, nameStr, {
         fontSize: '11px', fontFamily: 'monospace', color: rlvl ? '#ffaa44' : '#ccccdd',
       }));
       const subStr = item.type === 'material' ? 'MATERIAL' : (item.slot?.toUpperCase() ?? '');
-      this.listCon.add(this.add.text(lx + 26, iy + 22, subStr, {
+      this.listCon.add(this.add.text(textLx, iy + 22, subStr, {
         fontSize: '9px', fontFamily: 'monospace', color: item.type === 'material' ? '#557733' : '#445577',
       }));
 
@@ -212,6 +264,9 @@ export class InventoryScene extends Phaser.Scene {
 
     const { item, count } = entry;
     let y = startY + 18;
+
+    const bigIcon = this._itemIcon(cx, y + 20, item, 64, 64);
+    if (bigIcon) { this.detCon.add(bigIcon); y += 54; }
 
     const rlvl = item.reinforceLevel ?? 0;
     this.detCon.add(this.add.text(cx, y, item.name, {

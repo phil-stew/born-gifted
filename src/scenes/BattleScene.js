@@ -5,7 +5,8 @@ import {
   DESIGNATION_BEATS, designationIcon, DESIGNATION_CYCLE, ELEMENT_CYCLE, ELEMENT_BEATS,
 } from '../data/gameState.js';
 import { ATTACK, THROW, getUnitSpecials, getUnitSkills, getEquippedPassives } from '../data/abilities.js';
-import { loadHeroSprites, createHeroAnims, stripHeroBackground, heroKey, getSpriteInfo, firstFrame, spriteKeyForRole } from '../data/heroSprites.js';
+import { loadHeroSprites, createHeroAnims, stripHeroBackground, stripBackgroundByKey, heroKey, getSpriteInfo, firstFrame, spriteKeyForRole } from '../data/heroSprites.js';
+import { buildMonster, spriteInfoForBase } from '../data/monsters.js';
 
 const COLS = 10, ROWS = 10;
 const TILE_W = 64, TILE_H = 32;
@@ -126,35 +127,39 @@ const MISSION_CONFIGS = {
     region: 'Altroes',
     playerPos: { reno:[1,2], drace:[1,3], sela:[1,4], kael:[1,5], trice:[1,6] },
     enemies: [
-      { col:8, row:2, name:'Wolf', spriteKey:'wolf-idle', animKey:'wolf-idle', spriteScale:1.2, moveSpeed:2, speed:5, strength:8,  stamina:6, endurance:5, level:1 },
-      { col:8, row:5, name:'Wolf', spriteKey:'wolf-idle', animKey:'wolf-idle', spriteScale:1.2, moveSpeed:2, speed:5, strength:8,  stamina:6, endurance:5, level:1 },
-      { col:8, row:8, name:'Wolf', spriteKey:'wolf-idle', animKey:'wolf-idle', spriteScale:1.2, moveSpeed:2, speed:5, strength:8,  stamina:6, endurance:5, level:1 },
+      { col:8, row:2, name:'Wolf', spriteKey:'wolf-idle', animKey:'wolf-idle', spriteScale:0.35, moveSpeed:2, speed:5, strength:8,  stamina:6, endurance:5, level:1 },
+      { col:8, row:5, name:'Wolf', spriteKey:'wolf-idle', animKey:'wolf-idle', spriteScale:0.35, moveSpeed:2, speed:5, strength:8,  stamina:6, endurance:5, level:1 },
+      { col:8, row:8, name:'Wolf', spriteKey:'wolf-idle', animKey:'wolf-idle', spriteScale:0.35, moveSpeed:2, speed:5, strength:8,  stamina:6, endurance:5, level:1 },
     ],
   },
   'M2': {
     region: 'Altroes',
     playerPos: { reno:[1,3], drace:[1,4], sela:[1,2], kael:[1,5], trice:[1,1] },
     enemies: [
-      { col:7, row:2, name:'Boar', spriteKey:'boar-idle', animKey:'boar-idle', spriteScale:2.0, moveSpeed:2, speed:4, strength:12, stamina:8, endurance:9, level:2 },
-      { col:8, row:7, name:'Boar', spriteKey:'boar-idle', animKey:'boar-idle', spriteScale:2.0, moveSpeed:2, speed:4, strength:12, stamina:8, endurance:9, level:2 },
+      { col:7, row:2, name:'Boar', spriteKey:'boar-idle', animKey:'boar-idle', spriteScale:0.35, moveSpeed:2, speed:4, strength:12, stamina:8, endurance:9, level:2 },
+      { col:8, row:7, name:'Boar', spriteKey:'boar-idle', animKey:'boar-idle', spriteScale:0.35, moveSpeed:2, speed:4, strength:12, stamina:8, endurance:9, level:2 },
     ],
   },
   'M3': {
     region: 'Altroes',
     playerPos: { reno:[1,3], drace:[1,4], sela:[1,2], kael:[1,5], trice:[1,1] },
     enemies: [
-      { col:7, row:1, name:'Wolf', spriteKey:'wolf-idle', animKey:'wolf-idle', spriteScale:1.2, moveSpeed:3, speed:6, strength:10, stamina:7, endurance:6, level:2 },
-      { col:8, row:5, name:'Wolf', spriteKey:'wolf-idle', animKey:'wolf-idle', spriteScale:1.2, moveSpeed:3, speed:6, strength:10, stamina:7, endurance:6, level:2 },
-      { col:7, row:8, name:'Wolf', spriteKey:'wolf-idle', animKey:'wolf-idle', spriteScale:1.2, moveSpeed:3, speed:6, strength:10, stamina:7, endurance:6, level:2 },
+      { col:7, row:1, name:'Wolf', spriteKey:'wolf-idle', animKey:'wolf-idle', spriteScale:0.35, moveSpeed:3, speed:6, strength:10, stamina:7, endurance:6, level:2 },
+      { col:8, row:5, name:'Wolf', spriteKey:'wolf-idle', animKey:'wolf-idle', spriteScale:0.35, moveSpeed:3, speed:6, strength:10, stamina:7, endurance:6, level:2 },
+      { col:7, row:8, name:'Wolf', spriteKey:'wolf-idle', animKey:'wolf-idle', spriteScale:0.35, moveSpeed:3, speed:6, strength:10, stamina:7, endurance:6, level:2 },
+      // First live use of the new Monster List roster (buildMonster) — a
+      // Deer using the `stag` critter rig, tier 1. Wolf/Boar above are
+      // untouched (existing hand-tuned mission balance preserved).
+      { col:3, row:6, ...buildMonster({ base: 'Deer', tier: 1 }) },
     ],
   },
   'M4': {
     region: 'Altroes',
     playerPos: { reno:[1,3], drace:[1,4], sela:[1,2], kael:[1,5], trice:[1,1] },
     enemies: [
-      { col:6, row:2, name:'Wolf', spriteKey:'wolf-idle', animKey:'wolf-idle', spriteScale:1.2, moveSpeed:3, speed:7, strength:12, stamina:9,  endurance:8,  level:3 },
-      { col:8, row:4, name:'Boar', spriteKey:'boar-idle', animKey:'boar-idle', spriteScale:2.0, moveSpeed:2, speed:5, strength:15, stamina:11, endurance:12, level:3 },
-      { col:7, row:7, name:'Wolf', spriteKey:'wolf-idle', animKey:'wolf-idle', spriteScale:1.2, moveSpeed:3, speed:7, strength:12, stamina:9,  endurance:8,  level:3 },
+      { col:6, row:2, name:'Wolf', spriteKey:'wolf-idle', animKey:'wolf-idle', spriteScale:0.35, moveSpeed:3, speed:7, strength:12, stamina:9,  endurance:8,  level:3 },
+      { col:8, row:4, name:'Boar', spriteKey:'boar-idle', animKey:'boar-idle', spriteScale:0.35, moveSpeed:2, speed:5, strength:15, stamina:11, endurance:12, level:3 },
+      { col:7, row:7, name:'Wolf', spriteKey:'wolf-idle', animKey:'wolf-idle', spriteScale:0.35, moveSpeed:3, speed:7, strength:12, stamina:9,  endurance:8,  level:3 },
     ],
   },
 };
@@ -243,8 +248,13 @@ export class BattleScene extends Phaser.Scene {
       }
     }
 
-    this.load.spritesheet('wolf-idle', 'critters/wolf/no effects/wolf-idle.png', { frameWidth: 64, frameHeight: 64 });
-    this.load.spritesheet('boar-idle', 'critters/boar/boar_NW_idle_strip.png',   { frameWidth: 40, frameHeight: 30 });
+    // Wolf/Boar/Deer sheets: 6x6 grid (row0=idle, row1=run, row2=attack,
+    // row3=power attack, row4=taunt/howl, row5=death) — same convention as
+    // HERO_SPRITES, per-file frame size since canvas dims aren't perfectly uniform.
+    for (const base of ['Wolf', 'Boar', 'Deer']) {
+      const info = spriteInfoForBase(base);
+      this.load.spritesheet(info.spriteKey, info.file, { frameWidth: info.fw, frameHeight: info.fh });
+    }
 
     // Load hero sprites for current party — battle portraits always use the
     // unit's T1 role sprite (promoted appearance isn't modeled in battle yet).
@@ -268,17 +278,23 @@ export class BattleScene extends Phaser.Scene {
     this.moveRange = new Set();
     this.hoveredTile = null;
 
-    if (!this.anims.exists('wolf-idle')) {
-      this.anims.create({ key: 'wolf-idle', frames: this.anims.generateFrameNumbers('wolf-idle', { start: 0, end: 3 }), frameRate: 4, repeat: -1 });
-    }
-    if (!this.anims.exists('boar-idle')) {
-      this.anims.create({ key: 'boar-idle', frames: this.anims.generateFrameNumbers('boar-idle', { start: 0, end: 6 }), frameRate: 6, repeat: -1 });
+    // Row 0 (frames 0-5) = idle, for all three 6-col sheets.
+    for (const key of ['wolf-idle', 'boar-idle', 'deer-idle']) {
+      if (!this.anims.exists(key)) {
+        this.anims.create({ key, frames: this.anims.generateFrameNumbers(key, { start: 0, end: 5 }), frameRate: 6, repeat: -1 });
+      }
     }
 
     // ── Strip sprite backgrounds, then build animations ───────────────────
     for (const u of state.party) {
       const className = spriteKeyForRole(u.t1Role);
       if (className) stripHeroBackground(this, className);
+    }
+    // Monster sheets are baked with a solid black background (no alpha
+    // channel), same as the old critter rigs needed no stripping for but
+    // the new hero-pipeline art does.
+    for (const key of ['wolf-idle', 'boar-idle', 'deer-idle']) {
+      stripBackgroundByKey(this, key, { cols: 6, rows: 6 });
     }
     for (const u of state.party) {
       const className = spriteKeyForRole(u.t1Role);
