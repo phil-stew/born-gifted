@@ -236,17 +236,25 @@ export function gearFrameName(sport, slot) {
   return `gear_${cls}_${slot}`;
 }
 
-// items/rawmaterials.png grid layout (1536×1024, 3 cols × 3 rows) — one icon
-// per Gear & Forge crafting material (only 7 of the 9 cells are used).
-export const MATERIAL_SHEET = { cols: 3, rows: 3, cellW: 1536 / 3, cellH: 1024 / 3 };
-export const MATERIAL_ICON_CELL = {
-  skin:       [0, 0], fur:        [0, 1], bone:       [0, 2],
-  iron_ore:   [1, 0], silver_ore: [1, 1], gold_ore:   [1, 2],
-  mystic_ore: [2, 0],
+// items/rawmaterials.png (1536×1024) — re-exported 2026-07-03 as an irregular
+// layout (not a uniform grid: row 1 has 4 icons, row 2 has 4, row 3 has 5),
+// so each material is an explicit [x, y, w, h] crop measured off the sheet's
+// own content bounds (a few px padding each side), same convention as the
+// old gearset10.png ITEM_FRAMES. Only the 7 Gear & Forge materials this game
+// actually uses are wired — the sheet also has a leaf sprig, two flowering
+// herbs, and 3 potion bottles with no corresponding item in ITEMS yet.
+export const MATERIAL_ICON_FRAME = {
+  skin:       [144, 60,  274, 267],
+  fur:        [441, 60,  288, 267],
+  bone:       [797, 60,  283, 267],
+  iron_ore:   [1118, 60, 268, 267],
+  silver_ore: [132, 359, 276, 284],
+  gold_ore:   [450, 359, 290, 284],
+  mystic_ore: [782, 359, 303, 284],
 };
 
 export function materialFrameName(id) {
-  return MATERIAL_ICON_CELL[id] ? `material_${id}` : null;
+  return MATERIAL_ICON_FRAME[id] ? `material_${id}` : null;
 }
 
 // Guaranteed material drops per mission clear

@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { state, roleDisplayLabel } from '../data/gameState.js';
-import { rarityColor, gearFrameName, materialFrameName, GEAR_SHEET, GEAR_CLASS_COL, GEAR_SLOT_ROW, MATERIAL_SHEET, MATERIAL_ICON_CELL } from '../data/items.js';
+import { rarityColor, gearFrameName, materialFrameName, GEAR_SHEET, GEAR_CLASS_COL, GEAR_SLOT_ROW, MATERIAL_ICON_FRAME } from '../data/items.js';
 import { stripBackgroundByKey } from '../data/heroSprites.js';
 
 const TABS = ['ALL', 'EQUIPMENT', 'MATERIALS'];
@@ -21,8 +21,8 @@ export class InventoryScene extends Phaser.Scene {
   }
 
   _registerFrames() {
-    stripBackgroundByKey(this, 'gears',     { cols: GEAR_SHEET.cols,     rows: GEAR_SHEET.rows });
-    stripBackgroundByKey(this, 'materials', { cols: MATERIAL_SHEET.cols, rows: MATERIAL_SHEET.rows });
+    stripBackgroundByKey(this, 'gears',     { cols: GEAR_SHEET.cols, rows: GEAR_SHEET.rows });
+    stripBackgroundByKey(this, 'materials', { cols: 5, rows: 3 }); // irregular sheet; approximate for seeding
     if (this.textures.exists('gears')) {
       const tex = this.textures.get('gears');
       const { cellW, cellH } = GEAR_SHEET;
@@ -35,10 +35,9 @@ export class InventoryScene extends Phaser.Scene {
     }
     if (this.textures.exists('materials')) {
       const tex = this.textures.get('materials');
-      const { cellW, cellH } = MATERIAL_SHEET;
-      for (const [id, [row, col]] of Object.entries(MATERIAL_ICON_CELL)) {
+      for (const [id, [x, y, w, h]] of Object.entries(MATERIAL_ICON_FRAME)) {
         const name = `material_${id}`;
-        if (!tex.has(name)) tex.add(name, 0, col * cellW, row * cellH, cellW, cellH);
+        if (!tex.has(name)) tex.add(name, 0, x, y, w, h);
       }
     }
   }
