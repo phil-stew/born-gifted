@@ -5,7 +5,7 @@ import {
   DESIGNATION_BEATS, designationIcon, DESIGNATION_CYCLE, ELEMENT_CYCLE, ELEMENT_BEATS,
 } from '../data/gameState.js';
 import { ATTACK, THROW, getUnitSpecials, getUnitSkills, getEquippedPassives } from '../data/abilities.js';
-import { loadHeroSprites, createHeroAnims, stripHeroBackground, stripBackgroundByKey, heroKey, getSpriteInfo, firstFrame, spriteKeyForRole } from '../data/heroSprites.js';
+import { loadHeroSprites, createHeroAnims, stripHeroBackground, stripBackgroundByKey, trimmedSheetConfig, heroKey, getSpriteInfo, firstFrame, spriteKeyForRole } from '../data/heroSprites.js';
 import { buildMonster, spriteInfoForBase } from '../data/monsters.js';
 
 const COLS = 10, ROWS = 10;
@@ -253,7 +253,7 @@ export class BattleScene extends Phaser.Scene {
     // HERO_SPRITES, per-file frame size since canvas dims aren't perfectly uniform.
     for (const base of ['Wolf', 'Boar', 'Deer']) {
       const info = spriteInfoForBase(base);
-      this.load.spritesheet(info.spriteKey, info.file, { frameWidth: info.fw, frameHeight: info.fh });
+      this.load.spritesheet(info.spriteKey, info.file, trimmedSheetConfig(info.fw, info.fh));
     }
 
     // Load hero sprites for current party — battle portraits always use the

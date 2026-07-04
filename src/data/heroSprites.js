@@ -124,6 +124,27 @@ export function firstFrame(className) {
   return HERO_SPRITES[className]?.skip ?? 1;
 }
 
+// This whole art batch has a faint gray divider line baked in at every cell
+// boundary (measured directly off the PNGs: ~5px wide horizontally, ~3px
+// vertically, centered on the boundary) — subtle enough to have gone
+// unnoticed on most sheets, but visible as a thin vertical line "on" the
+// character once background-stripped (the line's gray doesn't match pure
+// black closely enough for the flood fill to clear it — see
+// stripBackgroundByKey above). Rather than hand-editing every fw/fh in
+// HERO_SPRITES, shrink each frame's crop by TRIM px on every side and tell
+// Phaser to skip that trimmed-off ring between frames (margin/spacing) —
+// keeps HERO_SPRITES' fw/fh as "measured raw cell size" and fixes this at
+// load time for every sheet at once.
+const CELL_TRIM = 4;
+export function trimmedSheetConfig(fw, fh) {
+  return {
+    frameWidth: fw - CELL_TRIM * 2,
+    frameHeight: fh - CELL_TRIM * 2,
+    margin: CELL_TRIM,
+    spacing: CELL_TRIM * 2,
+  };
+}
+
 // Load all sprites for the given class names into a Phaser scene's loader.
 // Skips already-loaded textures. Call from preload().
 export function loadHeroSprites(scene, classNames) {
@@ -132,7 +153,7 @@ export function loadHeroSprites(scene, classNames) {
     if (!info) continue;
     const key = heroKey(name);
     if (!scene.textures.exists(key)) {
-      scene.load.spritesheet(key, info.file, { frameWidth: info.fw, frameHeight: info.fh });
+      scene.load.spritesheet(key, info.file, trimmedSheetConfig(info.fw, info.fh));
     }
   }
 }
