@@ -1,4 +1,6 @@
-# Born Gifted — Dev Notes
+# Fantasy Sports Tactics — Dev Notes
+
+(project folder/repo still named "born-gifted" — renamed in-game 2026-07-04, not worth a directory rename)
 
 Tactical RPG built on [Phaser 4](https://phaser.io/) + [Vite](https://vitejs.dev/). No framework beyond that — plain JS modules, no TypeScript, no bundler config beyond Vite defaults.
 

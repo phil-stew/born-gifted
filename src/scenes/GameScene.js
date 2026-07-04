@@ -6,6 +6,10 @@ export class GameScene extends Phaser.Scene {
     super('GameScene');
   }
 
+  preload() {
+    if (!this.textures.exists('titlebg')) this.load.image('titlebg', 'world/title/titlebg.png');
+  }
+
   init(data) {
     this.skipCrawl = data?.skipCrawl ?? false;
   }
@@ -16,7 +20,9 @@ export class GameScene extends Phaser.Scene {
     const cy = height / 2;
 
     this.lineIndex = 0;
-    this.phase = this.skipCrawl ? 'title' : 'crawl'; // 'crawl' | 'title' | 'done'
+    // 'splash' (dev credit) | 'crawl' | 'title' | 'done' — splash only plays on
+    // a true cold boot, never when returning here from the world map.
+    this.phase = this.skipCrawl ? 'title' : 'splash';
     this.canAdvance = false;
     this.autoTimer = null;
 
@@ -36,6 +42,22 @@ export class GameScene extends Phaser.Scene {
 
     this.add.rectangle(cx, cy, width, height, 0x000000);
 
+    // Title background photo + dark scrim — hidden until showTitle() fades
+    // them in (stays plain black during the splash/crawl, on purpose).
+    this.titleBg = this.add.image(cx, cy, 'titlebg').setAlpha(0);
+    const bgScale = Math.max(width / this.titleBg.width, height / this.titleBg.height);
+    this.titleBg.setScale(bgScale);
+    this.titleScrim = this.add.rectangle(cx, cy, width, height, 0x05050a, 0.6).setAlpha(0);
+
+    // Dev splash — plays once on a true cold boot, never on skipCrawl (that's
+    // the "return to title from world map" path, not a fresh launch).
+    this.splashText = this.add.text(cx, cy, 'New Dev By Philly Stew Presents', {
+      fontSize: '15px',
+      fontFamily: 'monospace',
+      color: '#888899',
+      align: 'center',
+    }).setOrigin(0.5).setAlpha(0);
+
     // Crawl line
     this.crawlText = this.add.text(cx, cy - 16, '', {
       fontSize: '22px',
@@ -54,18 +76,19 @@ export class GameScene extends Phaser.Scene {
     }).setOrigin(0.5).setAlpha(0);
 
     // Title — hidden until crawl finishes
-    this.titleText = this.add.text(cx, cy - 70, 'BORN GIFTED', {
-      fontSize: '58px',
+    this.titleText = this.add.text(cx, cy - 90, 'FANTASY SPORTS TACTICS', {
+      fontSize: '40px',
       fontFamily: 'Georgia, serif',
       fontStyle: 'bold',
       color: '#ffffff',
-      shadow: { offsetX: 0, offsetY: 0, color: '#4488ff', blur: 24, fill: true },
+      align: 'center',
+      shadow: { offsetX: 0, offsetY: 2, color: '#000000', blur: 18, fill: true },
     }).setOrigin(0.5).setAlpha(0);
 
-    this.subtitleText = this.add.text(cx, cy - 10, 'A  T A C T I C A L  R P G', {
+    this.subtitleText = this.add.text(cx, cy - 46, 'A  T A C T I C A L  R P G', {
       fontSize: '12px',
       fontFamily: 'monospace',
-      color: '#6688bb',
+      color: '#aabbdd',
     }).setOrigin(0.5).setAlpha(0);
 
     this.promptText = this.add.text(cx, cy + 70, 'TAP  TO  BEGIN', {
@@ -82,8 +105,38 @@ export class GameScene extends Phaser.Scene {
       this.tapHint.setAlpha(0);
       this.showTitle();
     } else {
-      this.showLine();
+      this.showSplash();
     }
+  }
+
+  showSplash() {
+    this.canAdvance = false;
+    this.tweens.add({
+      targets: this.splashText,
+      alpha: 1,
+      duration: 700,
+      ease: 'Power1',
+      onComplete: () => {
+        this.canAdvance = true;
+        this.autoTimer = this.time.delayedCall(1800, () => this.advanceSplash());
+      },
+    });
+  }
+
+  advanceSplash() {
+    if (!this.canAdvance) return;
+    this.canAdvance = false;
+    this.autoTimer?.destroy();
+    this.tweens.add({
+      targets: this.splashText,
+      alpha: 0,
+      duration: 500,
+      ease: 'Power1',
+      onComplete: () => {
+        this.phase = 'crawl';
+        this.showLine();
+      },
+    });
   }
 
   showLine() {
@@ -132,6 +185,8 @@ export class GameScene extends Phaser.Scene {
 
     if (this.skipCrawl) {
       // Returning to the home screen should feel instant, not replay the fade-in
+      this.titleBg.setAlpha(1);
+      this.titleScrim.setAlpha(1);
       this.titleText.setAlpha(1);
       this.subtitleText.setAlpha(1);
       if (hasSave()) {
@@ -144,6 +199,8 @@ export class GameScene extends Phaser.Scene {
       return;
     }
 
+    this.tweens.add({ targets: this.titleBg,      alpha: 1, duration: 1500, ease: 'Power1' });
+    this.tweens.add({ targets: this.titleScrim,   alpha: 1, duration: 1500, ease: 'Power1' });
     this.tweens.add({ targets: this.titleText,    alpha: 1, duration: 1200, delay: 300,  ease: 'Power2' });
     this.tweens.add({ targets: this.subtitleText, alpha: 1, duration: 800,  delay: 900,  ease: 'Power1' });
 
@@ -224,7 +281,9 @@ export class GameScene extends Phaser.Scene {
   }
 
   handleTap() {
-    if (this.phase === 'crawl') {
+    if (this.phase === 'splash') {
+      this.advanceSplash();
+    } else if (this.phase === 'crawl') {
       this.advance();
     } else if (this.phase === 'title' && this.canAdvance) {
       // Only auto-advance via tap when there is no save — otherwise let the buttons handle it

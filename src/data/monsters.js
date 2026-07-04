@@ -1,4 +1,4 @@
-// Born Gifted — Monster List (July 2026 handwritten sheet)
+// Fantasy Sports Tactics — Monster List (July 2026 handwritten sheet)
 //
 // Data model + generation logic for the 10-base-monster roster, the 4-tier
 // color-recolor ladder, Alpha Ace bosses, and generated-name unique
