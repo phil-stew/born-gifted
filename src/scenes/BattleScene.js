@@ -1115,7 +1115,7 @@ export class BattleScene extends Phaser.Scene {
     }
     if (ab.cost === 'ALL') return unit.sp > 0 ? `${unit.sp} SP (ALL)` : 'No SP';
     const cost = this.effectiveSpCost(unit, ab);
-    return cost === 0 ? 'Free' : `${cost} SP`;
+    return cost === 0 ? '' : `${cost} SP`;
   }
 
   // Deduct the resource an ability uses — SP for specials, cooldown/uses for
@@ -1139,7 +1139,7 @@ export class BattleScene extends Phaser.Scene {
     const { width, height } = this.scale;
     const { x: ux, y: uy } = this.gridToScreen(unit.col, unit.row);
 
-    const IH = 44, PAD = 4;
+    const IH = 30, PAD = 4;
     const MW = 200, MH = (abilities.length + 1) * IH + PAD * 2;
     const toRight = ux + 40 + MW < width - 4;
     const mx = toRight ? ux + 40 : ux - 40 - MW;
@@ -1180,9 +1180,8 @@ export class BattleScene extends Phaser.Scene {
 
       const tc = canUse ? '#ffffff' : '#252535';
       const sc = canUse ? '#4499ff' : '#1e2233';
-      con.add(this.add.text(10, iy + 12, `${ab.icon}  ${ab.name}`, { fontSize:'12px', fontFamily:'monospace', fontStyle:'bold', color: tc }));
-      con.add(this.add.text(10, iy + 28, ab.desc, { fontSize:'9px', fontFamily:'monospace', color: canUse ? '#556677' : '#1e1e28' }));
-      con.add(this.add.text(MW - 8, iy + 12, this.abilitySubLabel(unit, ab), { fontSize:'10px', fontFamily:'monospace', color: sc }).setOrigin(1,0));
+      con.add(this.add.text(10, iy + IH / 2, `${ab.icon}  ${ab.name}`, { fontSize:'12px', fontFamily:'monospace', fontStyle:'bold', color: tc }).setOrigin(0, 0.5));
+      con.add(this.add.text(MW - 8, iy + IH / 2, this.abilitySubLabel(unit, ab), { fontSize:'10px', fontFamily:'monospace', color: sc }).setOrigin(1, 0.5));
 
       if (canUse) {
         const z = this.add.zone(MW/2, iy + IH/2, MW-4, IH-4).setInteractive({ useHandCursor:true });

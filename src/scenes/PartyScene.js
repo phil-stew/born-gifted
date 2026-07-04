@@ -28,6 +28,7 @@ export class PartyScene extends Phaser.Scene {
     this.promoStep = null;   // null | 'prompt' | 'sport' | 'role'
     this.promoTier = null;
     this.promoSport = null;
+    this.expandedAbility = null; // ability id whose details row is expanded, or null
   }
 
   create() {
@@ -70,8 +71,8 @@ export class PartyScene extends Phaser.Scene {
           <button class="ui-navbtn accent" data-nav="inventory">Inventory ▶</button>
         </div>
         <div class="ui-body">
-          <div class="ui-panel ui-list-panel">${listHTML}</div>
-          <div class="ui-panel">${detailHTML}</div>
+          <div class="ui-panel ui-list-panel" data-scroll-id="party-list">${listHTML}</div>
+          <div class="ui-panel" data-scroll-id="party-detail-${unit?.id ?? 'none'}">${detailHTML}</div>
         </div>
       </div>
       ${unit && this.promoStep ? this.promoModalHTML(unit) : ''}
@@ -145,11 +146,18 @@ export class PartyScene extends Phaser.Scene {
         </div>`;
     }).join('');
 
-    const abilityRow = (ab, subLabel) => `
-      <div class="ui-ability-row">
-        <span class="ui-ability-name">${ab.icon} ${esc(ab.name)}</span>
-        <span class="ui-ability-desc">${subLabel} · ${esc(ab.desc)}</span>
-      </div>`;
+    // Collapsed by default — tap a row to reveal its cost/range/desc breakdown.
+    const abilityRow = (ab, subLabel) => {
+      const expanded = this.expandedAbility === ab.id;
+      return `
+        <div class="ui-ability-row" data-ability-toggle="${ab.id}">
+          <div class="ui-ability-row-head">
+            <span class="ui-ability-name">${ab.icon} ${esc(ab.name)}</span>
+            <span class="ui-ability-cost">${subLabel}</span>
+          </div>
+          ${expanded ? `<div class="ui-ability-desc">${esc(ab.desc)}</div>` : ''}
+        </div>`;
+    };
 
     const specials = getUnitSpecials(unit);
     const skills = getUnitSkills(unit);
@@ -281,6 +289,12 @@ export class PartyScene extends Phaser.Scene {
 
     onClick('[data-select]', (e, node) => {
       this.selId = node.dataset.select;
+      this.render();
+    });
+
+    onClick('[data-ability-toggle]', (e, node) => {
+      const id = node.dataset.abilityToggle;
+      this.expandedAbility = this.expandedAbility === id ? null : id;
       this.render();
     });
 

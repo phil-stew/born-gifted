@@ -411,11 +411,21 @@ canvas {
 .ui-slot-remove:hover { color: #ff6666; }
 
 .ui-ability-row {
+  padding: 8px 8px;
+  border-radius: var(--ui-radius-sm);
+  cursor: pointer;
+  transition: background 150ms ease;
+}
+
+.ui-ability-row:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.ui-ability-row-head {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
   gap: 16px;
-  padding: 6px 0;
   font-size: 12px;
 }
 
@@ -425,10 +435,19 @@ canvas {
   white-space: nowrap;
 }
 
-.ui-ability-desc {
+.ui-ability-cost {
   color: var(--ui-text-muted);
   font-size: 11px;
-  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.ui-ability-desc {
+  margin-top: 6px;
+  font-size: 11px;
+  color: var(--ui-text-muted);
+  line-height: 1.5;
+  animation: ui-fade-in 150ms ease both;
 }
 
 .ui-empty-note {

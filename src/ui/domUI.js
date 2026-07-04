@@ -6,9 +6,25 @@ const root = document.getElementById('ui-root');
 
 // Renders `html` into #ui-root and shows it. Call once per scene render;
 // safe to call repeatedly (e.g. on every rebuild()).
+//
+// Preserves scroll position across re-renders: any scrollable element
+// tagged `data-scroll-id="foo"` keeps its scrollTop when the same id
+// reappears in the new markup — without this, every click-driven re-render
+// (expanding a row, equipping an item, ...) would snap long lists back to
+// the top, which reads as broken rather than just "re-rendered."
 export function mount(html) {
+  const positions = {};
+  root.querySelectorAll('[data-scroll-id]').forEach(node => {
+    positions[node.dataset.scrollId] = node.scrollTop;
+  });
+
   root.innerHTML = html;
   root.classList.add('is-active');
+
+  root.querySelectorAll('[data-scroll-id]').forEach(node => {
+    const y = positions[node.dataset.scrollId];
+    if (y != null) node.scrollTop = y;
+  });
 }
 
 // Hides and clears #ui-root. Call from the owning scene's 'shutdown' event
