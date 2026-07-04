@@ -13,6 +13,7 @@ import { HubScene }       from './scenes/HubScene.js';
 import { ShopScene }      from './scenes/ShopScene.js';
 import { ForgeScene }     from './scenes/ForgeScene.js';
 import { PartyScene }     from './scenes/PartyScene.js';
+import { LoadoutScene }   from './scenes/LoadoutScene.js';
 import { InventoryScene } from './scenes/InventoryScene.js';
 
 const config = {
@@ -27,7 +28,7 @@ const config = {
     autoCenter: Phaser.Scale.CENTER_BOTH,
     zoom: Phaser.Scale.ZOOM_2X,
   },
-  scene: [GameScene, CharacterCreationScene, WorldMapScene, BattleScene, VictoryScene, LevelUpScene, StatsScene, EquipmentScene, StoryScene, HubScene, ShopScene, ForgeScene, PartyScene, InventoryScene],
+  scene: [GameScene, CharacterCreationScene, WorldMapScene, BattleScene, VictoryScene, LevelUpScene, StatsScene, EquipmentScene, StoryScene, HubScene, ShopScene, ForgeScene, PartyScene, LoadoutScene, InventoryScene],
 };
 
 window.__game = new Phaser.Game(config);
