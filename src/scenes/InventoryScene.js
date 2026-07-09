@@ -1,7 +1,8 @@
 import Phaser from 'phaser';
 import { state, roleDisplayLabel } from '../data/gameState.js';
-import { rarityColor, gearFrameName, materialFrameName, GEAR_SHEET, GEAR_CLASS_COL, GEAR_SLOT_ROW, MATERIAL_ICON_FRAME } from '../data/items.js';
+import { rarityColor, gearFrameName, materialFrameName, GEAR_SHEET, registerGearFrames, MATERIAL_ICON_FRAME } from '../data/items.js';
 import { stripBackgroundByKey } from '../data/heroSprites.js';
+import { drawButton } from '../ui/canvasButton.js';
 
 const TABS = ['ALL', 'EQUIPMENT', 'MATERIALS'];
 
@@ -23,16 +24,7 @@ export class InventoryScene extends Phaser.Scene {
   _registerFrames() {
     stripBackgroundByKey(this, 'gears',     { cols: GEAR_SHEET.cols, rows: GEAR_SHEET.rows });
     stripBackgroundByKey(this, 'materials', { cols: 5, rows: 3 }); // irregular sheet; approximate for seeding
-    if (this.textures.exists('gears')) {
-      const tex = this.textures.get('gears');
-      const { cellW, cellH } = GEAR_SHEET;
-      for (const [cls, col] of Object.entries(GEAR_CLASS_COL)) {
-        for (const [slot, row] of Object.entries(GEAR_SLOT_ROW)) {
-          const name = `gear_${cls}_${slot}`;
-          if (!tex.has(name)) tex.add(name, 0, col * cellW, row * cellH, cellW, cellH);
-        }
-      }
-    }
+    registerGearFrames(this);
     if (this.textures.exists('materials')) {
       const tex = this.textures.get('materials');
       for (const [id, [x, y, w, h]] of Object.entries(MATERIAL_ICON_FRAME)) {
@@ -124,9 +116,10 @@ export class InventoryScene extends Phaser.Scene {
       const draw = (h) => {
         g.clear();
         g.fillStyle(active ? 0x16162a : (h ? 0x111128 : 0x0c0c1a), 1);
-        g.fillRect(tx, ty, tw, th);
-        g.lineStyle(1, active ? 0x4455aa : 0x1e1e33, 1);
-        g.strokeRect(tx, ty, tw, th);
+        g.fillRoundedRect(tx, ty, tw, th, 6);
+        g.lineStyle(1.5, active ? 0x4455aa : 0x1e1e33, 1);
+        g.strokeRoundedRect(tx, ty, tw, th, 6);
+        if (active) { g.fillStyle(0x4455aa, 0.6); g.fillRoundedRect(tx, ty, tw, 2, { tl: 6, tr: 6, bl: 0, br: 0 }); }
       };
       draw(false);
       this.tabCon.add(g);
@@ -173,12 +166,20 @@ export class InventoryScene extends Phaser.Scene {
   buildList() {
     const entries = this.getEntries();
     const lx = 8, lw = 230, startY = 72;
+    const panH = this.H - startY - 38;
+
+    const shadow = this.add.graphics();
+    shadow.fillStyle(0x000000, 0.3);
+    shadow.fillRoundedRect(lx + 2, startY + 3, lw, panH, 8);
+    this.listCon.add(shadow);
 
     const bg = this.add.graphics();
     bg.fillStyle(0x0b0b18, 1);
-    bg.fillRect(lx, startY, lw, this.H - startY - 38);
-    bg.lineStyle(1, 0x1e1e33, 1);
-    bg.strokeRect(lx, startY, lw, this.H - startY - 38);
+    bg.fillRoundedRect(lx, startY, lw, panH, 8);
+    bg.lineStyle(1.5, 0x1e1e33, 1);
+    bg.strokeRoundedRect(lx, startY, lw, panH, 8);
+    bg.fillStyle(0x4455aa, 0.4);
+    bg.fillRoundedRect(lx, startY, lw, 3, { tl: 8, tr: 8, bl: 0, br: 0 });
     this.listCon.add(bg);
 
     if (!entries.length) {
@@ -197,8 +198,13 @@ export class InventoryScene extends Phaser.Scene {
       const draw = (h) => {
         g.clear();
         g.fillStyle(isSelectedIdx ? 0x16162e : (h ? 0x101028 : 0x0b0b18), 1);
-        g.fillRect(lx + 2, iy, lw - 4, 38);
-        if (isSelectedIdx) { g.lineStyle(1, 0x4455bb, 0.7); g.strokeRect(lx + 2, iy, lw - 4, 38); }
+        g.fillRoundedRect(lx + 2, iy, lw - 4, 38, 6);
+        if (isSelectedIdx) {
+          g.lineStyle(1.5, 0x4455bb, 0.7);
+          g.strokeRoundedRect(lx + 2, iy, lw - 4, 38, 6);
+          g.fillStyle(0x4455bb, 0.9);
+          g.fillRoundedRect(lx + 2, iy, 3, 38, 2);
+        }
       };
       draw(false);
       this.listCon.add(g);
@@ -219,7 +225,7 @@ export class InventoryScene extends Phaser.Scene {
       this.listCon.add(this.add.text(textLx, iy + 5, nameStr, {
         fontSize: '11px', fontFamily: 'monospace', color: rlvl ? '#ffaa44' : '#ccccdd',
       }));
-      const subStr = item.type === 'material' ? 'MATERIAL' : (item.slot?.toUpperCase() ?? '');
+      const subStr = item.type === 'material' ? 'MATERIAL' : (item.slot?.toUpperCase() ?? '') + (item.forClass ? ` · ${item.forClass}` : '');
       this.listCon.add(this.add.text(textLx, iy + 22, subStr, {
         fontSize: '9px', fontFamily: 'monospace', color: item.type === 'material' ? '#557733' : '#445577',
       }));
@@ -246,11 +252,18 @@ export class InventoryScene extends Phaser.Scene {
     const panH = this.H - startY - 38;
     const cx = dx + dw / 2;
 
+    const shadow = this.add.graphics();
+    shadow.fillStyle(0x000000, 0.3);
+    shadow.fillRoundedRect(dx + 2, startY + 3, dw, panH, 8);
+    this.detCon.add(shadow);
+
     const bg = this.add.graphics();
     bg.fillStyle(0x0b0b18, 1);
-    bg.fillRect(dx, startY, dw, panH);
-    bg.lineStyle(1, 0x1e1e33, 1);
-    bg.strokeRect(dx, startY, dw, panH);
+    bg.fillRoundedRect(dx, startY, dw, panH, 8);
+    bg.lineStyle(1.5, 0x1e1e33, 1);
+    bg.strokeRoundedRect(dx, startY, dw, panH, 8);
+    bg.fillStyle(0x4455aa, 0.4);
+    bg.fillRoundedRect(dx, startY, dw, 3, { tl: 8, tr: 8, bl: 0, br: 0 });
     this.detCon.add(bg);
 
     const entry = this.selected;
@@ -279,6 +292,13 @@ export class InventoryScene extends Phaser.Scene {
       fontSize: '10px', fontFamily: 'monospace', color: rarHex,
     }).setOrigin(0.5));
     y += 20;
+
+    if (item.forClass) {
+      this.detCon.add(this.add.text(cx, y, `FOR ${item.forClass.toUpperCase()}`, {
+        fontSize: '10px', fontFamily: 'monospace', color: '#8888aa',
+      }).setOrigin(0.5));
+      y += 18;
+    }
 
     if (rlvl > 0) {
       this.detCon.add(this.add.text(cx, y, `${'✦'.repeat(rlvl)}${'✧'.repeat(3 - rlvl)}`, {
@@ -318,9 +338,10 @@ export class InventoryScene extends Phaser.Scene {
       const draw = (h) => {
         g.clear();
         g.fillStyle(h ? 0x0e1a10 : 0x090e0a, 1);
-        g.fillRect(cx - 80, y, 160, 36);
-        g.lineStyle(1, h ? 0x33aa55 : 0x1e6630, 1);
-        g.strokeRect(cx - 80, y, 160, 36);
+        g.fillRoundedRect(cx - 80, y, 160, 36, 8);
+        g.lineStyle(1.5, h ? 0x33aa55 : 0x1e6630, 1);
+        g.strokeRoundedRect(cx - 80, y, 160, 36, 8);
+        if (h) { g.fillStyle(0x33aa55, 0.9); g.fillRoundedRect(cx - 80, y, 4, 36, 2); }
       };
       draw(false);
       this.detCon.add(g);
@@ -343,9 +364,10 @@ export class InventoryScene extends Phaser.Scene {
       const draw = (h) => {
         g.clear();
         g.fillStyle(h ? 0x0a160a : 0x070d07, 1);
-        g.fillRect(cx - 80, y, 160, 36);
-        g.lineStyle(1, h ? 0x226622 : 0x1a4a1a, 1);
-        g.strokeRect(cx - 80, y, 160, 36);
+        g.fillRoundedRect(cx - 80, y, 160, 36, 8);
+        g.lineStyle(1.5, h ? 0x226622 : 0x1a4a1a, 1);
+        g.strokeRoundedRect(cx - 80, y, 160, 36, 8);
+        if (h) { g.fillStyle(0x226622, 0.9); g.fillRoundedRect(cx - 80, y, 4, 36, 2); }
       };
       draw(false);
       this.detCon.add(g);
@@ -377,11 +399,18 @@ export class InventoryScene extends Phaser.Scene {
     const bw = 340, bh = this.equipStep === 'pick_unit' ? 40 + state.party.length * 52 + 50 : 40 + 6 * 50 + 50;
     const bx = (W - bw) / 2, by = (H - bh) / 2;
 
+    const ovShadow = this.add.graphics();
+    ovShadow.fillStyle(0x000000, 0.35);
+    ovShadow.fillRoundedRect(bx + 3, by + 5, bw, bh, 10);
+    this.overlyCon.add(ovShadow);
+
     const panG = this.add.graphics();
     panG.fillStyle(0x0c0c1e, 1);
-    panG.fillRect(bx, by, bw, bh);
-    panG.lineStyle(1, 0x334466, 1);
-    panG.strokeRect(bx, by, bw, bh);
+    panG.fillRoundedRect(bx, by, bw, bh, 10);
+    panG.lineStyle(1.5, 0x334466, 1);
+    panG.strokeRoundedRect(bx, by, bw, bh, 10);
+    panG.fillStyle(0x5577cc, 0.5);
+    panG.fillRoundedRect(bx, by, bw, 3, { tl: 10, tr: 10, bl: 0, br: 0 });
     this.overlyCon.add(panG);
 
     if (this.equipStep === 'pick_unit') {
@@ -395,9 +424,10 @@ export class InventoryScene extends Phaser.Scene {
         const draw = (h) => {
           g.clear();
           g.fillStyle(h ? 0x14143a : 0x0e0e28, 1);
-          g.fillRect(bx + 10, uy, bw - 20, 44);
-          g.lineStyle(1, h ? 0x5566cc : 0x2a2a55, 1);
-          g.strokeRect(bx + 10, uy, bw - 20, 44);
+          g.fillRoundedRect(bx + 10, uy, bw - 20, 44, 6);
+          g.lineStyle(1.5, h ? 0x5566cc : 0x2a2a55, 1);
+          g.strokeRoundedRect(bx + 10, uy, bw - 20, 44, 6);
+          if (h) { g.fillStyle(0x5566cc, 0.9); g.fillRoundedRect(bx + 10, uy, 3, 44, 2); }
         };
         draw(false);
         this.overlyCon.add(g);
@@ -419,22 +449,14 @@ export class InventoryScene extends Phaser.Scene {
 
     // Cancel button
     const cancelY = by + bh - 38;
-    const cg = this.add.graphics();
-    const drawC = (h) => {
-      cg.clear();
-      cg.fillStyle(h ? 0x1a0e0e : 0x110a0a, 1);
-      cg.fillRect(bx + bw / 2 - 60, cancelY, 120, 30);
-      cg.lineStyle(1, h ? 0x664444 : 0x332222, 1);
-      cg.strokeRect(bx + bw / 2 - 60, cancelY, 120, 30);
-    };
-    drawC(false);
-    this.overlyCon.add(cg);
-    this.overlyCon.add(this.add.text(bx + bw / 2, cancelY + 15, 'CANCEL', { fontSize:'11px', fontFamily:'monospace', color:'#885555' }).setOrigin(0.5));
-    const cz = this.add.zone(bx + bw / 2, cancelY + 15, 120, 30).setInteractive({ useHandCursor: true });
-    cz.on('pointerover',  () => drawC(true));
-    cz.on('pointerout',   () => drawC(false));
-    cz.on('pointerdown',  () => { this.equipStep = null; this.equipUnit = null; this.rebuild(); });
-    this.overlyCon.add(cz);
+    const cancelBtn = drawButton(this, {
+      x: bx + bw / 2, y: cancelY + 15, w: 120, h: 30, label: 'CANCEL',
+      fontSize: '11px', radius: 6,
+      bg: 0x110a0a, bgHover: 0x1a0e0e, border: 0x664444, accent: 0x885555,
+      textColor: '#885555',
+      onClick: () => { this.equipStep = null; this.equipUnit = null; this.rebuild(); },
+    });
+    this.overlyCon.add(cancelBtn.container);
   }
 
   equipItem(unit) {

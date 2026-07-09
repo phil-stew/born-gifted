@@ -10,7 +10,15 @@ export const HERO_SPRITES = {
   'Boxer':              { file:'heroes/t1/boxerlightweight.png',  cols:6, rows:6, fw:249, fh:175 },
   'Boxer Heavyweight':  { file:'heroes/t1/boxerheavyweight.png',  cols:6, rows:6, fw:249, fh:175 },
   'Dart Player':        { file:'heroes/t1/Dartarrowchucker.png',  cols:6, rows:6, fw:249, fh:175 },
-  'Dancer':             { file:'heroes/t1/Dancerdance.png',       cols:8, rows:6, fw:175, fh:187 },
+  // Re-supplied 2026-07-08 — a full replacement sheet, 7 cols x 6 rows
+  // (1416x1111, ~202x185/cell; the old 8-col Dancerdance.png this was tuned
+  // against — overflowing run poses, runEnd:4, noMoveAnim — no longer
+  // exists on disk). Re-measured and re-verified fresh: grid-overlay test at
+  // cols:7 lines up cleanly on every row, and the run row's poses are all
+  // fully contained in their cell with no overflow, so none of the old
+  // workarounds apply here. skip:0 — column 0 is a real pose every row
+  // (confirmed by eye), not a blank label column.
+  'Dancer':             { file:'heroes/t1/Dancerdance.png',       cols:7, rows:6, fw:202, fh:185, skip:0 },
   'Netballer':          { file:'heroes/t1/netGoalattack.png',     cols:6, rows:6, fw:249, fh:175 },
   'Netballer Defence':  { file:'heroes/t1/netGaoldefence.png',    cols:6, rows:6, fw:249, fh:175 },
   'Lacrosse Player':    { file:'heroes/t1/lacrosseAceattacker.png', cols:6, rows:6, fw:249, fh:175 },
@@ -28,8 +36,19 @@ export const HERO_SPRITES = {
   'Speed Skater':     { file:'heroes/t2/skaterspeed.png',       cols:6, rows:6, fw:248, fh:175 },
   'Black Belt':       { file:'heroes/t2/karatewado.png',        cols:6, rows:6, fw:249, fh:175 },
   'Kyokushin':        { file:'heroes/t2/karatekyokushin.png',   cols:6, rows:6, fw:249, fh:175 },
-  'Paintballer':      { file:'heroes/t2/paintballsinper.png',   cols:6, rows:6, fw:248, fh:175 },
-  'Frontman':         { file:'heroes/t2/paintballfrontman.png', cols:6, rows:6, fw:248, fh:175 },
+  // bgTol: 8 — both paintball sheets use very dark tactical/camo colors
+  // close to pure black; the default TOL=30 flood-fill leaks from the
+  // background into that dark gear and eats holes in the character
+  // (2026-07-07 feedback: "the sniper is not really visible" — confirmed via
+  // canvas test, TOL=30 shreds both sheets, TOL=8 leaves them fully intact).
+  // bgBand: 4 — the tighter tolerance above uncovered a second issue: the
+  // default 3px divider-clearing band wasn't quite wide enough for these two
+  // sheets, and TOL=30 used to paper over the last 1-2px via color match.
+  // At TOL=8 that no longer happens, leaving a visible thin divider line
+  // (2026-07-07 feedback: "now we have that dark vertical line"). band:4
+  // fixes it without exceeding the corner-seed inset (see stripBackgroundByKey).
+  'Paintballer':      { file:'heroes/t2/paintballsinper.png',   cols:6, rows:6, fw:248, fh:175, bgTol:8, bgBand:4 },
+  'Frontman':         { file:'heroes/t2/paintballfrontman.png', cols:6, rows:6, fw:248, fh:175, bgTol:8, bgBand:4 },
   'Gymnast':          { file:'heroes/t2/Gymnatsic.png',         cols:6, rows:6, fw:248, fh:175 },
   'Spiker':           { file:'heroes/t2/volleyballspiker.png',  cols:6, rows:6, fw:248, fh:175 },
   'Setter':           { file:'heroes/t2/volleyballsetter.png',  cols:6, rows:6, fw:248, fh:175 },
@@ -166,7 +185,7 @@ export function loadHeroSprites(scene, classNames) {
 export function stripHeroBackground(scene, className) {
   const info = HERO_SPRITES[className];
   if (!info) return;
-  stripBackgroundByKey(scene, heroKey(className), { cols: info.cols, rows: info.rows });
+  stripBackgroundByKey(scene, heroKey(className), { cols: info.cols, rows: info.rows, tol: info.bgTol, band: info.bgBand });
 }
 
 // Some sheets (a subset of the 2026-07-03 batch, e.g. amfootballdefender.png,
@@ -202,7 +221,29 @@ function clearGridBoundaries(d, W, H, cols, rows, bandPx = 3) {
 // monster spritesheets) that share this baked-solid-background convention.
 // Pass { cols, rows } when the sheet is a character grid so the grid-divider
 // pre-pass above can run — harmless to omit on a single-frame image.
-export function stripBackgroundByKey(scene, key, { cols, rows } = {}) {
+// `tol` overrides the default color-match tolerance (see DEFAULT_TOL below)
+// — some art (e.g. 'Paintballer', all-dark tactical/camo colors close to
+// pure black) needs a much tighter tolerance or the flood fill leaks from
+// the background into the character's own dark gear, eating holes in it
+// (2026-07-07 feedback: "the sniper is not really visible" — confirmed via
+// a canvas test that TOL=30 shreds that sheet's character but TOL=8 leaves
+// it fully intact).
+// `band` overrides clearGridBoundaries' default 3px divider band. Tightening
+// `tol` has a side effect: the geometric band was never quite wide enough to
+// fully cover this sheet's divider on its own — the old TOL=30 was
+// incidentally mopping up the remaining 1-2px via color match. At TOL=8 that
+// slack disappears, leaving a visible thin line (2026-07-07 feedback again:
+// "now we have that dark vertical line"). Confirmed via canvas test that a
+// stray opaque near-black pixel survives at exactly 4px from a boundary with
+// band=3; band=4 clears it. IMPORTANT: band must stay below the per-cell
+// corner-seed inset (6px, below) — at band>=6 the corner seeds land inside
+// the now-pre-cleared strip and floodFill's early-return means that cell's
+// interior background never gets filled at all (confirmed: band=8 leaves
+// almost the entire sheet's background solid black). Keep any override <=5.
+const DEFAULT_TOL = 30;
+const DEFAULT_BAND = 3;
+const BRIGHTNESS = 1.22;
+export function stripBackgroundByKey(scene, key, { cols, rows, tol, band } = {}) {
   if (!scene.textures.exists(key)) return;
 
   const src = scene.textures.get(key).source[0];
@@ -220,9 +261,22 @@ export function stripBackgroundByKey(scene, key, { cols, rows } = {}) {
 
   if (d[3] === 0) return; // already stripped
 
-  if (cols > 1 || rows > 1) clearGridBoundaries(d, W, H, cols || 1, rows || 1);
+  // 2026-07-09 feedback ("enhance the quality make them a little brighter")
+  // — a flat +22% RGB multiply, applied once here (same guarded-by-already-
+  // stripped check above) so it hits every hero/monster sheet uniformly via
+  // this one shared choke point. Pure-black background (0,0,0) stays exactly
+  // 0 under multiplication, so this can't shift the flood-fill's background
+  // match target or interact with tol/band tuning below — confirmed via a
+  // before/after render comparison, not just reasoning about the math.
+  for (let i = 0; i < d.length; i += 4) {
+    d[i]     *= BRIGHTNESS;
+    d[i + 1] *= BRIGHTNESS;
+    d[i + 2] *= BRIGHTNESS;
+  }
 
-  const TOL = 30;
+  if (cols > 1 || rows > 1) clearGridBoundaries(d, W, H, cols || 1, rows || 1, band ?? DEFAULT_BAND);
+
+  const TOL = tol ?? DEFAULT_TOL;
   const visited = new Uint8Array(W * H);
 
   function matches(pixelIdx, r, g, b) {
@@ -297,10 +351,18 @@ export function createHeroAnims(scene, className) {
   const key = heroKey(className);
   const idleKey = `${key}-idle`;
   if (scene.anims.exists(idleKey)) return;
-  const { cols, rows, skip = 1 } = info;
+  const { cols, rows, skip = 1, runEnd } = info;
   try {
     scene.anims.create({ key: idleKey,            frames: scene.anims.generateFrameNumbers(key, { start: skip,                end: cols - 1         }), frameRate: 6,  repeat: -1 });
-    scene.anims.create({ key: `${key}-run`,       frames: scene.anims.generateFrameNumbers(key, { start: cols + skip,         end: cols * 2 - 1     }), frameRate: 10, repeat: -1 });
+    // runEnd lets a sheet cap the run row short of the last column — some
+    // sheets' later run-cycle poses (wide stride, flying accessories) are
+    // drawn wider than the sheet's own cell pitch, so cropping at the cell
+    // boundary slices the character and leaves a disconnected fragment in
+    // the next cell (looks like "2 units in one frame"/a jump-cut mid-loop).
+    // Confirmed on Dancerdance.png: columns 5-7 of the run row overflow their
+    // cell this way (verified against the raw, unprocessed art — not a
+    // stripping/crop-math bug); columns 0-4 are clean, hence runEnd:4 below.
+    scene.anims.create({ key: `${key}-run`,       frames: scene.anims.generateFrameNumbers(key, { start: cols + skip,         end: cols + (runEnd ?? cols - 1) }), frameRate: 10, repeat: -1 });
     scene.anims.create({ key: `${key}-attack`,    frames: scene.anims.generateFrameNumbers(key, { start: cols * 2 + skip,     end: cols * 3 - 1     }), frameRate: 12, repeat: 0  });
     scene.anims.create({ key: `${key}-celebrate`, frames: scene.anims.generateFrameNumbers(key, { start: cols*(rows-1)+skip,  end: cols * rows - 1  }), frameRate: 8,  repeat: 0  });
   } catch (e) {

@@ -1,11 +1,16 @@
 import Phaser from 'phaser';
-import { state, roleDisplayLabel } from '../data/gameState.js';
+import { state, roleDisplayLabel, gearLayoutForUnit } from '../data/gameState.js';
+import { FORGE_RECIPES, ORE_TIER_TO_RARITY, rollGearItem, getItem } from '../data/items.js';
 
 // Cost to reinforce: 75 per level (level 0→1 costs 75, 1→2 costs 150, 2→3 costs 225)
 const REINFORCE_BASE = 75;
 const MAX_REINFORCE  = 3;
 
 const SLOT_NAMES = ['weapon', 'footwear', 'handwear', 'chest', 'headwear'];
+const SLOT_LABEL = { weapon:'Class Item', footwear:'Footwear', handwear:'Handwear', chest:'Chest', headwear:'Headwear' };
+
+// Panels sit below a mode tab row (REINFORCE/CRAFT), shared by both modes.
+const PANEL_START_Y = 80;
 
 export class ForgeScene extends Phaser.Scene {
   constructor() { super({ key: 'ForgeScene' }); }
@@ -14,6 +19,10 @@ export class ForgeScene extends Phaser.Scene {
     this.hubData      = data.hubData ?? {};
     this.unitIndex    = 0;
     this.selectedSlot = null;
+    this.mode           = 'reinforce'; // 'reinforce' | 'craft'
+    this.selectedRecipe = null;
+    this.selectedResultSlot = null;
+    this.selectedOreId  = null;
   }
 
   create() {
@@ -49,29 +58,15 @@ export class ForgeScene extends Phaser.Scene {
     back.on('pointerdown', () => {
       this.cameras.main.fadeOut(300, 0, 0, 0);
       this.cameras.main.once('camerafadeoutcomplete', () => {
-        const showM4Cutscene = state.completedMissions.includes('M3')
-          && !state.completedMissions.includes('M4')
-          && !state.forgeVisited;
-        if (showM4Cutscene) {
-          state.forgeVisited = true;
-          this.scene.start('StoryScene', {
-            location: 'HILBERT ACADEMY  ·  Forge',
-            lines: [
-              { speaker:'Reno',           color:'#4488ff', text:'That should do it. Let\'s see what the next step is.' },
-              { speaker:'Master Hilbert', color:'#ddcc88', text:'Reno. Good timing. We\'ve received word of unusual activity in the Hollow Caves to the west.' },
-              { speaker:'Master Hilbert', color:'#ddcc88', text:'Strange creatures have been spotted — different from anything in the borderlands. Our scouts say they carry rare materials.' },
-              { speaker:'Master Hilbert', color:'#ddcc88', text:'I need you and your team to clear the caves and bring back whatever you find. Those materials will be critical for the tournament.' },
-              { speaker:'Reno',           color:'#4488ff', text:'...The Hollow Caves. Understood.' },
-            ],
-            nextScene: 'WorldMapScene',
-            nextSceneData: {},
-          });
-        } else {
-          this.scene.start('HubScene', this.hubData);
-        }
+        // The old "leaving the Forge after M3 reveals M4" one-off cutscene
+        // is gone — the Capital questline's craft-quest gate now handles
+        // that beat properly (see state.capitalCraftCount and
+        // WorldMapScene's M3 click handler, M0-M4 redesign Phase 3).
+        this.scene.start('HubScene', this.hubData);
       });
     });
 
+    this.tabCon  = this.add.container(0, 0);
     this.unitCon = this.add.container(0, 0);
     this.equipCon = this.add.container(0, 0);
     this.detCon  = this.add.container(0, 0);
@@ -81,23 +76,74 @@ export class ForgeScene extends Phaser.Scene {
   }
 
   rebuild() {
+    this.tabCon.removeAll(true);
     this.unitCon.removeAll(true);
     this.equipCon.removeAll(true);
     this.detCon.removeAll(true);
     this.tytText.setText(`⊕ ${state.tytrate}`);
+    this.buildModeTabs();
     this.buildUnitList();
-    this.buildEquipList();
-    this.buildDetail();
+    if (this.mode === 'craft') {
+      this.buildRecipeList();
+      this.buildCraftDetail();
+    } else {
+      this.buildEquipList();
+      this.buildDetail();
+    }
+  }
+
+  buildModeTabs() {
+    [{ key:'reinforce', label:'⚒ REINFORCE' }, { key:'craft', label:'✦ CRAFT' }].forEach(({ key, label }, i) => {
+      const tx = 10 + i * 132, ty = 50, tw = 124, th = 24;
+      const active = this.mode === key;
+      const g = this.add.graphics();
+      const draw = (h) => {
+        g.clear();
+        g.fillStyle(active ? 0x1a1008 : (h ? 0x120e06 : 0x0c0907), 1);
+        g.fillRoundedRect(tx, ty, tw, th, 6);
+        g.lineStyle(1.5, active ? 0xcc7733 : 0x2a1a08, 1);
+        g.strokeRoundedRect(tx, ty, tw, th, 6);
+        if (active) { g.fillStyle(0xcc7733, 0.6); g.fillRoundedRect(tx, ty, tw, 2, { tl: 6, tr: 6, bl: 0, br: 0 }); }
+      };
+      draw(false);
+      this.tabCon.add(g);
+      this.tabCon.add(this.add.text(tx + tw / 2, ty + th / 2, label, {
+        fontSize: '11px', fontFamily: 'monospace', fontStyle: active ? 'bold' : 'normal',
+        color: active ? '#ffaa44' : '#775533',
+      }).setOrigin(0.5));
+      if (!active) {
+        const z = this.add.zone(tx + tw / 2, ty + th / 2, tw, th).setInteractive({ useHandCursor: true });
+        z.on('pointerover', () => draw(true));
+        z.on('pointerout',  () => draw(false));
+        z.on('pointerdown', () => {
+          this.mode = key;
+          this.selectedSlot = null;
+          this.selectedRecipe = null;
+          this.selectedResultSlot = null;
+          this.selectedOreId = null;
+          this.rebuild();
+        });
+        this.tabCon.add(z);
+      }
+    });
   }
 
   buildUnitList() {
-    const lx = 10, lw = 140, startY = 54;
+    const lx = 10, lw = 140, startY = PANEL_START_Y;
+    const panH = this.H - startY - 44;
+
+    const shadow = this.add.graphics();
+    shadow.fillStyle(0x000000, 0.3);
+    shadow.fillRoundedRect(lx + 2, startY + 3, lw, panH, 8);
+    this.unitCon.add(shadow);
 
     const bg = this.add.graphics();
     bg.fillStyle(0x0c0907, 1);
-    bg.fillRect(lx, startY, lw, this.H - startY - 44);
-    bg.lineStyle(1, 0x2a1a08, 1);
-    bg.strokeRect(lx, startY, lw, this.H - startY - 44);
+    bg.fillRoundedRect(lx, startY, lw, panH, 8);
+    bg.lineStyle(1.5, 0x2a1a08, 1);
+    bg.strokeRoundedRect(lx, startY, lw, panH, 8);
+    bg.fillStyle(0xcc7733, 0.4);
+    bg.fillRoundedRect(lx, startY, lw, 3, { tl: 8, tr: 8, bl: 0, br: 0 });
     this.unitCon.add(bg);
 
     state.party.forEach((unit, i) => {
@@ -107,8 +153,13 @@ export class ForgeScene extends Phaser.Scene {
       const draw = (h) => {
         g.clear();
         g.fillStyle(active ? 0x1a1008 : (h ? 0x120e06 : 0x0c0907), 1);
-        g.fillRect(lx + 2, uy, lw - 4, 58);
-        if (active) { g.lineStyle(1, 0x774422, 0.8); g.strokeRect(lx + 2, uy, lw - 4, 58); }
+        g.fillRoundedRect(lx + 2, uy, lw - 4, 58, 6);
+        if (active) {
+          g.lineStyle(1.5, 0x774422, 0.8);
+          g.strokeRoundedRect(lx + 2, uy, lw - 4, 58, 6);
+          g.fillStyle(0xcc7733, 0.9);
+          g.fillRoundedRect(lx + 2, uy, 3, 58, 2);
+        }
       };
       draw(false);
       this.unitCon.add(g);
@@ -131,14 +182,22 @@ export class ForgeScene extends Phaser.Scene {
   }
 
   buildEquipList() {
-    const ex = 160, ew = 200, startY = 54;
+    const ex = 160, ew = 200, startY = PANEL_START_Y;
+    const panH = this.H - startY - 44;
     const unit = state.party[this.unitIndex];
+
+    const shadow = this.add.graphics();
+    shadow.fillStyle(0x000000, 0.3);
+    shadow.fillRoundedRect(ex + 2, startY + 3, ew, panH, 8);
+    this.equipCon.add(shadow);
 
     const bg = this.add.graphics();
     bg.fillStyle(0x0c0907, 1);
-    bg.fillRect(ex, startY, ew, this.H - startY - 44);
-    bg.lineStyle(1, 0x2a1a08, 1);
-    bg.strokeRect(ex, startY, ew, this.H - startY - 44);
+    bg.fillRoundedRect(ex, startY, ew, panH, 8);
+    bg.lineStyle(1.5, 0x2a1a08, 1);
+    bg.strokeRoundedRect(ex, startY, ew, panH, 8);
+    bg.fillStyle(0xcc7733, 0.4);
+    bg.fillRoundedRect(ex, startY, ew, 3, { tl: 8, tr: 8, bl: 0, br: 0 });
     this.equipCon.add(bg);
 
     this.equipCon.add(this.add.text(ex + ew / 2, startY + 10, 'EQUIPMENT', {
@@ -154,8 +213,13 @@ export class ForgeScene extends Phaser.Scene {
       const draw = (h) => {
         g.clear();
         g.fillStyle(active ? 0x1a1008 : (h && item ? 0x120e06 : 0x0c0907), 1);
-        g.fillRect(ex + 4, iy, ew - 8, 46);
-        if (active) { g.lineStyle(1, 0xaa5522, 0.8); g.strokeRect(ex + 4, iy, ew - 8, 46); }
+        g.fillRoundedRect(ex + 4, iy, ew - 8, 46, 6);
+        if (active) {
+          g.lineStyle(1.5, 0xaa5522, 0.8);
+          g.strokeRoundedRect(ex + 4, iy, ew - 8, 46, 6);
+          g.fillStyle(0xaa5522, 0.9);
+          g.fillRoundedRect(ex + 4, iy, 3, 46, 2);
+        }
       };
       draw(false);
       this.equipCon.add(g);
@@ -187,15 +251,22 @@ export class ForgeScene extends Phaser.Scene {
   }
 
   buildDetail() {
-    const dx = 370, dw = this.W - dx - 12, startY = 54;
+    const dx = 370, dw = this.W - dx - 12, startY = PANEL_START_Y;
     const panH = this.H - startY - 44;
     const cx = dx + dw / 2;
 
+    const shadow = this.add.graphics();
+    shadow.fillStyle(0x000000, 0.3);
+    shadow.fillRoundedRect(dx + 2, startY + 3, dw, panH, 8);
+    this.detCon.add(shadow);
+
     const bg = this.add.graphics();
     bg.fillStyle(0x0c0907, 1);
-    bg.fillRect(dx, startY, dw, panH);
-    bg.lineStyle(1, 0x2a1a08, 1);
-    bg.strokeRect(dx, startY, dw, panH);
+    bg.fillRoundedRect(dx, startY, dw, panH, 8);
+    bg.lineStyle(1.5, 0x2a1a08, 1);
+    bg.strokeRoundedRect(dx, startY, dw, panH, 8);
+    bg.fillStyle(0xcc7733, 0.4);
+    bg.fillRoundedRect(dx, startY, dw, 3, { tl: 8, tr: 8, bl: 0, br: 0 });
     this.detCon.add(bg);
 
     const unit = state.party[this.unitIndex];
@@ -268,9 +339,10 @@ export class ForgeScene extends Phaser.Scene {
       const drawBtn = (h) => {
         btnGfx.clear();
         btnGfx.fillStyle(h && canUp ? col.hover : col.idle, 1);
-        btnGfx.fillRect(cx - 80, y, 160, 40);
-        btnGfx.lineStyle(1, col.bdr, 1);
-        btnGfx.strokeRect(cx - 80, y, 160, 40);
+        btnGfx.fillRoundedRect(cx - 80, y, 160, 40, 8);
+        btnGfx.lineStyle(1.5, col.bdr, 1);
+        btnGfx.strokeRoundedRect(cx - 80, y, 160, 40, 8);
+        if (h && canUp) { btnGfx.fillStyle(col.bdr, 0.9); btnGfx.fillRoundedRect(cx - 80, y, 4, 40, 2); }
       };
       drawBtn(false);
       const btnTxt = this.add.text(cx, y + 20, '⚒  REINFORCE', {
@@ -300,6 +372,273 @@ export class ForgeScene extends Phaser.Scene {
     if (statKey && item.stats[statKey] !== undefined) {
       item.stats[statKey] += 1;
     }
+    this.rebuild();
+  }
+
+  // ── Crafting (Gear & Forge, FORGE_RECIPES) ──────────────────────────────
+  // 'ore' in a recipe's materials is abstract — resolves to whichever
+  // specific ore item (iron/silver/gold/mystic) the player owns; its
+  // oreTier drives the crafted item's rarity via ORE_TIER_TO_RARITY.
+
+  oreOptions() {
+    const seen = new Map();
+    for (const it of state.inventory) {
+      if (it.oreTier != null && !seen.has(it.id)) seen.set(it.id, it);
+    }
+    return [...seen.values()];
+  }
+
+  // Whether `recipe` is currently craftable at all (every non-ore material
+  // present at least once, and at least one ore type owned).
+  recipeAvailable(recipe) {
+    const nonOre = recipe.materials.filter(m => m !== 'ore');
+    if (!nonOre.every(id => state.inventory.some(i => i.id === id))) return false;
+    if (recipe.materials.includes('ore') && this.oreOptions().length === 0) return false;
+    return true;
+  }
+
+  buildRecipeList() {
+    const ex = 160, ew = 200, startY = PANEL_START_Y;
+    const panH = this.H - startY - 44;
+
+    const shadow = this.add.graphics();
+    shadow.fillStyle(0x000000, 0.3);
+    shadow.fillRoundedRect(ex + 2, startY + 3, ew, panH, 8);
+    this.equipCon.add(shadow);
+
+    const bg = this.add.graphics();
+    bg.fillStyle(0x0c0907, 1);
+    bg.fillRoundedRect(ex, startY, ew, panH, 8);
+    bg.lineStyle(1.5, 0x2a1a08, 1);
+    bg.strokeRoundedRect(ex, startY, ew, panH, 8);
+    bg.fillStyle(0xcc7733, 0.4);
+    bg.fillRoundedRect(ex, startY, ew, 3, { tl: 8, tr: 8, bl: 0, br: 0 });
+    this.equipCon.add(bg);
+
+    this.equipCon.add(this.add.text(ex + ew / 2, startY + 10, 'RECIPES', {
+      fontSize: '10px', fontFamily: 'monospace', color: '#664422',
+    }).setOrigin(0.5, 0));
+
+    FORGE_RECIPES.forEach((recipe, i) => {
+      const iy = startY + 30 + i * 60;
+      const active = this.selectedRecipe?.id === recipe.id;
+      const available = this.recipeAvailable(recipe);
+
+      const g = this.add.graphics();
+      const draw = (h) => {
+        g.clear();
+        g.fillStyle(active ? 0x1a1008 : (h && available ? 0x120e06 : 0x0c0907), 1);
+        g.fillRoundedRect(ex + 4, iy, ew - 8, 52, 6);
+        if (active) {
+          g.lineStyle(1.5, 0xaa5522, 0.8);
+          g.strokeRoundedRect(ex + 4, iy, ew - 8, 52, 6);
+          g.fillStyle(0xaa5522, 0.9);
+          g.fillRoundedRect(ex + 4, iy, 3, 52, 2);
+        }
+      };
+      draw(false);
+      this.equipCon.add(g);
+
+      const slotStr = recipe.resultSlots.map(s => SLOT_LABEL[s] ?? s).join(' / ');
+      this.equipCon.add(this.add.text(ex + 14, iy + 6, slotStr, {
+        fontSize: '11px', fontFamily: 'monospace', fontStyle: 'bold',
+        color: available ? '#ddccaa' : '#554433',
+      }));
+      this.equipCon.add(this.add.text(ex + 14, iy + 24, recipe.desc, {
+        fontSize: '9px', fontFamily: 'monospace', color: available ? '#997755' : '#443322',
+        wordWrap: { width: ew - 24 },
+      }));
+
+      const z = this.add.zone(ex + ew / 2, iy + 26, ew - 8, 52).setInteractive({ useHandCursor: true });
+      z.on('pointerover', () => { if (!active) draw(true); });
+      z.on('pointerout',  () => { if (!active) draw(false); });
+      z.on('pointerdown', () => {
+        this.selectedRecipe = recipe;
+        this.selectedResultSlot = recipe.resultSlots[0];
+        const ores = this.oreOptions();
+        this.selectedOreId = ores[0]?.id ?? null;
+        this.rebuild();
+      });
+      this.equipCon.add(z);
+    });
+  }
+
+  buildCraftDetail() {
+    const dx = 370, dw = this.W - dx - 12, startY = PANEL_START_Y;
+    const panH = this.H - startY - 44;
+    const cx = dx + dw / 2;
+
+    const shadow = this.add.graphics();
+    shadow.fillStyle(0x000000, 0.3);
+    shadow.fillRoundedRect(dx + 2, startY + 3, dw, panH, 8);
+    this.detCon.add(shadow);
+
+    const bg = this.add.graphics();
+    bg.fillStyle(0x0c0907, 1);
+    bg.fillRoundedRect(dx, startY, dw, panH, 8);
+    bg.lineStyle(1.5, 0x2a1a08, 1);
+    bg.strokeRoundedRect(dx, startY, dw, panH, 8);
+    bg.fillStyle(0xcc7733, 0.4);
+    bg.fillRoundedRect(dx, startY, dw, 3, { tl: 8, tr: 8, bl: 0, br: 0 });
+    this.detCon.add(bg);
+
+    const recipe = this.selectedRecipe;
+    const unit = state.party[this.unitIndex];
+
+    if (!recipe) {
+      this.detCon.add(this.add.text(cx, startY + panH / 2, 'Select a recipe\nto craft.', {
+        fontSize: '12px', fontFamily: 'monospace', color: '#443322',
+        align: 'center', wordWrap: { width: dw - 24 },
+      }).setOrigin(0.5));
+      return;
+    }
+
+    let y = startY + 20;
+    this.detCon.add(this.add.text(cx, y, recipe.desc, {
+      fontSize: '14px', fontFamily: 'Georgia, serif', fontStyle: 'bold', color: '#ddccaa',
+      align: 'center', wordWrap: { width: dw - 32 },
+    }).setOrigin(0.5));
+    y += 34;
+
+    // Result slot picker, if this recipe produces more than one possible slot
+    if (recipe.resultSlots.length > 1) {
+      this.detCon.add(this.add.text(cx, y, 'RESULT SLOT', { fontSize:'9px', fontFamily:'monospace', color:'#554433' }).setOrigin(0.5));
+      y += 16;
+      const bw = 90, gap = 8;
+      const totalW = recipe.resultSlots.length * bw + (recipe.resultSlots.length - 1) * gap;
+      let bx = cx - totalW / 2 + bw / 2;
+      for (const slot of recipe.resultSlots) {
+        const active = this.selectedResultSlot === slot;
+        const myBx = bx;
+        const g = this.add.graphics();
+        g.fillStyle(active ? 0x2a1608 : 0x0e0a06, 1);
+        g.fillRoundedRect(myBx - bw / 2, y, bw, 26, 6);
+        g.lineStyle(1.5, active ? 0xcc7733 : 0x3a2818, 1);
+        g.strokeRoundedRect(myBx - bw / 2, y, bw, 26, 6);
+        this.detCon.add(g);
+        this.detCon.add(this.add.text(myBx, y + 13, SLOT_LABEL[slot] ?? slot, {
+          fontSize: '10px', fontFamily: 'monospace', color: active ? '#ffaa44' : '#997755',
+        }).setOrigin(0.5));
+        const z = this.add.zone(myBx, y + 13, bw, 26).setInteractive({ useHandCursor: true });
+        z.on('pointerdown', () => { this.selectedResultSlot = slot; this.rebuild(); });
+        this.detCon.add(z);
+        bx += bw + gap;
+      }
+      y += 36;
+    }
+
+    // Ore picker, if this recipe needs ore and the player owns more than one type
+    const ores = this.oreOptions();
+    if (recipe.materials.includes('ore') && ores.length > 1) {
+      this.detCon.add(this.add.text(cx, y, 'ORE TYPE (sets rarity)', { fontSize:'9px', fontFamily:'monospace', color:'#554433' }).setOrigin(0.5));
+      y += 16;
+      const bw = 80, gap = 6;
+      const totalW = ores.length * bw + (ores.length - 1) * gap;
+      let bx = cx - totalW / 2 + bw / 2;
+      for (const ore of ores) {
+        const active = this.selectedOreId === ore.id;
+        const myBx = bx;
+        const g = this.add.graphics();
+        g.fillStyle(active ? 0x2a1608 : 0x0e0a06, 1);
+        g.fillRoundedRect(myBx - bw / 2, y, bw, 24, 6);
+        g.lineStyle(1.5, active ? 0xcc7733 : 0x3a2818, 1);
+        g.strokeRoundedRect(myBx - bw / 2, y, bw, 24, 6);
+        this.detCon.add(g);
+        this.detCon.add(this.add.text(myBx, y + 12, ore.name.replace(' Ore', ''), {
+          fontSize: '9px', fontFamily: 'monospace', color: active ? '#ffaa44' : '#997755',
+        }).setOrigin(0.5));
+        const z = this.add.zone(myBx, y + 12, bw, 24).setInteractive({ useHandCursor: true });
+        z.on('pointerdown', () => { this.selectedOreId = ore.id; this.rebuild(); });
+        this.detCon.add(z);
+        bx += bw + gap;
+      }
+      y += 34;
+    }
+
+    // Material checklist
+    this.detCon.add(this.add.text(cx, y, 'MATERIALS NEEDED', { fontSize:'9px', fontFamily:'monospace', color:'#554433' }).setOrigin(0.5));
+    y += 16;
+    for (const kind of recipe.materials) {
+      const isOre = kind === 'ore';
+      const matId = isOre ? this.selectedOreId : kind;
+      const have = matId ? state.inventory.some(i => i.id === matId) : false;
+      const label = isOre ? (matId ? getItem(matId)?.name ?? 'Ore' : 'Ore (none owned)') : (getItem(kind)?.name ?? kind);
+      this.detCon.add(this.add.text(cx, y, `${have ? '✓' : '✕'}  ${label}`, {
+        fontSize: '12px', fontFamily: 'monospace', color: have ? '#88cc66' : '#aa4444',
+      }).setOrigin(0.5));
+      y += 20;
+    }
+    y += 12;
+
+    const oreTier = recipe.materials.includes('ore') ? getItem(this.selectedOreId)?.oreTier : null;
+    const previewRarity = oreTier ? (ORE_TIER_TO_RARITY[oreTier] ?? 'uncommon') : 'uncommon';
+    this.detCon.add(this.add.text(cx, y, `Result rarity: ${previewRarity.toUpperCase()}`, {
+      fontSize: '11px', fontFamily: 'monospace', color: '#cc9944',
+    }).setOrigin(0.5));
+    y += 18;
+    this.detCon.add(this.add.text(cx, y, `Rolled for ${unit.name.split(' ')[0]}'s talents`, {
+      fontSize: '9px', fontFamily: 'monospace', color: '#665544',
+    }).setOrigin(0.5));
+    y += 30;
+
+    const canCraft = this.recipeAvailable(recipe);
+    const col = canCraft
+      ? { idle:0x1a0c04, hover:0x261208, bdr:0x884422, txt:'#dd8844' }
+      : { idle:0x0e0e0e, hover:0x0e0e0e, bdr:0x1e1e1e, txt:'#333333' };
+
+    const btnGfx = this.add.graphics();
+    const drawBtn = (h) => {
+      btnGfx.clear();
+      btnGfx.fillStyle(h && canCraft ? col.hover : col.idle, 1);
+      btnGfx.fillRoundedRect(cx - 80, y, 160, 40, 8);
+      btnGfx.lineStyle(1.5, col.bdr, 1);
+      btnGfx.strokeRoundedRect(cx - 80, y, 160, 40, 8);
+      if (h && canCraft) { btnGfx.fillStyle(col.bdr, 0.9); btnGfx.fillRoundedRect(cx - 80, y, 4, 40, 2); }
+    };
+    drawBtn(false);
+    const btnTxt = this.add.text(cx, y + 20, '✦  CRAFT', {
+      fontSize: '14px', fontFamily: 'monospace', fontStyle: 'bold', color: col.txt,
+    }).setOrigin(0.5);
+    this.detCon.add([btnGfx, btnTxt]);
+
+    if (canCraft) {
+      const z = this.add.zone(cx, y + 20, 160, 40).setInteractive({ useHandCursor: true });
+      z.on('pointerover', () => drawBtn(true));
+      z.on('pointerout',  () => drawBtn(false));
+      z.on('pointerdown', () => this.craftItem(unit, recipe, this.selectedResultSlot, this.selectedOreId));
+      this.detCon.add(z);
+    }
+  }
+
+  craftItem(unit, recipe, resultSlot, oreId) {
+    const materialIds = recipe.materials.map(kind => kind === 'ore' ? oreId : kind);
+    if (!materialIds.every(id => id && state.inventory.some(i => i.id === id))) return;
+
+    // Capture the ore's tier before consuming it.
+    const oreItem = oreId ? state.inventory.find(i => i.id === oreId) : null;
+    const rarity = oreItem ? (ORE_TIER_TO_RARITY[oreItem.oreTier] ?? 'uncommon') : 'uncommon';
+
+    for (const id of materialIds) {
+      const idx = state.inventory.findIndex(i => i.id === id);
+      if (idx !== -1) state.inventory.splice(idx, 1);
+    }
+
+    const layout = gearLayoutForUnit(unit);
+    const classItemMultiplier = resultSlot === 'weapon' ? layout.classItemMultiplier : 1;
+    const item = rollGearItem({
+      slot: resultSlot, rarity, talents: unit.talents ?? [], classItemMultiplier, cost: 0,
+      forClass: roleDisplayLabel(unit),
+    });
+    state.inventory.push(item);
+
+    // Capital questline craft-quest gate (M0-M4 redesign, Phase 3) — counts
+    // crafts made while the stage is active; WorldMapScene's M3 handler
+    // checks this against a threshold of 2 once the player returns to M3.
+    if (state.capitalQuest === 'craft_pending') state.capitalCraftCount += 1;
+
+    this.selectedRecipe = null;
+    this.selectedResultSlot = null;
+    this.selectedOreId = null;
     this.rebuild();
   }
 }

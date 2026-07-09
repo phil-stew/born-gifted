@@ -1,7 +1,8 @@
 import Phaser from 'phaser';
 import { state, equipItem, unequipSlot, effectiveStats, roleDisplayLabel, gearLayoutForUnit } from '../data/gameState.js';
-import { rarityColor, gearFrameName, materialFrameName, GEAR_SHEET, GEAR_CLASS_COL, GEAR_SLOT_ROW, MATERIAL_ICON_FRAME } from '../data/items.js';
+import { rarityColor, gearFrameName, materialFrameName, GEAR_SHEET, registerGearFrames, MATERIAL_ICON_FRAME } from '../data/items.js';
 import { stripBackgroundByKey } from '../data/heroSprites.js';
+import { drawButton } from '../ui/canvasButton.js';
 
 // 'weapon' is stored-data's name for what the Gear & Forge redesign calls
 // the Class Item (see gearLayoutForUnit/CLASS_GEAR_LAYOUT in gameState.js —
@@ -31,7 +32,7 @@ export class EquipmentScene extends Phaser.Scene {
     // Icon sheets are baked with a solid black background (no alpha channel).
     stripBackgroundByKey(this, 'gears',     { cols: GEAR_SHEET.cols,     rows: GEAR_SHEET.rows });
     stripBackgroundByKey(this, 'materials', { cols: 5, rows: 3 }); // irregular sheet; approximate for seeding
-    this._registerGearFrames();
+    registerGearFrames(this);
     this._registerMaterialFrames();
 
     // Background
@@ -57,18 +58,6 @@ export class EquipmentScene extends Phaser.Scene {
 
     this.renderAll();
     this.drawBackBtn(height);
-  }
-
-  _registerGearFrames() {
-    if (!this.textures.exists('gears')) return;
-    const tex = this.textures.get('gears');
-    const { cellW, cellH } = GEAR_SHEET;
-    for (const [cls, col] of Object.entries(GEAR_CLASS_COL)) {
-      for (const [slot, row] of Object.entries(GEAR_SLOT_ROW)) {
-        const name = `gear_${cls}_${slot}`;
-        if (!tex.has(name)) tex.add(name, 0, col * cellW, row * cellH, cellW, cellH);
-      }
-    }
   }
 
   _registerMaterialFrames() {
@@ -125,10 +114,12 @@ export class EquipmentScene extends Phaser.Scene {
 
       const gfx = this.add.graphics();
       gfx.fillStyle(selected ? 0x1a1a3a : 0x0d0d1a, 1);
-      gfx.fillRect(4, y, 152, 86);
+      gfx.fillRoundedRect(4, y, 152, 86, 6);
       if (selected) {
         gfx.lineStyle(2, unit.color, 0.8);
-        gfx.strokeRect(4, y, 152, 86);
+        gfx.strokeRoundedRect(4, y, 152, 86, 6);
+        gfx.fillStyle(unit.color, 0.9);
+        gfx.fillRoundedRect(4, y, 3, 86, 2);
       }
       this.partyContainer.add(gfx);
 
@@ -184,9 +175,10 @@ export class EquipmentScene extends Phaser.Scene {
 
       const gfx = this.add.graphics();
       gfx.fillStyle(selected ? 0x1a1a2a : 0x0e0e1e, 1);
-      gfx.fillRect(sx, y, sw, 64);
+      gfx.fillRoundedRect(sx, y, sw, 64, 8);
       gfx.lineStyle(selected ? 2 : 1, selected ? 0xffaa44 : (item ? rColor : 0x222244), 1);
-      gfx.strokeRect(sx, y, sw, 64);
+      gfx.strokeRoundedRect(sx, y, sw, 64, 8);
+      if (selected) { gfx.fillStyle(0xffaa44, 0.9); gfx.fillRoundedRect(sx, y, 4, 64, 2); }
       this.slotsContainer.add(gfx);
 
       // Class Item's stat multiplier (×2 Martial Arts, ×3 Performance) is
@@ -205,7 +197,7 @@ export class EquipmentScene extends Phaser.Scene {
         const icon = this._gearIcon(sx + 10, y + 44, item, 44, 44);
         if (icon) this.slotsContainer.add(icon);
         const tx = icon ? sx + 62 : sx + 10;
-        const itemName = this.add.text(tx, y + 26, item.name, { fontSize:'12px', fontFamily:'monospace', fontStyle:'bold', color:rc });
+        const itemName = this.add.text(tx, y + 26, item.name + (item.forClass ? ` (${item.forClass})` : ''), { fontSize:'12px', fontFamily:'monospace', fontStyle:'bold', color:rc });
         const bonus    = this._bonusLineText(item);
         const bonusT   = this.add.text(tx, y + 46, bonus, { fontSize:'9px', fontFamily:'monospace', color:'#446644' });
         this.slotsContainer.add([itemName, bonusT]);
@@ -247,14 +239,14 @@ export class EquipmentScene extends Phaser.Scene {
     y += 20;
 
     if (this.selectedSlot && unit.equip[this.selectedSlot]) {
-      const unequipBtn = this.add.text(ix + iw / 2, y, '✕  REMOVE ITEM', {
-        fontSize: '11px', fontFamily: 'monospace', color: '#cc4444',
-        backgroundColor: '#1a0a0a', padding: { x: 10, y: 4 },
-      }).setOrigin(0.5).setInteractive({ useHandCursor: true });
-      unequipBtn.on('pointerover', () => unequipBtn.setStyle({ color: '#ff6666' }));
-      unequipBtn.on('pointerout',  () => unequipBtn.setStyle({ color: '#cc4444' }));
-      unequipBtn.on('pointerdown', () => { unequipSlot(unit, this.selectedSlot); this.selectedSlot = null; this.renderAll(); });
-      this.inventoryContainer.add(unequipBtn);
+      const unequipBtn = drawButton(this, {
+        x: ix + iw / 2, y: y + 12, w: 160, h: 26, label: '✕  REMOVE ITEM',
+        fontSize: '11px', radius: 6,
+        bg: 0x1a0a0a, bgHover: 0x260e0e, border: 0x662222, accent: 0xff6666,
+        textColor: '#cc4444', textHoverColor: '#ff6666',
+        onClick: () => { unequipSlot(unit, this.selectedSlot); this.selectedSlot = null; this.renderAll(); },
+      });
+      this.inventoryContainer.add(unequipBtn.container);
       y += 32;
     }
 
@@ -276,9 +268,9 @@ export class EquipmentScene extends Phaser.Scene {
 
       const gfx = this.add.graphics();
       gfx.fillStyle(0x0e0e1e, 1);
-      gfx.fillRect(ix, y, iw, 58);
+      gfx.fillRoundedRect(ix, y, iw, 58, 6);
       gfx.lineStyle(1, rColor, 0.5);
-      gfx.strokeRect(ix, y, iw, 58);
+      gfx.strokeRoundedRect(ix, y, iw, 58, 6);
       this.inventoryContainer.add(gfx);
 
       // Gear icon
@@ -288,7 +280,8 @@ export class EquipmentScene extends Phaser.Scene {
       }
 
       const nameT  = this.add.text(textX, y + 6, item.name, { fontSize:'12px', fontFamily:'monospace', fontStyle:'bold', color:rc });
-      const slotT  = this.add.text(textX, y + 23, item.slot ? (SLOT_LABEL[item.slot] ?? item.slot.toUpperCase()) : 'MATERIAL', {
+      const slotLabelStr = item.slot ? (SLOT_LABEL[item.slot] ?? item.slot.toUpperCase()) : 'MATERIAL';
+      const slotT  = this.add.text(textX, y + 23, slotLabelStr + (item.forClass ? ` · ${item.forClass}` : ''), {
         fontSize: '9px', fontFamily: 'monospace', color: item.type === 'material' ? '#668844' : '#555577',
       });
       const bonus  = this._bonusLineText(item);
@@ -298,8 +291,8 @@ export class EquipmentScene extends Phaser.Scene {
       this.inventoryContainer.add([nameT, slotT, bonusT, costT]);
 
       const hit = this.add.rectangle(ix + iw / 2, y + 29, iw, 58).setInteractive({ useHandCursor: true });
-      hit.on('pointerover', () => { gfx.clear(); gfx.fillStyle(0x151528,1); gfx.fillRect(ix,y,iw,58); gfx.lineStyle(2,rColor,0.9); gfx.strokeRect(ix,y,iw,58); });
-      hit.on('pointerout',  () => { gfx.clear(); gfx.fillStyle(0x0e0e1e,1); gfx.fillRect(ix,y,iw,58); gfx.lineStyle(1,rColor,0.5); gfx.strokeRect(ix,y,iw,58); });
+      hit.on('pointerover', () => { gfx.clear(); gfx.fillStyle(0x151528,1); gfx.fillRoundedRect(ix,y,iw,58,6); gfx.lineStyle(2,rColor,0.9); gfx.strokeRoundedRect(ix,y,iw,58,6); gfx.fillStyle(rColor,0.9); gfx.fillRoundedRect(ix,y,3,58,2); });
+      hit.on('pointerout',  () => { gfx.clear(); gfx.fillStyle(0x0e0e1e,1); gfx.fillRoundedRect(ix,y,iw,58,6); gfx.lineStyle(1,rColor,0.5); gfx.strokeRoundedRect(ix,y,iw,58,6); });
       hit.on('pointerdown', () => {
         if (item.type === 'material') return;
         equipItem(unit, item);
@@ -313,12 +306,12 @@ export class EquipmentScene extends Phaser.Scene {
   }
 
   drawBackBtn(height) {
-    const btn = this.add.text(16, height - 24, '◀  WORLD MAP', {
-      fontSize: '13px', fontFamily: 'monospace', color: '#7777aa',
-      backgroundColor: '#0e0e20', padding: { x: 10, y: 5 },
-    }).setOrigin(0, 0.5).setInteractive({ useHandCursor: true });
-    btn.on('pointerover', () => btn.setStyle({ color: '#ffffff' }));
-    btn.on('pointerout',  () => btn.setStyle({ color: '#7777aa' }));
-    btn.on('pointerdown', () => this.scene.start('WorldMapScene'));
+    drawButton(this, {
+      x: 76, y: height - 24, w: 128, h: 30, label: '◀  WORLD MAP',
+      fontSize: '13px', radius: 6,
+      bg: 0x0e0e20, bgHover: 0x181834, border: 0x334477, accent: 0xffffff,
+      textColor: '#7777aa',
+      onClick: () => this.scene.start('WorldMapScene'),
+    });
   }
 }

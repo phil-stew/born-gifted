@@ -3,16 +3,14 @@
 // GEAR_CLASS_COL / GEAR_SLOT_ROW below) — rarity is shown separately via
 // rarityColor(), not baked into the icon art.
 
-import { TALENT_STAT_KEY } from './gameState.js';
+import { TALENT_STAT_KEY, roleDisplayLabel } from './gameState.js';
 
 export const ITEMS = [
 
   // ── Materials ─────────────────────────────────────────────────────────────
-  { id:'heal_herb',    name:'Heal Herb',    type:'material', slot:null, rarity:'common',   cost:15,  stats:{}, desc:'A medicinal herb found in forest clearings.' },
+  { id:'heal_herb',    name:'Heal Herb',    type:'material', slot:null, rarity:'common',   cost:15,  stats:{}, healPct:0.20, desc:'A medicinal herb found in forest clearings. Restores 20% of max HP.' },
   { id:'iron_scrap',   name:'Iron Scrap',   type:'material', slot:null, rarity:'common',   cost:20,  stats:{}, desc:'Salvaged metal, useful for forging.' },
-  { id:'crystal_shard',name:'Crystal Shard',type:'material', slot:null, rarity:'uncommon', cost:60,  stats:{}, desc:'A shard of elemental crystal.' },
   { id:'leather_strip',name:'Leather Strip',type:'material', slot:null, rarity:'common',   cost:25,  stats:{}, desc:'Cured hide strips. Flexible and durable.' },
-  { id:'wood_plank',   name:'Wood Plank',   type:'material', slot:null, rarity:'common',   cost:18,  stats:{}, desc:'Treated wood boards salvaged from the borderlands.' },
   // M4 upgrade materials (feed the existing Forge reinforcement mechanic —
   // kept as-is, see FORGE_RECIPES below for the separate new crafting system)
   { id:'cave_crystal', name:'Cave Crystal', type:'material', slot:null, rarity:'uncommon', cost:75,  stats:{}, desc:'A luminous crystal formed deep in the caves. Enhances gear.' },
@@ -34,29 +32,26 @@ export const ITEMS = [
   { id:'mystic_ore', name:'Mystic Ore', type:'material', slot:null, rarity:'legendary', oreTier:4, cost:700, stats:{}, desc:'Ore humming with unexplained energy. Crafts Legendary gear.' },
 
   // ── Herbs & Tonics (July 2026 art) ───────────────────────────────────────
-  // Sellable flavor materials, same as heal_herb — no consume/use mechanic
-  // exists yet for ANY item in this game (heal_herb itself is inert despite
-  // the name), so these are wired the same way: icon + sell value only.
+  // Battle-usable consumables (healPct/spPct restore a % of max HP/SP — see
+  // isUsableItem/useItemEffects below). Mint Sprig/Lavender Bloom/Wild
+  // Berries have no combat effect defined on the sheet — still sellable
+  // flavor materials, icon + sell value only.
   { id:'mint_sprig',     name:'Mint Sprig',     type:'material', slot:null, rarity:'common',   cost:15, stats:{}, desc:'A hardy green sprig with a sharp, clean scent.' },
   { id:'lavender_bloom', name:'Lavender Bloom', type:'material', slot:null, rarity:'common',   cost:20, stats:{}, desc:'A flowering herb prized for its calming scent.' },
   { id:'wild_berries',   name:'Wild Berries',   type:'material', slot:null, rarity:'common',   cost:20, stats:{}, desc:'Sweet berries picked from a hardy bramble.' },
-  { id:'health_potion',  name:'Health Potion',  type:'material', slot:null, rarity:'uncommon', cost:45, stats:{}, desc:'A brewed red tonic, warm to the touch.' },
-  { id:'focus_potion',   name:'Focus Potion',   type:'material', slot:null, rarity:'uncommon', cost:45, stats:{}, desc:'A brewed blue tonic said to sharpen the mind.' },
-  { id:'vitality_potion',name:'Vitality Potion',type:'material', slot:null, rarity:'uncommon', cost:45, stats:{}, desc:'A brewed green tonic with a faint herbal shimmer.' },
+  { id:'health_potion',  name:'Health Potion',  type:'material', slot:null, rarity:'uncommon', cost:45, stats:{}, healPct:0.35, desc:'A brewed red tonic, warm to the touch. Restores 35% of max HP.' },
+  { id:'focus_potion',   name:'Focus Potion',   type:'material', slot:null, rarity:'uncommon', cost:45, stats:{}, spPct:0.35, desc:'A brewed blue tonic said to sharpen the mind. Restores 35% of max SP.' },
+  { id:'vitality_potion',name:'Vitality Potion',type:'material', slot:null, rarity:'uncommon', cost:45, stats:{}, healPct:0.25, spPct:0.25, desc:'A brewed green tonic with a faint herbal shimmer. Restores 25% of max HP and 25% of max SP.' },
 
   // ══════════════════════════════════════════════════════════════════════════
   // SOCCER  (Reno · Sela)
   // ══════════════════════════════════════════════════════════════════════════
   { id:'soccer_jersey',      sport:'Soccer', name:'Soccer Jersey',       slot:'chest',    rarity:'common',   cost:60,  stats:{ speed:1, stamina:1 },      desc:'Lightweight match jersey for agile movement.' },
   { id:'soccer_jersey_pro',  sport:'Soccer', name:'Pro Soccer Jersey',   slot:'chest',    rarity:'uncommon', cost:155, stats:{ speed:2, stamina:2 },      desc:'Academy-issue jersey with moisture control.' },
-  { id:'soccer_jersey_elite',sport:'Soccer', name:'Elite Soccer Jersey', slot:'chest',    rarity:'rare',     cost:360, stats:{ speed:4, stamina:3 },      desc:'Championship-grade jersey worn by top strikers.' },
   { id:'soccer_cleats',      sport:'Soccer', name:'Soccer Cleats',       slot:'footwear', rarity:'common',   cost:65,  stats:{ speed:2 },                  desc:'Standard cleats for firm-ground traction.' },
   { id:'soccer_cleats_pro',  sport:'Soccer', name:'Sprint Cleats',       slot:'footwear', rarity:'uncommon', cost:150, stats:{ speed:4 },                  desc:'Lightweight cleats tuned for burst speed.' },
-  { id:'soccer_cleats_elite',sport:'Soccer', name:'Lightning Cleats',    slot:'footwear', rarity:'rare',     cost:360, stats:{ speed:6, endurance:2 },    desc:'Infused with lightning-element energy.' },
   { id:'soccer_ball',        sport:'Soccer', name:'Soccer Ball',         slot:'weapon',   rarity:'common',   cost:50,  stats:{ strength:1 },               desc:'Standard match ball. A striker\'s best friend.' },
   { id:'soccer_ball_pro',    sport:'Soccer', name:'Pro Match Ball',      slot:'weapon',   rarity:'uncommon', cost:140, stats:{ strength:2, speed:1 },      desc:'Tournament-grade ball with tight spin control.' },
-  { id:'soccer_ball_elite',  sport:'Soccer', name:'Thunder Ball',        slot:'weapon',   rarity:'rare',     cost:340, stats:{ strength:4, speed:2 },      desc:'A ball charged with electric Gift energy.' },
-  { id:'soccer_ball_epic',   sport:'Soccer', name:'Volt Sphere',         slot:'weapon',   rarity:'epic',     cost:700, stats:{ strength:6, speed:4 },      desc:'Legendary ball that crackles with lightning.' },
 
   // ══════════════════════════════════════════════════════════════════════════
   // BASKETBALL  (Trice)
@@ -67,19 +62,16 @@ export const ITEMS = [
   { id:'bball_shoes_pro',   sport:'Basketball', name:'Air Court Shoes',       slot:'footwear', rarity:'uncommon', cost:160, stats:{ speed:2, endurance:2 },    desc:'Academy-issue high-tops with spring soles.' },
   { id:'basketball',        sport:'Basketball', name:'Basketball',            slot:'weapon',   rarity:'common',   cost:55,  stats:{ strength:1, stamina:1 },   desc:'Regulation ball, great for power plays.' },
   { id:'basketball_pro',    sport:'Basketball', name:'Pro Basketball',        slot:'weapon',   rarity:'uncommon', cost:145, stats:{ strength:2, stamina:2 },   desc:'Tournament-grade ball with superior grip.' },
-  { id:'basketball_epic',   sport:'Basketball', name:'Earth Sphere',          slot:'weapon',   rarity:'epic',     cost:720, stats:{ strength:5, stamina:4 },   desc:'A ball imbued with earth Gift energy.' },
 
   // ══════════════════════════════════════════════════════════════════════════
   // FOOTBALL  (Drace)
   // ══════════════════════════════════════════════════════════════════════════
   { id:'football_helmet',      sport:'Football', name:'Football Helmet',       slot:'headwear', rarity:'common',   cost:80,  stats:{ endurance:2 },              desc:'Hard-shell helmet for full-contact play.' },
   { id:'football_helmet_pro',  sport:'Football', name:'Pro Football Helmet',   slot:'headwear', rarity:'uncommon', cost:190, stats:{ endurance:3, strength:1 },  desc:'Impact-rated helmet with reinforced faceguard.' },
-  { id:'football_helmet_elite',sport:'Football', name:'Titan Helmet',          slot:'headwear', rarity:'rare',     cost:420, stats:{ endurance:5, strength:2 },  desc:'Rare alloy helmet worn by elite linebackers.' },
   { id:'football_jersey',      sport:'Football', name:'Football Jersey',       slot:'chest',    rarity:'common',   cost:65,  stats:{ endurance:1, strength:1 },  desc:'Padded jersey built for hard tackles.' },
   { id:'football_jersey_pro',  sport:'Football', name:'Pro Football Jersey',   slot:'chest',    rarity:'uncommon', cost:170, stats:{ endurance:2, strength:2 },  desc:'Reinforced game-day jersey.' },
   { id:'football',             sport:'Football', name:'Football',              slot:'weapon',   rarity:'common',   cost:55,  stats:{ strength:2 },               desc:'Regulation ball. Throw it hard.' },
   { id:'football_pro',         sport:'Football', name:'Pro Football',          slot:'weapon',   rarity:'uncommon', cost:150, stats:{ strength:3, endurance:1 },  desc:'Tournament-grade pigskin with fire stitch.' },
-  { id:'football_epic',        sport:'Football', name:'Inferno Pigskin',       slot:'weapon',   rarity:'epic',     cost:730, stats:{ strength:6, endurance:3 },  desc:'A football wreathed in fire Gift energy.' },
 
   // ══════════════════════════════════════════════════════════════════════════
   // VOLLEYBALL  (Kael)
@@ -90,7 +82,6 @@ export const ITEMS = [
   { id:'volleyball_shoes_pro',  sport:'Volleyball', name:'Air Spike Shoes',       slot:'footwear', rarity:'uncommon', cost:155, stats:{ speed:2, stamina:2 },      desc:'Cushioned for repeated jump landings.' },
   { id:'volleyball',            sport:'Volleyball', name:'Volleyball',            slot:'weapon',   rarity:'common',   cost:50,  stats:{ strength:1, speed:1 },     desc:'Regulation indoor ball. Spike with precision.' },
   { id:'volleyball_pro',        sport:'Volleyball', name:'Pro Volleyball',        slot:'weapon',   rarity:'uncommon', cost:140, stats:{ strength:2, speed:2 },     desc:'Competition ball with wind-element stitching.' },
-  { id:'volleyball_epic',       sport:'Volleyball', name:'Gale Sphere',           slot:'weapon',   rarity:'epic',     cost:700, stats:{ strength:5, speed:5 },     desc:'A ball that whistles with wind Gift energy.' },
 
   // ══════════════════════════════════════════════════════════════════════════
   // HOCKEY  (universal)
@@ -103,7 +94,6 @@ export const ITEMS = [
   { id:'hockey_gloves_pro',  sport:'Hockey', name:'Pro Hockey Gloves',   slot:'handwear', rarity:'uncommon', cost:170, stats:{ strength:2, endurance:2 },  desc:'Reinforced gloves with knuckle guard.' },
   { id:'hockey_stick',       sport:'Hockey', name:'Hockey Stick',        slot:'weapon',   rarity:'common',   cost:80,  stats:{ strength:2, speed:1 },      desc:'Composite stick for fast, powerful shots.' },
   { id:'hockey_stick_pro',   sport:'Hockey', name:'Pro Hockey Stick',    slot:'weapon',   rarity:'uncommon', cost:200, stats:{ strength:3, speed:2 },      desc:'Tournament blade with precision curve.' },
-  { id:'hockey_stick_elite', sport:'Hockey', name:'Frost Blade',         slot:'weapon',   rarity:'rare',     cost:430, stats:{ strength:5, speed:3 },      desc:'A stick forged with ice-element energy.' },
 
   // ══════════════════════════════════════════════════════════════════════════
   // BOXING  (universal — weapon = gloves pair, left + right)
@@ -114,7 +104,6 @@ export const ITEMS = [
   { id:'boxing_tank_pro',     sport:'Boxing', name:'Pro Boxing Tank',      slot:'chest',    rarity:'uncommon', cost:145, stats:{ stamina:3, speed:1 },        desc:'Moisture-wicking competition tank.' },
   { id:'boxing_gloves',       sport:'Boxing', name:'Boxing Gloves',        slot:'weapon',   rarity:'common',   cost:80,  stats:{ strength:2, stamina:1 },     desc:'Left + right gloves for powerful combination strikes.' },
   { id:'boxing_gloves_pro',   sport:'Boxing', name:'Pro Boxing Gloves',    slot:'weapon',   rarity:'uncommon', cost:200, stats:{ strength:3, stamina:2 },     desc:'Competition 10oz gloves, tuned for speed combos.' },
-  { id:'boxing_gloves_elite', sport:'Boxing', name:'Iron Fist Gloves',     slot:'weapon',   rarity:'rare',     cost:420, stats:{ strength:5, stamina:3 },     desc:'Champion-grade gloves that pack a knockout punch.' },
 
   // ══════════════════════════════════════════════════════════════════════════
   // BASEBALL  (universal)
@@ -126,7 +115,6 @@ export const ITEMS = [
   { id:'baseball_cleats',      sport:'Baseball', name:'Baseball Cleats',       slot:'footwear', rarity:'common',   cost:65,  stats:{ speed:1, strength:1 },       desc:'Metal-tip cleats for grip on the diamond.' },
   { id:'baseball_bat',         sport:'Baseball', name:'Baseball Bat',          slot:'weapon',   rarity:'common',   cost:70,  stats:{ strength:2 },                desc:'Aluminum alloy bat for power hitters.' },
   { id:'baseball_bat_pro',     sport:'Baseball', name:'Pro Baseball Bat',      slot:'weapon',   rarity:'uncommon', cost:180, stats:{ strength:4, speed:1 },       desc:'Composite bat with vibration damping.' },
-  { id:'baseball_bat_elite',   sport:'Baseball', name:'Power Lumber',          slot:'weapon',   rarity:'rare',     cost:400, stats:{ strength:6, endurance:1 },   desc:'Custom-forged bat used by tournament legends.' },
 
   // ══════════════════════════════════════════════════════════════════════════
   // TENNIS  (universal)
@@ -137,7 +125,6 @@ export const ITEMS = [
   { id:'tennis_shoes_pro',      sport:'Tennis', name:'Pro Tennis Shoes',     slot:'footwear', rarity:'uncommon', cost:155, stats:{ speed:3, endurance:1 },     desc:'Academy-grade with cushioned arch support.' },
   { id:'tennis_racket',         sport:'Tennis', name:'Tennis Racket',        slot:'weapon',   rarity:'common',   cost:75,  stats:{ speed:2, strength:1 },      desc:'Standard racket with open string pattern.' },
   { id:'tennis_racket_pro',     sport:'Tennis', name:'Pro Tennis Racket',    slot:'weapon',   rarity:'uncommon', cost:190, stats:{ speed:3, strength:2 },      desc:'Tournament frame with aerodynamic beam.' },
-  { id:'tennis_racket_elite',   sport:'Tennis', name:'Wind Slicer',          slot:'weapon',   rarity:'rare',     cost:410, stats:{ speed:5, strength:3 },      desc:'A racket that cuts the air with Gift energy.' },
 
   // ══════════════════════════════════════════════════════════════════════════
   // TRACK & FIELD  (runners — weapon = stopwatch)
@@ -146,10 +133,8 @@ export const ITEMS = [
   { id:'track_jersey_pro',   sport:'Track', name:'Pro Track Jersey',   slot:'chest',    rarity:'uncommon', cost:130, stats:{ speed:2, stamina:2 },       desc:'Competition singlet with compression weave.' },
   { id:'track_shoes',        sport:'Track', name:'Track Shoes',        slot:'footwear', rarity:'common',   cost:70,  stats:{ speed:3 },                   desc:'Spike shoes for maximum sprint acceleration.' },
   { id:'track_shoes_pro',    sport:'Track', name:'Pro Track Spikes',   slot:'footwear', rarity:'uncommon', cost:175, stats:{ speed:5 },                   desc:'Carbon-plate spikes for sub-elite sprint times.' },
-  { id:'track_shoes_elite',  sport:'Track', name:'Bolt Spikes',        slot:'footwear', rarity:'rare',     cost:390, stats:{ speed:7, stamina:1 },        desc:'Lightning-infused spikes for inhuman speed.' },
   { id:'stopwatch',          sport:'Track', name:'Stopwatch',          slot:'weapon',   rarity:'common',   cost:60,  stats:{ speed:2, stamina:1 },        desc:'A precision timer that bends your perception of pace.' },
   { id:'stopwatch_pro',      sport:'Track', name:'Chrono Watch',       slot:'weapon',   rarity:'uncommon', cost:165, stats:{ speed:3, stamina:2 },        desc:'Tournament-grade chronometer that sharpens focus.' },
-  { id:'stopwatch_epic',     sport:'Track', name:'Temporal Dial',      slot:'weapon',   rarity:'epic',     cost:750, stats:{ speed:6, stamina:4 },        desc:'A watch imbued with time-bending Gift energy.' },
 
   // ══════════════════════════════════════════════════════════════════════════
   // GOLF  (universal — weapon = golf club)
@@ -158,21 +143,17 @@ export const ITEMS = [
   { id:'golf_shirt_pro',  sport:'Golf', name:'Pro Golf Polo',  slot:'chest',  rarity:'uncommon', cost:145, stats:{ endurance:2, stamina:2 },   desc:'Moisture-wicking polo for tournament play.' },
   { id:'golf_club',       sport:'Golf', name:'Golf Club',      slot:'weapon', rarity:'common',   cost:85,  stats:{ strength:2, endurance:1 },  desc:'Titanium driver for long-distance power.' },
   { id:'golf_club_pro',   sport:'Golf', name:'Pro Golf Club',  slot:'weapon', rarity:'uncommon', cost:210, stats:{ strength:3, endurance:2 },  desc:'Tour-spec driver with low spin shaft.' },
-  { id:'golf_club_elite', sport:'Golf', name:'Ace Driver',     slot:'weapon', rarity:'rare',     cost:450, stats:{ strength:5, endurance:3 },  desc:'A club said to never miss the fairway.' },
 
   // ══════════════════════════════════════════════════════════════════════════
   // UNIVERSAL GEAR  (no sport icon — any class)
   // ══════════════════════════════════════════════════════════════════════════
   { id:'basic_gloves',   name:'Training Gloves', slot:'handwear', rarity:'common',   cost:55,  stats:{ strength:1, stamina:1 },      desc:'General-purpose gloves for any athlete.' },
   { id:'power_wraps',    name:'Power Wraps',     slot:'handwear', rarity:'uncommon', cost:150, stats:{ strength:3, stamina:1 },      desc:'Competition-grade hand wraps.' },
-  { id:'titan_gloves',   name:'Titan Gloves',    slot:'handwear', rarity:'rare',     cost:370, stats:{ strength:5, stamina:2 },      desc:'Reinforced gloves worn by elite athletes.' },
   { id:'basic_headband', name:'Focus Headband',  slot:'headwear', rarity:'common',   cost:40,  stats:{ speed:1 },                    desc:'Sharpens your mental focus in the heat of battle.' },
   { id:'swift_helm',     name:'Swift Helm',      slot:'headwear', rarity:'uncommon', cost:120, stats:{ speed:2, strength:1 },        desc:'Lightweight helm favored by strikers.' },
   { id:'leather_vest',   name:'Leather Vest',    slot:'chest',    rarity:'common',   cost:70,  stats:{ endurance:2 },                desc:'Basic padded protection for any class.' },
   { id:'chain_vest',     name:'Chain Vest',      slot:'chest',    rarity:'uncommon', cost:180, stats:{ endurance:4 },                desc:'Solid chain-link protection.' },
-  { id:'titan_vest',     name:'Titan Vest',      slot:'chest',    rarity:'rare',     cost:420, stats:{ endurance:6, stamina:2 },     desc:'Rare alloy forged in Altroes.' },
   { id:'iron_boots',     name:'Iron Boots',      slot:'footwear', rarity:'common',   cost:50,  stats:{ speed:2 },                    desc:'Sturdy boots that quicken your step.' },
-  { id:'volt_boots',     name:'Volt Boots',      slot:'footwear', rarity:'rare',     cost:380, stats:{ speed:6, endurance:2 },       desc:'Infused with lightning-element energy.' },
 ];
 
 const RARITY_COLORS = {
@@ -247,6 +228,27 @@ export function gearFrameName(sport, slot) {
   return `gear_${cls}_${slot}`;
 }
 
+// Slices the 'gears' spritesheet into one named frame per {class, slot} cell
+// (see GEAR_SHEET above). Shared by every scene that shows gear icons so the
+// frame layout only has to be described once.
+export function registerGearFrames(scene) {
+  if (!scene.textures.exists('gears')) return;
+  const tex = scene.textures.get('gears');
+  const { cellW, cellH } = GEAR_SHEET;
+  // Sheet is 1536x1024 over 7 cols / 5 rows, neither of which divides evenly
+  // (cellW/cellH are fractional) — round each cell's edges independently
+  // rather than using a fixed fractional width/height, so neighboring frames
+  // always meet exactly at an integer pixel with no overlap or gap.
+  for (const [cls, col] of Object.entries(GEAR_CLASS_COL)) {
+    const x0 = Math.round(col * cellW), x1 = Math.round((col + 1) * cellW);
+    for (const [slot, row] of Object.entries(GEAR_SLOT_ROW)) {
+      const y0 = Math.round(row * cellH), y1 = Math.round((row + 1) * cellH);
+      const name = `gear_${cls}_${slot}`;
+      if (!tex.has(name)) tex.add(name, 0, x0, y0, x1 - x0, y1 - y0);
+    }
+  }
+}
+
 // items/rawmaterials.png (1536×1024) — re-exported 2026-07-03 as an irregular
 // layout (not a uniform grid: row 1 has 4 icons, row 2 has 4, row 3 has 5),
 // so each material is an explicit [x, y, w, h] crop measured off the sheet's
@@ -273,10 +275,33 @@ export function materialFrameName(id) {
 }
 
 // Guaranteed material drops per mission clear
+// Ore-drop economy (July 2026): silver from region 1 (Altroes) caves, gold
+// from region 2 (Gale) caves, ALL ore tiers from region 3 (Lametus) caves —
+// only the actual cave missions (M4/M5, M7/M8, M10/M11) drop ore; the
+// elemental "unique areas" (M6/M9/M12) don't.
 export const MISSION_MATERIALS = {
-  M1F: ['heal_herb'],
+  M1: ['heal_herb'],
+  // Wolf's Den (M0b, King Wolf) — unlike every other completable mission
+  // node, this one had NO guaranteed-materials or equipment-loot entry at
+  // all (M3a/M3b are the only other missions without one, but those are
+  // compensated by the Capital's own turn-in Reward Popup — M0b has no such
+  // mechanism), so beating a re-accepted boss fight could net literally one
+  // random common material from its single kill. Added a small guaranteed
+  // wolf-themed haul (2026-07-07 feedback: "no loot obtain after beating
+  // the wolf").
+  M0b: ['fur', 'bone', 'iron_ore', 'silver_ore', 'gold_ore', 'mystic_ore'],
   M3:  ['iron_ore', 'leather_strip'],
-  M4:  ['cave_crystal', 'shadow_ore'],
+  M4:  ['cave_crystal', 'shadow_ore', 'silver_ore'],
+  M5:  ['silver_ore'],
+  M7:  ['gold_ore'],
+  M8:  ['gold_ore'],
+  M10: ['iron_ore', 'silver_ore', 'gold_ore', 'mystic_ore'],
+  M11: ['iron_ore', 'silver_ore', 'gold_ore', 'mystic_ore'],
+  // Side battles (optional) — a small guaranteed bonus tied to their
+  // region's own ore tier, on top of whatever the region's caves already give.
+  M13: ['silver_ore'],
+  M14: ['gold_ore'],
+  M15: ['mystic_ore'],
 };
 
 // Generic monster-drop pool (Gear & Forge, July 2026 — replaces the old
@@ -298,25 +323,96 @@ export function getKillDrops(killsByType) {
   return drops;
 }
 
-// Random equipment drop pool per mission
-export const MISSION_LOOT = {
-  M1F: ['soccer_ball', 'soccer_cleats', 'basic_headband', 'iron_boots', 'basic_gloves'],
-  M2:  ['soccer_jersey', 'football_jersey', 'baseball_bat', 'basic_headband', 'iron_boots', 'basic_gloves'],
-  M3:  ['soccer_cleats_pro', 'chain_vest', 'basic_gloves', 'leather_vest', 'iron_boots', 'volleyball_jersey'],
-  M4:  ['swift_helm', 'chain_vest', 'power_wraps', 'soccer_cleats_pro', 'track_shoes', 'boxing_gloves_pro'],
-};
-
 export function getItem(id) { return ITEMS.find(i => i.id === id) ?? null; }
 
 export function getMissionMaterials(missionId) {
   return (MISSION_MATERIALS[missionId] ?? []).map(id => getItem(id)).filter(Boolean);
 }
 
-export function randomLoot(missionId) {
-  const pool = MISSION_LOOT[missionId];
-  if (!pool?.length) return null;
-  const id = pool[Math.floor(Math.random() * pool.length)];
-  const item = getItem(id);
+// ── Level-bracketed drop table (M0-M4 redesign Phase 5; originally M0a-only,
+// now every mission's post-battle equipment drop — see VictoryScene) ───────
+// Each bracket's outcomes sum to exactly 1.0 — a single weighted roll picks
+// ONE of the three listed outcomes (gear tier A, gear tier B, or a doubled
+// rare-ore/material drop), not three independent chances, matching how the
+// sheet's own per-bracket percentages always add up to 100%. The sheet's own
+// brackets started at Lv10-14; a 1-9 starter bracket was added so early
+// missions (which unlock long before a realistic party hits level 10) still
+// drop something instead of nothing.
+const LEVEL_BRACKETS = [
+  { min:1, max:9, outcomes: [
+    { kind:'gear', rarity:'common',   chance:0.30 },
+    { kind:'gear', rarity:'uncommon', chance:0.30 },
+    { kind:'oreX2', chance:0.40 },
+  ]},
+  { min:10, max:14, outcomes: [
+    { kind:'gear', rarity:'rare',      chance:0.20 },
+    { kind:'gear', rarity:'uncommon',  chance:0.40 },
+    { kind:'oreX2', chance:0.40 },
+  ]},
+  { min:15, max:19, outcomes: [
+    { kind:'gear', rarity:'rare',      chance:0.40 },
+    { kind:'gear', rarity:'epic',      chance:0.20 },
+    { kind:'oreX2', chance:0.40 },
+  ]},
+  { min:20, max:29, outcomes: [
+    { kind:'gear', rarity:'epic',      chance:0.50 },
+    { kind:'gear', rarity:'legendary', chance:0.10 },
+    { kind:'oreX2', chance:0.40 },
+  ]},
+  { min:30, max:Infinity, outcomes: [
+    { kind:'gear', rarity:'epic',      chance:0.10 },
+    { kind:'gear', rarity:'legendary', chance:0.30 },
+    { kind:'oreX2', chance:0.60 },
+  ]},
+];
+const BRACKET_GEAR_SLOTS = ['weapon', 'footwear', 'handwear', 'chest', 'headwear'];
+// "Rare ore or material" — silver_ore is the game's one rare-tier ore
+// (iron=uncommon, silver=rare, gold=epic, mystic=legendary per ORE_TIER_TO_RARITY).
+const BRACKET_RARE_ORE_ID = 'silver_ore';
+
+// Returns an array of 0-2 item objects (gear roll = 1 item, ore roll = the
+// same material ×2 as separate entries so callers can display/stack them
+// the same way killDrops already does). Brackets now cover level 1+, so this
+// only returns null for a malformed/negative level.
+// classItemMultiplier mirrors ForgeScene's craft roll (gearLayoutForUnit(unit)
+// .classItemMultiplier) — a weapon-slot roll only, so it's a no-op for every
+// other slot and defaults to 1 for callers that don't pass one.
+export function rollBracketedDrop(level, talents = [], classItemMultiplier = 1, forClass) {
+  const bracket = LEVEL_BRACKETS.find(b => level >= b.min && level <= b.max);
+  if (!bracket) return null;
+
+  const roll = Math.random();
+  let acc = 0;
+  for (const outcome of bracket.outcomes) {
+    acc += outcome.chance;
+    if (roll >= acc) continue;
+    if (outcome.kind === 'oreX2') {
+      const ore = getItem(BRACKET_RARE_ORE_ID);
+      return ore ? [{ ...ore }, { ...ore }] : null;
+    }
+    const slot = BRACKET_GEAR_SLOTS[Math.floor(Math.random() * BRACKET_GEAR_SLOTS.length)];
+    return [rollGearItem({ slot, rarity: outcome.rarity, talents, classItemMultiplier, forClass })];
+  }
+  return null;
+}
+
+// ── Battle-usable consumables (July 2026) ───────────────────────────────────
+// An item is "usable" in battle if it carries a healPct and/or spPct — both
+// are read as a fraction of the TARGET's own max HP/SP (matches the existing
+// restoreSp/restoreSpAndHpPct ability convention in abilities.js), not the
+// caster's, since these are self-used items rather than caster-buffs-ally
+// abilities like Performance.
+export function isUsableItem(item) {
+  return item?.type === 'material' && (item.healPct != null || item.spPct != null);
+}
+
+// Heal Herb random battle drop — 25% chance per battle clear, independent of
+// the guaranteed MISSION_MATERIALS table (which still separately guarantees
+// heal_herb on M1 specifically).
+export const HEAL_HERB_DROP_CHANCE = 0.25;
+export function rollHealHerbDrop() {
+  if (Math.random() >= HEAL_HERB_DROP_CHANCE) return null;
+  const item = getItem('heal_herb');
   return item ? { ...item } : null;
 }
 
@@ -366,9 +462,16 @@ function rollMultiplierStat(rarity) {
 }
 
 // Stat pool for Random (R) lines: "everything that already exists (core
-// stats, HP, SP) plus damage/affinity/designation multiplier."
-const FLAT_STAT_POOL = ['speed', 'strength', 'stamina', 'endurance', 'hp', 'sp'];
+// stats, HP, SP) plus damage/affinity/designation multiplier." 'power'/'tech'
+// (2026-07-08 feedback) are hybrid rolls, not separate stored stats — Power/
+// Technique are derived display values (Speed+Strength / Endurance+Stamina,
+// see PartyScene/StatsScene), so a rolled 'power'/'tech' line just applies
+// its full value to BOTH underlying stats at once (see applyLine) rather
+// than needing its own field threaded through effectiveStats and every
+// stat display.
+const FLAT_STAT_POOL = ['speed', 'strength', 'stamina', 'endurance', 'hp', 'sp', 'power', 'tech'];
 const MULTIPLIER_STAT_POOL = ['damage', 'affinity', 'designation'];
+const HYBRID_STAT_PAIRS = { power: ['speed', 'strength'], tech: ['endurance', 'stamina'] };
 
 function rollRandomLine(rarity) {
   const pool = [...FLAT_STAT_POOL, ...MULTIPLIER_STAT_POOL];
@@ -382,8 +485,14 @@ function rollTalentLine(talent, rarity) {
   return { kind: 'flat', stat, value: rollFlatStat(rarity) };
 }
 function applyLine(item, line, mult = 1) {
-  if (line.kind === 'flat') item.stats[line.stat] = (item.stats[line.stat] ?? 0) + Math.round(line.value * mult);
-  else item.multipliers[line.stat] = (item.multipliers[line.stat] ?? 0) + line.value * mult;
+  if (line.kind !== 'flat') {
+    item.multipliers[line.stat] = (item.multipliers[line.stat] ?? 0) + line.value * mult;
+    return;
+  }
+  const v = Math.round(line.value * mult);
+  const pair = HYBRID_STAT_PAIRS[line.stat];
+  if (pair) for (const stat of pair) item.stats[stat] = (item.stats[stat] ?? 0) + v;
+  else item.stats[line.stat] = (item.stats[line.stat] ?? 0) + v;
 }
 
 // Main stat per slot (see the sheet's "Gear Stat Layout" table). Head
@@ -409,12 +518,19 @@ function defaultGearName(slot, rarity) {
 // Rolls a full gear item for `slot` at `rarity`, for a unit with the given
 // `talents` (its 2 picked talents) and `classItemMultiplier` (1/2/3 — see
 // CLASS_GEAR_LAYOUT in gameState.js; only applied when slot === 'weapon').
-export function rollGearItem({ slot, rarity, talents = [], classItemMultiplier = 1, name, desc, cost = 0 }) {
+// `forClass` (2026-07-09, "class items should have a label for the class
+// they are for") — the roleDisplayLabel of whichever unit's talents/
+// classItemMultiplier this roll actually used (e.g. "Boxer"), so a Class
+// Item sitting in inventory still shows who it was tuned for. Only stored
+// on the weapon slot (the "Class Item" itself) — other slots' stats aren't
+// class-multiplier-scaled, so there's nothing distinctive to label there.
+export function rollGearItem({ slot, rarity, talents = [], classItemMultiplier = 1, name, desc, cost = 0, forClass }) {
   const item = {
     id: `${slot}_${rarity}_${Date.now()}_${Math.floor(Math.random() * 1e6)}`,
     name: name ?? defaultGearName(slot, rarity), slot, rarity, type: 'equipment', cost,
     stats: {}, multipliers: {}, desc: desc ?? '',
   };
+  if (slot === 'weapon' && forClass) item.forClass = forClass;
   const mult = slot === 'weapon' ? classItemMultiplier : 1;
 
   const main = rollMainLine(slot, rarity);
@@ -460,6 +576,7 @@ export function rollGodTierClassItem(unit) {
     slot: 'weapon', rarity: 'god', type: 'equipment', cost: 0,
     stats: {}, multipliers: {},
     desc: 'An artifact-grade Class Item, beyond Legendary.',
+    forClass: roleDisplayLabel(unit),
   };
   const stat1 = TALENT_STAT_KEY[talents[0]];
   const stat2 = TALENT_STAT_KEY[talents[1]];

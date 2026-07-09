@@ -33,7 +33,7 @@ export const BASE_MONSTERS = Object.keys(MONSTER_DESIGNATION);
 // designations/tiers/flavor, so these are invented placeholders sized
 // relative to each other by flavor (Hawk fastest/frailest, Golem
 // slowest/tankiest, etc.) and to the two already-live enemies (Wolf/Boar
-// keep their existing M1F/M2 stat blocks as their tier-1 baseline).
+// keep their existing M1/M2 stat blocks as their tier-1 baseline).
 export const MONSTER_BASE_STATS = {
   Wolf:   { speed: 5,  strength: 8,  stamina: 6,  endurance: 5  },
   Boar:   { speed: 4,  strength: 12, stamina: 8,  endurance: 9  },
@@ -56,13 +56,122 @@ export const MONSTER_BASE_STATS = {
 // Only Wolf/Boar/Deer are wired into BattleScene's loader today; the other
 // 7 files exist on disk but aren't loaded anywhere yet.
 const SPRITE_INFO = {
-  Wolf: { spriteKey: 'wolf-idle', animKey: 'wolf-idle', file: 'monster/wolf.png', fw: 249, fh: 175, spriteScale: 0.35, moveSpeed: 2 },
-  Boar: { spriteKey: 'boar-idle', animKey: 'boar-idle', file: 'monster/boar.png', fw: 256, fh: 170, spriteScale: 0.35, moveSpeed: 2 },
-  Deer: { spriteKey: 'deer-idle', animKey: 'deer-idle', file: 'monster/deer.png', fw: 248, fh: 175, spriteScale: 0.3,  moveSpeed: 3 },
+  Wolf:   { spriteKey: 'wolf-idle',   animKey: 'wolf-idle',   file: 'monster/wolf.png',   fw: 249, fh: 175, spriteScale: 0.35, moveSpeed: 2 },
+  Boar:   { spriteKey: 'boar-idle',   animKey: 'boar-idle',   file: 'monster/boar.png',   fw: 256, fh: 170, spriteScale: 0.35, moveSpeed: 2 },
+  Deer:   { spriteKey: 'deer-idle',   animKey: 'deer-idle',   file: 'monster/deer.png',   fw: 248, fh: 175, spriteScale: 0.3,  moveSpeed: 3 },
+  // Wired up for M3a (Northern Cave)/M3b (Hilbert Low Lands), the M0-M4
+  // redesign's Capital test battles — same 1495×1052 canvas as Wolf, so the
+  // same fw/fh. Goblin: slower art scale reads well for its stockier flavor;
+  // Lion: faster moveSpeed to match its higher speed stat vs Wolf.
+  Goblin: { spriteKey: 'goblin-idle', animKey: 'goblin-idle', file: 'monster/goblin.png', fw: 249, fh: 175, spriteScale: 0.35, moveSpeed: 2 },
+  Lion:   { spriteKey: 'lion-idle',   animKey: 'lion-idle',   file: 'monster/lion.png',   fw: 249, fh: 175, spriteScale: 0.35, moveSpeed: 3 },
 };
 export function spriteInfoForBase(base) {
   return SPRITE_INFO[base] ?? null;
 }
+
+// A handful of named uniques ship their own dedicated art instead of
+// reusing their base species' regular sprite — keyed by the unique's fixed
+// `name`, checked in buildMonster() ahead of the per-species lookup. Same
+// ~1492-1495 x ~1052-1054 / 6x6-grid canvas as the rest, so same fw/fh
+// ballpark as Lion (kingwolf.png measures a hair differently, 1492x1054).
+// King Lion's kinglion.png isn't wired into any mission yet (same "data
+// first" status spriteInfoForBase carries for 7 of the 10 base species
+// above); King Wolf's kingwolf.png IS wired — see M0b in
+// BattleScene.js's MISSION_CONFIGS — with a bumped spriteScale (2026-07-08
+// feedback: "the wolf should be bigger, taking up 4 tiles") so the boss
+// visually dominates roughly a 2x2 tile footprint, AND a real 2x2 tile
+// footprint (`size: 2` on the M0b enemy entry) — BattleScene.js's
+// occupiedTiles/registerUnit generalize movement/targeting/collision for it.
+// `fixedIdleFrames` (2026-07-08, after 3 iterations on this same sprite) —
+// kingwolf.png's idle row has TWO separate defects on every one of its 6
+// poses, confirmed by direct raw-pixel analysis, not guesswork:
+//  1. The tail is painted wider than its own ~249px cell on frames 0-5 (a
+//     connected-component flood fill from each frame's own torso, seeded
+//     away from any neighboring frame, gives the TRUE per-frame silhouette
+//     bounding box — frame 5 is the exception that proves the rule: its
+//     tail's rightmost pixel lands exactly on x=1491, the sheet's own last
+//     column, i.e. the source image is cropped mid-tail with no further
+//     pixels to recover. Frames 0-4 all overflow past their nominal cell by
+//     ~20-30px but have empty buffer space before the next cell's own body
+//     starts (also confirmed via the same bbox scan), so a wider custom
+//     texture frame per pose captures the whole tail with no bleed.
+//     CORRECTION (2026-07-09, "tail is moving infront"): widening every
+//     frame's cropWidth this way makes each frame's crop OVERLAP the next
+//     frame's nominal cell in the shared sheet, so frame N's own crop
+//     re-reads frame (N-1)'s tail overflow that lands in that overlap zone
+//     — visible as a stray tail/mane sliver flickering in at the left edge
+//     of frames 1-4 each animation tick. Since `tex.add` points several
+//     frames at overlapping windows of the SAME shared canvas (see
+//     BattleScene.js), this can't be patched away like the belly shadow
+//     (there's no distinguishing "this frame's real pixel" from "leaked
+//     neighbor pixel" once both read the same source bytes) — the fix
+//     instead moves each frame's cropX forward to exactly where the
+//     previous frame's own crop ends (0/300/542/797/1046), shrinking
+//     cropWidth by the same amount so the right edge — where each pose's
+//     own tail overflow lives — is untouched. Verified with cropped
+//     preview renders of all 5 frames: clean silhouette, no bleed, no
+//     clipped tail.
+//  2. Every pose's under-belly shadow (between the front/hind legs) is
+//     painted pure black (0,0,0), byte-identical to the sheet's own
+//     background — BattleScene's background flood-fill strip can't tell
+//     the two apart (confirmed via pixel sampling) and erases the shadow as
+//     if it were background, punching a hole that shows the tile through
+//     the wolf's torso. A regular Wolf's equivalent pose has no such gap
+//     (compared stripped, side by side) — unique to this art. No
+//     tolerance/band tweak fixes it either (identical RGB, not just
+//     similar). Fix: restore opacity over a small rect per frame after
+//     stripping — stripping only zeroes alpha, never touches RGB, so the
+//     original black paints itself right back in.
+//     CORRECTION (2026-07-09, "moving shadow under the wolf's back leg"):
+//     the original hand-picked patch rects were too loose (e.g. frame 0's
+//     72x56 vs the shadow's real ~19x22 footprint) and, on frames 2-3,
+//     landed partly over ground that should stay transparent next to the
+//     lifted hind leg — a hard-edged black rectangle bigger than the actual
+//     shadow, whose position (fixed per frame, but loose enough to drift
+//     relative to the animated leg) read as a shadow sliding around under
+//     the leg each tick. Rects can't be judged by eye — the shadow is
+//     byte-identical black to the background, so a screenshot can't tell
+//     "real shadow" from "should be transparent here" any better than the
+//     flood fill can. Re-derived precisely instead: a standalone script
+//     (scratchpad, not checked in) re-implements stripBackgroundByKey's
+//     exact algorithm (same TOL=30, same corner/cell seeding) in plain
+//     Node against the raw PNG, then connected-component-labels whatever
+//     near-black pixels survive the simulated strip within each frame's own
+//     crop window. Each frame has exactly one dominant surviving component
+//     (hundreds of px) far bigger than the handful of scattered near-black
+//     speckles elsewhere (eyes, nose, dark fur linework) — that dominant
+//     component's bounding box, plus a ~3-4px margin, is the patch rect now
+//     used below. Confirmed live (dumped the actual post-strip texture
+//     frames to an on-page canvas, not a screenshot, to dodge JPEG
+//     compression) that the patch is now a tight blob hugging the true
+//     shadow shape, not a block overlapping the leg.
+// Earlier attempts froze on a single frame (first 1, then 0) to dodge these
+// — cheaper, but "no animation at all" was itself the next complaint. This
+// entry instead fixes frames 0-4 individually (crop + patch each) and skips
+// only frame 5 (genuinely unrecoverable), so BattleScene.js can build a real
+// multi-frame idle loop instead of either a static freeze or the broken raw
+// animation. `fixedIdleOriginX` is one shared horizontal origin across all
+// 5 frames (each pose's true visual center drifts a few px — not worth
+// per-frame pivot data for an idle wobble that already varies pose to
+// pose). Monsters never play any OTHER animation (playAttackAnim is a
+// no-op for anything without a `.portrait`), so this idle loop is the only
+// animation King Wolf ever needs.
+const UNIQUE_SPRITE_INFO = {
+  'King Lion': { spriteKey: 'kinglion-idle', animKey: 'kinglion-idle', file: 'monster/kinglion.png', fw: 249, fh: 175, spriteScale: 0.35, moveSpeed: 3 },
+  'King Wolf': {
+    spriteKey: 'kingwolf-idle', animKey: 'kingwolf-idle', file: 'monster/kingwolf.png',
+    fw: 249, fh: 176, spriteScale: 0.65, moveSpeed: 2,
+    fixedIdleOriginX: 0.55,
+    fixedIdleFrames: [
+      { frame: 0, cropX: 0,    cropWidth: 300, patch: { x: 151,  y: 74, w: 25, h: 28 } },
+      { frame: 1, cropX: 300,  cropWidth: 242, patch: { x: 411,  y: 80, w: 28, h: 22 } },
+      { frame: 2, cropX: 542,  cropWidth: 255, patch: { x: 645,  y: 78, w: 31, h: 57 } },
+      { frame: 3, cropX: 797,  cropWidth: 249, patch: { x: 907,  y: 77, w: 39, h: 34 } },
+      { frame: 4, cropX: 1046, cropWidth: 235, patch: { x: 1163, y: 80, w: 29, h: 26 } },
+    ],
+  },
+};
 
 // ── Tier ladder ───────────────────────────────────────────────────────────
 export const MONSTER_TIERS = [
@@ -213,7 +322,15 @@ export function buildMonsterKit(base, { kind = 'regular', tier = 1 } = {}) {
 // plus the new designation/tier/abilities fields. Region/element rolling
 // stays the caller's job (BattleScene's rollRegionArchetype) — pass the
 // rolled `element`/`primaryStat` through if you have them.
-export function buildMonster({ base, tier = 1, kind = 'regular', element = null, primaryStat = null }) {
+//
+// `statMult` (M0-M4 redesign, Phase 4) lets a caller override the flat
+// kind/tier multiplier per stat — e.g. M0b's King Wolf wants differential
+// scaling ("300% more health, 10% more attack") that the uniform
+// BOSS_STAT_MULT/UNIQUE_STAT_MULT ladder can't express. Any stat not in
+// `statMult` still falls back to the normal flat `mult`. `name` lets a
+// caller pin a fixed name (e.g. "King Wolf") instead of the kind-based
+// bossName()/rollUniqueName() generation.
+export function buildMonster({ base, tier = 1, kind = 'regular', element = null, primaryStat = null, statMult = null, name: nameOverride = null }) {
   const designation = MONSTER_DESIGNATION[base];
   const baseStats = MONSTER_BASE_STATS[base];
   if (!baseStats) throw new Error(`Unknown base monster: ${base}`);
@@ -221,12 +338,13 @@ export function buildMonster({ base, tier = 1, kind = 'regular', element = null,
   const mult = kind === 'boss' ? BOSS_STAT_MULT
     : kind === 'unique' ? UNIQUE_STAT_MULT
     : TIER_STAT_MULT[Math.max(0, Math.min(3, tier - 1))];
+  const multFor = (stat) => statMult?.[stat] ?? mult;
 
   const stats = {
-    speed: Math.round(baseStats.speed * mult),
-    strength: Math.round(baseStats.strength * mult),
-    stamina: Math.round(baseStats.stamina * mult),
-    endurance: Math.round(baseStats.endurance * mult),
+    speed: Math.round(baseStats.speed * multFor('speed')),
+    strength: Math.round(baseStats.strength * multFor('strength')),
+    stamina: Math.round(baseStats.stamina * multFor('stamina')),
+    endurance: Math.round(baseStats.endurance * multFor('endurance')),
   };
   if (primaryStat && stats[primaryStat] != null) {
     stats[primaryStat] = Math.round(stats[primaryStat] * 1.3); // matches PRIMARY_STAT_BOOST
@@ -235,13 +353,15 @@ export function buildMonster({ base, tier = 1, kind = 'regular', element = null,
   const tierInfo = MONSTER_TIERS[Math.max(0, Math.min(3, tier - 1))];
   const level = kind === 'regular' ? tier : 5;
 
-  let name;
-  if (kind === 'boss') name = bossName(base);
-  else if (kind === 'unique') name = rollUniqueName();
-  else name = tierInfo.prefix ? `${tierInfo.prefix} ${base}` : base;
+  let name = nameOverride;
+  if (!name) {
+    if (kind === 'boss') name = bossName(base);
+    else if (kind === 'unique') name = rollUniqueName();
+    else name = tierInfo.prefix ? `${tierInfo.prefix} ${base}` : base;
+  }
 
   const { skills } = buildMonsterKit(base, { kind, tier });
-  const sprite = spriteInfoForBase(base);
+  const sprite = UNIQUE_SPRITE_INFO[name] ?? spriteInfoForBase(base);
 
   return {
     name, base, kind,

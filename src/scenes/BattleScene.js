@@ -1,19 +1,47 @@
 import Phaser from 'phaser';
 import {
   state, effectiveStats, maxHp as gsMaxHp, elementIcon, currentRoleId, currentDesignations,
-  currentSport, sportById,
+  currentSport, sportById, maxBattlePartySize, getBattleParty,
   DESIGNATION_BEATS, designationIcon, DESIGNATION_CYCLE, ELEMENT_CYCLE, ELEMENT_BEATS,
 } from '../data/gameState.js';
-import { ATTACK, THROW, getUnitSpecials, getUnitSkills, getEquippedPassives } from '../data/abilities.js';
+import { ATTACK, THROW, getEquippedSpecialAbilities, getEquippedSkillAbilities, getEquippedPassives } from '../data/abilities.js';
 import { loadHeroSprites, createHeroAnims, stripHeroBackground, stripBackgroundByKey, trimmedSheetConfig, heroKey, getSpriteInfo, firstFrame, spriteKeyForRole } from '../data/heroSprites.js';
 import { buildMonster, spriteInfoForBase } from '../data/monsters.js';
+import { isUsableItem } from '../data/items.js';
 
 const COLS = 10, ROWS = 10;
-const TILE_W = 64, TILE_H = 32;
+// Bigger isometric tiles (2026-07-07 feedback) — was 64×32 at .setScale(2)
+// (native tile art is 32×32, so scale = TILE_W/32 keeps tiles seamless with
+// no gaps/overlap). 80×40 is a 1.25× bump: checked the grid's screen-space
+// footprint stays inside the 800×600 canvas at this size (worst-case corner
+// lands at x=40/760, y=430 — comfortable margin on all sides) rather than
+// picking a bigger multiplier that would start clipping at the board edges.
+const TILE_W = 80, TILE_H = 40;
 const TW2 = TILE_W / 2, TH2 = TILE_H / 2;
-const TILE_Y_OFFSET = -4;
+const TILE_SCALE = TILE_W / 32;
+const TILE_Y_OFFSET = -5;
+// Extra downward nudge for tile-shading diamonds only (on top of TILE_Y_OFFSET)
+// so the highlight's widest point lines up with where unit sprites stand,
+// tuned empirically against the hero/monster sprite foot anchors (scaled
+// proportionally with the tile size above — re-tune if it looks off).
+const HL_Y_ADJUST = 13;
 
 const rand = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
+
+// Projectile visual for ranged attacks (dist > 1), keyed by the attacker's
+// sport `classGrouping` (already computed per-unit — see playerUnits setup)
+// rather than per-sport, so every Target-class sport (Archer, Dart Player,
+// Paintball) gets an arrow/dart and every ball-handling class gets a ball
+// without having to enumerate all ~30 sports individually. Classes not
+// listed (Athletics, Martial Arts, Performance) have no natural ranged
+// equipment, so ranged attacks from them (e.g. the universal Throw move)
+// just skip the projectile — a bare hand doesn't fly across the board.
+const PROJECTILE_BY_CLASS = {
+  Target:       'arrow',
+  Ball:         'ball',
+  'Bat & Ball': 'ball',
+  Racquet:      'ball',
+};
 
 // Kingdom archetypes: monsters skew heavily toward their kingdom's two primary
 // stats and two elements — rerolled fresh for every encounter. "Ice" reuses the
@@ -24,6 +52,11 @@ const REGION_ARCHETYPES = {
   Gale:    { primary: ['endurance', 'strength'],secondary: ['speed', 'stamina'],     elements: ['Wind', 'Water'] },
 };
 const PRIMARY_STAT_BOOST = 1.3;
+// Repeatable missions (M0a/M0b) escalate enemy level by 2 per replay
+// (see the repeat-scaling block in create()) — capped so this can't climb
+// forever (2026-07-09 feedback: "when king wolf hit lvl 40 lvl increase
+// should stop").
+const REPEAT_LEVEL_CAP = 40;
 function rollRegionArchetype(region) {
   const cfg = REGION_ARCHETYPES[region] ?? REGION_ARCHETYPES.Altroes;
   const primaryStat = Math.random() < 0.9
@@ -40,10 +73,44 @@ const th = (col, row) => (((col * 374761393) ^ (row * 668265263)) >>> 0) % 100;
 // Tile image key convention: 't022' → tiles/isometric tileset/separated images/tile_022.png
 // In screen space: col+row=const is a HORIZONTAL line, col-row=const is VERTICAL
 const STAGE_CONFIGS = {
-  'M1F': {
+  'M0a': {
+    // Hidden Cave — ore mission (M0-M4 redesign, Phase 5). Same cave-stone
+    // convention as M3a/the old M4, distinguished by a warmer, ore-vein tint.
+    tiles: ['000','001','002','003','055','056','057','061','062'],
+    label: 'HIDDEN CAVE',
+    bgColor: 0x100a04,
+    layout(col, row) {
+      const p = th(col, row);
+      const edge = col === 0 || row === 0 || col === 9 || row === 9;
+      if (edge) return p < 50 ? '061' : '062';
+      if (p < 18) return p < 9 ? '055' : '056';
+      if (p < 28) return '057';
+      const v = (col * 3 + row * 7) % 4;
+      return ['000','001','002','003'][v];
+    },
+  },
+  'M0b': {
+    // Wolf's Den — dark, dense forest, more log/rock cover than Sirblanc
+    // Outskirts and no open grass patches (M0-M4 redesign, Phase 4).
+    tiles: ['022','026','027','034','047','049','061','062'],
+    label: "WOLF'S DEN",
+    bgColor: 0x060a04,
+    layout(col, row) {
+      const p = th(col, row);
+      const edge = col === 0 || row === 0 || col === 9 || row === 9;
+      if (edge) return p < 60 ? '061' : '062';
+      if (p < 10 && col > 1 && col < 8) return p < 5 ? '047' : '049'; // den logs
+      if (p < 18) return p < 9 ? '061' : '062'; // scattered den rocks
+      if (p < 55) return '027'; // bushy grass dominates — dense cover
+      if (p < 80) return '026';
+      return '034';
+    },
+  },
+  'M1': {
     // Forest clearing — grass floor, bushy edges, scattered flowers and logs
+    // (was M1F's terrain; M1F is gone, folded straight into M1)
     tiles: ['022','026','027','033','034','037','041','047','049'],
-    label: 'HILBERT FOREST',
+    label: 'SIRBLANC OUTSKIRTS',
     bgColor: 0x0a1408,
     layout(col, row) {
       const p = th(col, row);
@@ -60,7 +127,7 @@ const STAGE_CONFIGS = {
   'M2': {
     // Outskirts road — dirt road cuts horizontally across screen (col+row band)
     tiles: ['000','001','002','003','011','012','022','026','061','062'],
-    label: 'HILBERT OUTSKIRTS',
+    label: 'THUNDER PLAINS',
     bgColor: 0x10100a,
     layout(col, row) {
       const p  = th(col, row);
@@ -79,6 +146,9 @@ const STAGE_CONFIGS = {
       return p < 65 ? '022' : '026';
     },
   },
+  // M3 below is the OLD Greenfield-Plains layout, now otherwise unused (M3
+  // is a hub — The Capital — not a battle). Kept as the template source for
+  // M3b just below rather than duplicating the layout code.
   'M3': {
     // Greenfield Plains — open grass with a natural pond in the center-right
     tiles: ['022','026','027','033','034','037','041','088','089','090'],
@@ -102,28 +172,292 @@ const STAGE_CONFIGS = {
     },
   },
   'M4': {
-    // Hollow Caves — dark stone floor, rubble and rock accents
+    // Arena Atlros — sandy fighting pit ringed by stone tiers (M0-M4
+    // redesign, Phase 4; replaces the old dead "Hollow Caves" layout, which
+    // M3a already copied for its own use, so nothing else depended on this
+    // key's old content).
     tiles: ['000','001','002','003','055','056','057','061','062'],
-    label: 'HOLLOW CAVES',
-    bgColor: 0x020406,
+    label: 'ARENA ATLROS',
+    bgColor: 0x140e08,
     layout(col, row) {
       const p = th(col, row);
-      // Cave walls on far edges
       const edge = col === 0 || row === 0 || col === 9 || row === 9;
-      if (edge) return p < 50 ? '061' : '062';
-      // Dark stone patches scattered throughout
-      if (p < 18) return p < 9 ? '055' : '056';
-      if (p < 28) return '057';
-      // Main cave floor
+      if (edge) return p < 50 ? '061' : '062'; // outer stone tier
+      const ring = col === 1 || row === 1 || col === 8 || row === 8;
+      if (ring) return p < 40 ? '057' : (p < 70 ? '055' : '056'); // inner stone ring
+      // Sandy fighting pit floor
       const v = (col * 3 + row * 7) % 4;
       return ['000','001','002','003'][v];
     },
   },
+
+  // ── Capital test battles (M0-M4 redesign, Phase 3) ────────────────────────
+  'M3a': {
+    // Northern Cave — 3 Goblins, ore-run flavor. Same layout as old M4
+    // Hollow Caves under a new label.
+    tiles: ['000','001','002','003','055','056','057','061','062'],
+    label: 'NORTHERN CAVE',
+    bgColor: 0x020406,
+    layout(col, row) {
+      const p = th(col, row);
+      const edge = col === 0 || row === 0 || col === 9 || row === 9;
+      if (edge) return p < 50 ? '061' : '062';
+      if (p < 18) return p < 9 ? '055' : '056';
+      if (p < 28) return '057';
+      const v = (col * 3 + row * 7) % 4;
+      return ['000','001','002','003'][v];
+    },
+  },
+  'M3b': {
+    // Hilbert Low Lands — 2 Lions. Same layout as old M3 Greenfield Plains
+    // under a new label.
+    tiles: ['022','026','027','033','034','037','041','088','089','090'],
+    label: 'HILBERT LOW LANDS',
+    bgColor: 0x081208,
+    layout(col, row) {
+      const p = th(col, row);
+      const dist = Math.abs(col - 6) + Math.abs(row - 5);
+      if (dist <= 2) return p < 60 ? '088' : '089';
+      if (dist === 3) return p < 50 ? '089' : '090';
+      const edge = col === 0 || row === 0 || col === 9 || row === 9;
+      if (edge) return p < 50 ? '033' : '034';
+      if (p < 5)  return '041';
+      if (p < 40) return '022';
+      if (p < 65) return '026';
+      if (p < 80) return '037';
+      return '027';
+    },
+  },
+
+  // ── Region cave locations + signature elemental areas (July 2026) ────────
+  // Each region gets 2 caves + 1 elemental "unique area" per REGION_ARCHETYPES
+  // (Altroes=Lightning/Fire, Gale=Wind/Water(Ice), Lametus=Wind/Earth).
+  // Altroes previously counted the old M4 "Hollow Caves" as its cave #1;
+  // now that M4 is the Arena Atlros exam boss instead, Altroes is down to
+  // one on-the-books cave (M5) until M0a "Hidden Cave" (the M0-M4 redesign's
+  // new ore mission off the Hidden Village) is wired up as its replacement
+  // cave #1 — see Phase 5 of the redesign plan. No new tile art exists for
+  // ice/desert terrain, so these reuse the existing grass/stone/water tile
+  // categories, differentiated by bgColor tint and layout, same convention
+  // as M1-M4.
+  'M5': {
+    // Ember Hollow — Altroes cave #2, warmer/redder than Hollow Caves
+    tiles: ['000','001','002','003','055','056','057','061','062','004'],
+    label: 'EMBER HOLLOW',
+    bgColor: 0x1a0604,
+    layout(col, row) {
+      const p = th(col, row);
+      const edge = col === 0 || row === 0 || col === 9 || row === 9;
+      if (edge) return p < 50 ? '061' : '062';
+      if (p < 14) return '004'; // scorched ember-red patch
+      if (p < 26) return p < 20 ? '055' : '056';
+      if (p < 34) return '057';
+      const v = (col * 3 + row * 7) % 4;
+      return ['000','001','002','003'][v];
+    },
+  },
+  'M6': {
+    // Stormpeak Ridge — Altroes's Lightning/Fire signature outdoor area
+    tiles: ['033','034','027','037','061','062','063','065','068'],
+    label: 'STORMPEAK RIDGE',
+    bgColor: 0x181022,
+    layout(col, row) {
+      const p = th(col, row);
+      const edge = col === 0 || row === 0 || col === 9 || row === 9;
+      if (edge) return p < 50 ? '033' : '034';
+      if (p < 10) return p < 4 ? '063' : (p < 7 ? '065' : '068'); // jagged rock outcrops
+      if (p < 22) return p < 16 ? '061' : '062';
+      if (p < 55) return '027';
+      return p < 78 ? '037' : '034';
+    },
+  },
+  'M7': {
+    // Frostbite Hollow — Gale cave #1
+    tiles: ['000','001','002','003','060','063','065','068'],
+    label: 'FROSTBITE HOLLOW',
+    bgColor: 0x040a16,
+    layout(col, row) {
+      const p = th(col, row);
+      const edge = col === 0 || row === 0 || col === 9 || row === 9;
+      if (edge) return p < 50 ? '063' : '065';
+      if (p < 16) return p < 8 ? '060' : '068';
+      const v = (col * 3 + row * 7) % 4;
+      return ['000','001','002','003'][v];
+    },
+  },
+  'M8': {
+    // Windswept Grotto — Gale cave #2, frozen pool accents
+    tiles: ['055','056','057','061','062','070','086','091'],
+    label: 'WINDSWEPT GROTTO',
+    bgColor: 0x061422,
+    layout(col, row) {
+      const p = th(col, row);
+      const edge = col === 0 || row === 0 || col === 9 || row === 9;
+      if (edge) return p < 50 ? '061' : '062';
+      const dist = Math.abs(col - 5) + Math.abs(row - 5);
+      if (dist <= 1) return p < 60 ? '091' : '086'; // frozen pool center
+      if (dist === 2) return '070';
+      if (p < 20) return p < 10 ? '055' : '056';
+      if (p < 30) return '057';
+      return p < 65 ? '055' : '056';
+    },
+  },
+  'M9': {
+    // Glacial Bluff — Gale's Wind/Ice signature outdoor area
+    tiles: ['033','034','037','088','089','090','061','062','063'],
+    label: 'GLACIAL BLUFF',
+    bgColor: 0x0c1c2c,
+    layout(col, row) {
+      const p = th(col, row);
+      const dist = Math.abs(col - 5) + Math.abs(row - 4);
+      if (dist <= 2) return p < 60 ? '088' : '089'; // frozen lake (ice reuses water art)
+      if (dist === 3) return p < 50 ? '089' : '090';
+      const edge = col === 0 || row === 0 || col === 9 || row === 9;
+      if (edge) return p < 40 ? '063' : (p < 70 ? '061' : '062');
+      if (p < 45) return '033';
+      if (p < 75) return '034';
+      return '037';
+    },
+  },
+  'M10': {
+    // Rootdeep Cavern — Lametus cave #1
+    tiles: ['000','001','002','003','055','056','057','061','062'],
+    label: 'ROOTDEEP CAVERN',
+    bgColor: 0x120e06,
+    layout(col, row) {
+      const p = th(col, row);
+      const edge = col === 0 || row === 0 || col === 9 || row === 9;
+      if (edge) return p < 50 ? '061' : '062';
+      if (p < 18) return p < 9 ? '055' : '056';
+      if (p < 28) return '057';
+      const v = (col * 3 + row * 7) % 4;
+      return ['000','001','002','003'][v];
+    },
+  },
+  'M11': {
+    // Duskstone Mine — Lametus cave #2, dirt-heavy mine floor
+    tiles: ['004','010','015','020','055','056','057'],
+    label: 'DUSKSTONE MINE',
+    bgColor: 0x1c1206,
+    layout(col, row) {
+      const p = th(col, row);
+      const edge = col === 0 || row === 0 || col === 9 || row === 9;
+      if (edge) return p < 50 ? '055' : '056';
+      if (p < 20) return '057';
+      const v = (col * 5 + row * 3) % 4;
+      return ['004','010','015','020'][v];
+    },
+  },
+  'M12': {
+    // Earthscar Basin — Lametus's Wind/Earth signature outdoor area
+    tiles: ['004','010','015','020','033','034','061','062'],
+    label: 'EARTHSCAR BASIN',
+    bgColor: 0x241a0c,
+    layout(col, row) {
+      const p = th(col, row);
+      const edge = col === 0 || row === 0 || col === 9 || row === 9;
+      if (edge) return p < 45 ? '033' : '034';
+      if (p < 12) return p < 6 ? '061' : '062';
+      const v = (col * 5 + row * 3) % 4;
+      return ['004','010','015','020'][v];
+    },
+  },
+
+  // ── Side battles (optional, July 2026) ────────────────────────────────────
+  // Same terrain family as their parent mission (M6/M9/M12 respectively) —
+  // read as "further into the same area" rather than needing new tile art.
+  'M13': {
+    // Stormpeak Overlook — Altroes side battle, off Stormpeak Ridge (M6)
+    tiles: ['033','034','027','037','061','062','063','065','068'],
+    label: 'STORMPEAK OVERLOOK',
+    bgColor: 0x181022,
+    layout(col, row) {
+      const p = th(col, row);
+      const edge = col === 0 || row === 0 || col === 9 || row === 9;
+      if (edge) return p < 50 ? '033' : '034';
+      if (p < 14) return p < 6 ? '063' : (p < 10 ? '065' : '068');
+      if (p < 26) return p < 20 ? '061' : '062';
+      if (p < 55) return '027';
+      return p < 78 ? '037' : '034';
+    },
+  },
+  'M14': {
+    // Frozen Cove — Gale side battle, off Glacial Bluff (M9)
+    tiles: ['033','034','037','088','089','090','061','062','063'],
+    label: 'FROZEN COVE',
+    bgColor: 0x0c1c2c,
+    layout(col, row) {
+      const p = th(col, row);
+      const dist = Math.abs(col - 5) + Math.abs(row - 4);
+      if (dist <= 2) return p < 65 ? '088' : '089';
+      if (dist === 3) return p < 45 ? '089' : '090';
+      const edge = col === 0 || row === 0 || col === 9 || row === 9;
+      if (edge) return p < 40 ? '063' : (p < 70 ? '061' : '062');
+      if (p < 45) return '033';
+      if (p < 75) return '034';
+      return '037';
+    },
+  },
+  'M15': {
+    // Sunken Quarry — Lametus side battle, off Earthscar Basin (M12)
+    tiles: ['004','010','015','020','033','034','061','062'],
+    label: 'SUNKEN QUARRY',
+    bgColor: 0x241a0c,
+    layout(col, row) {
+      const p = th(col, row);
+      const edge = col === 0 || row === 0 || col === 9 || row === 9;
+      if (edge) return p < 45 ? '033' : '034';
+      if (p < 18) return p < 9 ? '061' : '062';
+      const v = (col * 5 + row * 3) % 4;
+      return ['004','010','015','020'][v];
+    },
+  },
 };
 
-// Per-mission configuration: player start positions + enemy definitions
+// Per-mission configuration: player start positions + enemy definitions.
+// M1/M2 below are the wolf-battle/Thunder Plains tutorial missions from the
+// M0-M4 redesign (July 2026) — M1 reuses the old M1F "3 Wolves" roster
+// (M1F itself is gone, folded straight into M1), M2 is unchanged (already
+// matched the new "Thunder Plains, 2 Boars" spec exactly). M3 is now a hub
+// (The Capital), not a battle, so the old M3 roster is gone entirely; M4
+// (Arena Atlros exam boss) has its own fresh content below.
 const MISSION_CONFIGS = {
-  'M1F': {
+  // Hidden Cave — M0a, the ore mission (unlocked alongside M3, see
+  // SIDE_MISSION_UNLOCK in VictoryScene.js). Repeatable with escalating
+  // Goblins — see the state.repeatCounts.M0a handling in create() below,
+  // which is why these two are left as plain (unbuilt) objects rather than
+  // buildMonster() calls: the repeat scaling is applied uniformly to
+  // whatever's here at battle-creation time, same trick as the base
+  // diff-multiplier scaling already does for every mission.
+  'M0a': {
+    region: 'Altroes',
+    playerPos: { reno:[1,3], drace:[1,4], sela:[1,2], kael:[1,5], trice:[1,1] },
+    enemies: [
+      { col:7, row:2, ...buildMonster({ base: 'Goblin', tier: 1 }) },
+      { col:8, row:6, ...buildMonster({ base: 'Goblin', tier: 1 }) },
+    ],
+  },
+  // Wolf's Den — M0b, King Wolf (unlocked once any party unit hits level 8,
+  // see WorldMapScene.js). Unique-tier Wolf, no differential stat override
+  // (the spec only calls out an explicit multiplier for M4's instructor) —
+  // just the standard UNIQUE_STAT_MULT ladder with a fixed name so it
+  // doesn't roll a random "Ashen Fang"-style unique name. Now has its own
+  // dedicated (bigger-scaled) sprite — see UNIQUE_SPRITE_INFO['King Wolf']
+  // in monsters.js — and 2 regular-tier escort wolves flanking it
+  // (2026-07-08 feedback), same tier-1 buildMonster() pattern M0a's Goblins use.
+  'M0b': {
+    region: 'Altroes',
+    playerPos: { reno:[1,3], drace:[1,4], sela:[1,2], kael:[1,5], trice:[1,1] },
+    enemies: [
+      // size:2 — King Wolf occupies a 2x2 block anchored here: (5,5),(6,5),
+      // (5,6),(6,6) (see occupiedTiles/registerUnit in BattleScene.js). The
+      // 2 escort wolves must sit clear of all 4 of those tiles.
+      { col:5, row:5, size:2, ...buildMonster({ base: 'Wolf', kind: 'unique', name: 'King Wolf' }) },
+      { col:6, row:3, ...buildMonster({ base: 'Wolf', tier: 1 }) },
+      { col:8, row:6, ...buildMonster({ base: 'Wolf', tier: 1 }) },
+    ],
+  },
+  'M1': {
     region: 'Altroes',
     playerPos: { reno:[1,2], drace:[1,3], sela:[1,4], kael:[1,5], trice:[1,6] },
     enemies: [
@@ -140,26 +474,158 @@ const MISSION_CONFIGS = {
       { col:8, row:7, name:'Boar', spriteKey:'boar-idle', animKey:'boar-idle', spriteScale:0.35, moveSpeed:2, speed:4, strength:12, stamina:8, endurance:9, level:2 },
     ],
   },
-  'M3': {
+
+  // ── Capital test battles (M0-M4 redesign, Phase 3) ────────────────────────
+  'M3a': {
+    // Northern Cave — test 1: 3 Goblins, via buildMonster (same pipeline as
+    // the Deer spawn — Goblin/Lion now have sprite art wired, see monsters.js).
     region: 'Altroes',
     playerPos: { reno:[1,3], drace:[1,4], sela:[1,2], kael:[1,5], trice:[1,1] },
     enemies: [
-      { col:7, row:1, name:'Wolf', spriteKey:'wolf-idle', animKey:'wolf-idle', spriteScale:0.35, moveSpeed:3, speed:6, strength:10, stamina:7, endurance:6, level:2 },
-      { col:8, row:5, name:'Wolf', spriteKey:'wolf-idle', animKey:'wolf-idle', spriteScale:0.35, moveSpeed:3, speed:6, strength:10, stamina:7, endurance:6, level:2 },
-      { col:7, row:8, name:'Wolf', spriteKey:'wolf-idle', animKey:'wolf-idle', spriteScale:0.35, moveSpeed:3, speed:6, strength:10, stamina:7, endurance:6, level:2 },
-      // First live use of the new Monster List roster (buildMonster) — a
-      // Deer using the `stag` critter rig, tier 1. Wolf/Boar above are
-      // untouched (existing hand-tuned mission balance preserved).
-      { col:3, row:6, ...buildMonster({ base: 'Deer', tier: 1 }) },
+      { col:7, row:2, ...buildMonster({ base: 'Goblin', tier: 1 }) },
+      { col:8, row:5, ...buildMonster({ base: 'Goblin', tier: 1 }) },
+      { col:7, row:8, ...buildMonster({ base: 'Goblin', tier: 1 }) },
     ],
   },
+  'M3b': {
+    // Hilbert Low Lands — test 2: 2 Lions, tier 2 (slightly stronger than
+    // the first test, matching the escalating-trial pacing).
+    region: 'Altroes',
+    playerPos: { reno:[1,3], drace:[1,4], sela:[1,2], kael:[1,5], trice:[1,1] },
+    enemies: [
+      { col:7, row:3, ...buildMonster({ base: 'Lion', tier: 2 }) },
+      { col:8, row:6, ...buildMonster({ base: 'Lion', tier: 2 }) },
+    ],
+  },
+
+  // Arena Atlros — M4, the exam boss (non-repeatable, gated by
+  // WorldMapScene's onMissionClick). Not a Monster — a hero-sprite enemy
+  // (Hockey Player Ace Forward class), the first of its kind: preload()/
+  // create() load+animate `enemyHeroClasses` the same way they already do
+  // for the player party's hero sprites (see the `for (const heroClass of
+  // missionCfg.enemyHeroClasses ...)` loops below). "300% more health, 10%
+  // more attack" read as: base endurance/stamina ×4 (300% *more* health,
+  // i.e. 4× the original), strength ×1.1, speed left alone — baseline
+  // pre-boost numbers (speed 12, strength 14, stamina 11, endurance 10) are
+  // an invented "normal T3 athlete" reference point, not from any existing
+  // stat table.
   'M4': {
     region: 'Altroes',
     playerPos: { reno:[1,3], drace:[1,4], sela:[1,2], kael:[1,5], trice:[1,1] },
+    enemyHeroClasses: ['Hockey Player'],
     enemies: [
-      { col:6, row:2, name:'Wolf', spriteKey:'wolf-idle', animKey:'wolf-idle', spriteScale:0.35, moveSpeed:3, speed:7, strength:12, stamina:9,  endurance:8,  level:3 },
-      { col:8, row:4, name:'Boar', spriteKey:'boar-idle', animKey:'boar-idle', spriteScale:0.35, moveSpeed:2, speed:5, strength:15, stamina:11, endurance:12, level:3 },
-      { col:7, row:7, name:'Wolf', spriteKey:'wolf-idle', animKey:'wolf-idle', spriteScale:0.35, moveSpeed:3, speed:7, strength:12, stamina:9,  endurance:8,  level:3 },
+      { col:5, row:5, name:'Instructor', heroClass:'Hockey Player',
+        spriteKey: heroKey('Hockey Player'), animKey: `${heroKey('Hockey Player')}-idle`,
+        spriteScale: 0.38, moveSpeed:3, level:10,
+        speed:12, strength:15, stamina:44, endurance:40 },
+    ],
+  },
+
+  // ── Region cave/unique-area missions (July 2026) ──────────────────────────
+  // Enemies stay plain Wolf/Boar objects (same shape as M1F-M4) since only
+  // those 3 base monsters have sprite art wired in (see monsters.js) —
+  // `region` drives rollRegionArchetype at battle-create time, so these
+  // enemies automatically pick up each region's element pair (Gale=Wind/
+  // Water, Lametus=Wind/Earth) with no extra work here. Zora (recruited on
+  // M4 clear) gets an explicit playerPos slot since she's in the party for
+  // all of these.
+  'M5': {
+    region: 'Altroes',
+    playerPos: { reno:[1,3], drace:[1,4], sela:[1,2], kael:[1,5], trice:[1,1], zora:[1,0] },
+    enemies: [
+      { col:7, row:3, name:'Wolf', spriteKey:'wolf-idle', animKey:'wolf-idle', spriteScale:0.35, moveSpeed:2, speed:8, strength:13, stamina:10, endurance:9,  level:4 },
+      { col:8, row:6, name:'Boar', spriteKey:'boar-idle', animKey:'boar-idle', spriteScale:0.35, moveSpeed:2, speed:6, strength:17, stamina:12, endurance:13, level:4 },
+    ],
+  },
+  'M6': {
+    region: 'Altroes',
+    playerPos: { reno:[1,3], drace:[1,4], sela:[1,2], kael:[1,5], trice:[1,1], zora:[1,0] },
+    enemies: [
+      { col:7, row:2, name:'Wolf', spriteKey:'wolf-idle', animKey:'wolf-idle', spriteScale:0.35, moveSpeed:3, speed:8,  strength:14, stamina:11, endurance:10, level:5 },
+      { col:8, row:5, name:'Boar', spriteKey:'boar-idle', animKey:'boar-idle', spriteScale:0.35, moveSpeed:2, speed:6,  strength:18, stamina:13, endurance:14, level:5 },
+      { col:6, row:8, ...buildMonster({ base:'Deer', tier:2 }) },
+    ],
+  },
+  'M7': {
+    region: 'Gale',
+    playerPos: { reno:[1,3], drace:[1,4], sela:[1,2], kael:[1,5], trice:[1,1], zora:[1,0] },
+    enemies: [
+      { col:7, row:3, name:'Wolf', spriteKey:'wolf-idle', animKey:'wolf-idle', spriteScale:0.35, moveSpeed:3, speed:9, strength:16, stamina:12, endurance:10, level:6 },
+      { col:8, row:6, name:'Boar', spriteKey:'boar-idle', animKey:'boar-idle', spriteScale:0.35, moveSpeed:2, speed:7, strength:20, stamina:14, endurance:16, level:6 },
+    ],
+  },
+  'M8': {
+    region: 'Gale',
+    playerPos: { reno:[1,3], drace:[1,4], sela:[1,2], kael:[1,5], trice:[1,1], zora:[1,0] },
+    enemies: [
+      { col:7, row:4, name:'Wolf', spriteKey:'wolf-idle', animKey:'wolf-idle', spriteScale:0.35, moveSpeed:3, speed:10, strength:17, stamina:13, endurance:11, level:6 },
+      { col:8, row:2, name:'Boar', spriteKey:'boar-idle', animKey:'boar-idle', spriteScale:0.35, moveSpeed:2, speed:7,  strength:21, stamina:15, endurance:17, level:6 },
+    ],
+  },
+  'M9': {
+    region: 'Gale',
+    playerPos: { reno:[1,3], drace:[1,4], sela:[1,2], kael:[1,5], trice:[1,1], zora:[1,0] },
+    enemies: [
+      { col:7, row:2, name:'Wolf', spriteKey:'wolf-idle', animKey:'wolf-idle', spriteScale:0.35, moveSpeed:3, speed:11, strength:18, stamina:14, endurance:12, level:7 },
+      { col:8, row:7, name:'Boar', spriteKey:'boar-idle', animKey:'boar-idle', spriteScale:0.35, moveSpeed:2, speed:8,  strength:23, stamina:17, endurance:18, level:7 },
+      { col:2, row:8, ...buildMonster({ base:'Deer', tier:3 }) },
+    ],
+  },
+  'M10': {
+    region: 'Lametus',
+    playerPos: { reno:[1,3], drace:[1,4], sela:[1,2], kael:[1,5], trice:[1,1], zora:[1,0] },
+    enemies: [
+      { col:7, row:3, name:'Wolf', spriteKey:'wolf-idle', animKey:'wolf-idle', spriteScale:0.35, moveSpeed:3, speed:11, strength:19, stamina:14, endurance:13, level:8 },
+      { col:8, row:6, name:'Boar', spriteKey:'boar-idle', animKey:'boar-idle', spriteScale:0.35, moveSpeed:2, speed:8,  strength:24, stamina:18, endurance:19, level:8 },
+    ],
+  },
+  'M11': {
+    region: 'Lametus',
+    playerPos: { reno:[1,3], drace:[1,4], sela:[1,2], kael:[1,5], trice:[1,1], zora:[1,0] },
+    enemies: [
+      { col:7, row:4, name:'Wolf', spriteKey:'wolf-idle', animKey:'wolf-idle', spriteScale:0.35, moveSpeed:3, speed:12, strength:20, stamina:15, endurance:14, level:8 },
+      { col:8, row:2, name:'Boar', spriteKey:'boar-idle', animKey:'boar-idle', spriteScale:0.35, moveSpeed:2, speed:9,  strength:26, stamina:19, endurance:20, level:8 },
+    ],
+  },
+  'M12': {
+    region: 'Lametus',
+    playerPos: { reno:[1,3], drace:[1,4], sela:[1,2], kael:[1,5], trice:[1,1], zora:[1,0] },
+    enemies: [
+      { col:7, row:2, name:'Wolf', spriteKey:'wolf-idle', animKey:'wolf-idle', spriteScale:0.35, moveSpeed:3, speed:13, strength:22, stamina:16, endurance:14, level:9 },
+      { col:8, row:7, name:'Boar', spriteKey:'boar-idle', animKey:'boar-idle', spriteScale:0.35, moveSpeed:2, speed:9,  strength:27, stamina:20, endurance:22, level:9 },
+      { col:2, row:8, ...buildMonster({ base:'Deer', tier:4 }) },
+    ],
+  },
+
+  // ── Side battles (optional, July 2026) ────────────────────────────────────
+  // Each is a slightly tougher version of the region's final mission above
+  // it branches from (M6/M9/M12) — an optional bonus fight, not required to
+  // progress past that region.
+  'M13': {
+    region: 'Altroes',
+    playerPos: { reno:[1,3], drace:[1,4], sela:[1,2], kael:[1,5], trice:[1,1], zora:[1,0] },
+    enemies: [
+      { col:7, row:2, name:'Wolf', spriteKey:'wolf-idle', animKey:'wolf-idle', spriteScale:0.35, moveSpeed:3, speed:9,  strength:16, stamina:12, endurance:11, level:6 },
+      { col:8, row:5, name:'Boar', spriteKey:'boar-idle', animKey:'boar-idle', spriteScale:0.35, moveSpeed:2, speed:7,  strength:20, stamina:14, endurance:15, level:6 },
+      { col:6, row:8, ...buildMonster({ base:'Deer', tier:2 }) },
+    ],
+  },
+  'M14': {
+    region: 'Gale',
+    playerPos: { reno:[1,3], drace:[1,4], sela:[1,2], kael:[1,5], trice:[1,1], zora:[1,0] },
+    enemies: [
+      { col:7, row:2, name:'Wolf', spriteKey:'wolf-idle', animKey:'wolf-idle', spriteScale:0.35, moveSpeed:3, speed:12, strength:20, stamina:15, endurance:13, level:8 },
+      { col:8, row:7, name:'Boar', spriteKey:'boar-idle', animKey:'boar-idle', spriteScale:0.35, moveSpeed:2, speed:9,  strength:25, stamina:18, endurance:19, level:8 },
+      { col:2, row:8, ...buildMonster({ base:'Deer', tier:3 }) },
+    ],
+  },
+  'M15': {
+    region: 'Lametus',
+    playerPos: { reno:[1,3], drace:[1,4], sela:[1,2], kael:[1,5], trice:[1,1], zora:[1,0] },
+    enemies: [
+      { col:7, row:3, name:'Wolf', spriteKey:'wolf-idle', animKey:'wolf-idle', spriteScale:0.35, moveSpeed:3, speed:14, strength:24, stamina:17, endurance:15, level:10 },
+      { col:8, row:6, name:'Boar', spriteKey:'boar-idle', animKey:'boar-idle', spriteScale:0.35, moveSpeed:2, speed:10, strength:29, stamina:21, endurance:23, level:10 },
+      { col:2, row:8, ...buildMonster({ base:'Deer', tier:4 }) },
     ],
   },
 };
@@ -179,17 +645,24 @@ const calcAtk    = u => Math.round((u.strength + Math.round(u.speed * 0.5) + ran
 // type. Duals can have two live designations at once (e.g. a melee hit from
 // a C+D unit) — advantage/disadvantage are each true if ANY live designation
 // triggers them; a hit that has both cancels out to neutral.
+//
+// fixedDesignationType (e.g. Tackle) forces a specific designation live for
+// THIS move regardless of the attacker's own designation set — mirrors
+// fixedElement overriding the natural element cycle. It's additive with D's
+// always-on check, not a replacement (Drace's Tackle can have both C and D
+// live at once, same dual-designation cancel-to-neutral rule as above).
 function attackDesignations(attacker, ability) {
   const desigs = attacker.designations ?? [];
-  if (!desigs.length) return [];
+  const live = [];
+  if (ability.fixedDesignationType) live.push(ability.fixedDesignationType);
+  if (!desigs.length) return [...new Set(live)];
   // exactRange abilities (3-Point) have no plain .range at all — fall back
   // to it before the ?? 1 default so they aren't misread as melee.
   const isMelee = (ability.exactRange ?? ability.range ?? 1) <= 1;
-  const live = [];
   if (isMelee && desigs.includes('C'))  live.push('C');
   if (!isMelee && desigs.includes('Rg')) live.push('Rg');
   if (desigs.includes('D')) live.push('D');
-  return live;
+  return [...new Set(live)];
 }
 function designationMultiplier(attacker, defender, ability) {
   const live = attackDesignations(attacker, ability);
@@ -236,11 +709,31 @@ export class BattleScene extends Phaser.Scene {
 
   init(data) {
     this.difficulty = data?.difficulty ?? 1.0;
+    this._initData = data ?? {};
+  }
+
+  // The 5 always-loaded base species (every mission might spawn any of
+  // them) plus any named-unique sprite this mission's own enemy list
+  // references (King Wolf's kingwolf-idle, wired via M0b — see
+  // UNIQUE_SPRITE_INFO in monsters.js) — deduped by spriteKey. Generalizing
+  // this instead of hand-listing each named unique here means a future
+  // wired-up unique (King Lion, ...) needs no BattleScene.js change at all,
+  // just a MISSION_CONFIGS enemy entry built via buildMonster().
+  monsterSpriteInfos(missionCfg) {
+    const infos = new Map();
+    for (const base of ['Wolf', 'Boar', 'Deer', 'Goblin', 'Lion']) {
+      const info = spriteInfoForBase(base);
+      infos.set(info.spriteKey, info);
+    }
+    for (const e of missionCfg?.enemies ?? []) {
+      if (e.spriteKey && e.file && !infos.has(e.spriteKey)) infos.set(e.spriteKey, e);
+    }
+    return [...infos.values()];
   }
 
   preload() {
     // Load stage tiles for this mission
-    const stageCfg = STAGE_CONFIGS[state.currentMission] ?? STAGE_CONFIGS['M1F'];
+    const stageCfg = STAGE_CONFIGS[state.currentMission] ?? STAGE_CONFIGS['M1'];
     for (const num of stageCfg.tiles) {
       const key = `t${num}`;
       if (!this.textures.exists(key)) {
@@ -248,29 +741,54 @@ export class BattleScene extends Phaser.Scene {
       }
     }
 
-    // Wolf/Boar/Deer sheets: 6x6 grid (row0=idle, row1=run, row2=attack,
-    // row3=power attack, row4=taunt/howl, row5=death) — same convention as
-    // HERO_SPRITES, per-file frame size since canvas dims aren't perfectly uniform.
-    for (const base of ['Wolf', 'Boar', 'Deer']) {
-      const info = spriteInfoForBase(base);
+    // Hero-sprite enemies (e.g. M4's instructor) — Phase 4, M0-M4 redesign.
+    // Same HERO_SPRITES pipeline as the party below, just for a mission's
+    // `enemyHeroClasses` instead of the player roster. Computed here (not
+    // just below) since monsterSpriteInfos also needs missionCfg.
+    const missionCfg = MISSION_CONFIGS[state.currentMission ?? 'M1'];
+
+    // Monster sheets: 6x6 grid (row0=idle, row1=run, row2=attack, row3=power
+    // attack, row4=taunt/howl, row5=death) — same convention as HERO_SPRITES,
+    // per-file frame size since canvas dims aren't perfectly uniform.
+    for (const info of this.monsterSpriteInfos(missionCfg)) {
       this.load.spritesheet(info.spriteKey, info.file, trimmedSheetConfig(info.fw, info.fh));
     }
 
-    // Load hero sprites for current party — battle portraits always use the
-    // unit's T1 role sprite (promoted appearance isn't modeled in battle yet).
-    const classNames = state.party.map(u => spriteKeyForRole(u.t1Role)).filter(Boolean);
+    // Load hero sprites for current party — uses each unit's CURRENT (post-
+    // promotion) role sprite, not always T1, so a promoted unit shows its
+    // promoted appearance in battle.
+    // Whichever units will actually fight — the capped first-N by default,
+    // or the player's own picks from BattlePartySelectScene once the roster
+    // outgrows the cap (see getBattleParty/battlePartyIds in gameState.js).
+    const battleParty = getBattleParty(state);
+    const classNames = battleParty.map(u => spriteKeyForRole(currentRoleId(u))).filter(Boolean);
     loadHeroSprites(this, classNames);
+
+    if (missionCfg?.enemyHeroClasses) loadHeroSprites(this, missionCfg.enemyHeroClasses);
   }
 
   create() {
+    // Roster bigger than the battle cap and no pick made yet for this fight
+    // (2026-07-08 feedback: "player is given option to pick when party size
+    // is 5 or more") — bounce straight to the picker before building any
+    // battle state; it hands back into this same BattleScene start (with the
+    // original data) once the player confirms a lineup. battlePartyIds is
+    // cleared right after getBattleParty() reads it below, so a later battle
+    // with a changed roster (recruit/dismiss) always re-prompts instead of
+    // silently reusing a stale pick.
+    if (state.party.length > maxBattlePartySize(state) && !state.battlePartyIds) {
+      this.scene.start('BattlePartySelectScene', { battleData: this._initData });
+      return;
+    }
+
     const { width, height } = this.scale;
     this.originX = width / 2;
     this.originY = 70;
     this.turnCount = 1;
 
-    const missionId  = state.currentMission ?? 'M1F';
-    const missionCfg = MISSION_CONFIGS[missionId] ?? MISSION_CONFIGS['M1F'];
-    const stageCfg   = STAGE_CONFIGS[missionId]   ?? STAGE_CONFIGS['M1F'];
+    const missionId  = state.currentMission ?? 'M1';
+    const missionCfg = MISSION_CONFIGS[missionId] ?? MISSION_CONFIGS['M1'];
+    const stageCfg   = STAGE_CONFIGS[missionId]   ?? STAGE_CONFIGS['M1'];
 
     // phase: 'player_turn' | 'unit_menu' | 'unit_selected' | 'ability_targeting' | 'enemy_turn' | 'victory' | 'defeat'
     this.phase = 'player_turn';
@@ -278,27 +796,42 @@ export class BattleScene extends Phaser.Scene {
     this.moveRange = new Set();
     this.hoveredTile = null;
 
-    // Row 0 (frames 0-5) = idle, for all three 6-col sheets.
-    for (const key of ['wolf-idle', 'boar-idle', 'deer-idle']) {
+    // Row 0 (frames 0-5) = idle, for every monster sheet this mission needs
+    // (the 5 always-loaded base species + any named-unique sprite it uses).
+    const monsterSpriteInfos = this.monsterSpriteInfos(missionCfg);
+    for (const { spriteKey: key } of monsterSpriteInfos) {
       if (!this.anims.exists(key)) {
         this.anims.create({ key, frames: this.anims.generateFrameNumbers(key, { start: 0, end: 5 }), frameRate: 6, repeat: -1 });
       }
     }
 
+    // Must match preload()'s battleParty exactly so a benched unit's sprite
+    // is never half-loaded/animated while still excluded from playerUnits
+    // below. Consumes (and clears) battlePartyIds so the next battle always
+    // re-prompts on a still-oversized roster instead of reusing this pick.
+    const battleParty = getBattleParty(state);
+    state.battlePartyIds = null;
+
     // ── Strip sprite backgrounds, then build animations ───────────────────
-    for (const u of state.party) {
-      const className = spriteKeyForRole(u.t1Role);
+    for (const u of battleParty) {
+      const className = spriteKeyForRole(currentRoleId(u));
       if (className) stripHeroBackground(this, className);
+    }
+    for (const heroClass of missionCfg.enemyHeroClasses ?? []) {
+      stripHeroBackground(this, heroClass);
     }
     // Monster sheets are baked with a solid black background (no alpha
     // channel), same as the old critter rigs needed no stripping for but
     // the new hero-pipeline art does.
-    for (const key of ['wolf-idle', 'boar-idle', 'deer-idle']) {
+    for (const { spriteKey: key } of monsterSpriteInfos) {
       stripBackgroundByKey(this, key, { cols: 6, rows: 6 });
     }
-    for (const u of state.party) {
-      const className = spriteKeyForRole(u.t1Role);
+    for (const u of battleParty) {
+      const className = spriteKeyForRole(currentRoleId(u));
       if (className) createHeroAnims(this, className);
+    }
+    for (const heroClass of missionCfg.enemyHeroClasses ?? []) {
+      createHeroAnims(this, heroClass);
     }
 
     // ── Stage background tint ─────────────────────────────────────────────
@@ -314,12 +847,13 @@ export class BattleScene extends Phaser.Scene {
         const tileKey = `t${stageCfg.layout(col, row)}`;
         this.tileSprites.set(`${col},${row}`,
           this.add.image(x, y + TILE_Y_OFFSET, tileKey)
-            .setScale(2).setOrigin(0.5, 0).setDepth((col + row) * 10)
+            .setScale(TILE_SCALE).setOrigin(0.5, 0).setDepth((col + row) * 10)
         );
       }
     }
 
-    this.hlGfx     = this.add.graphics().setDepth(200);
+    this.hlPool      = [];
+    this.hlPoolIndex = 0;
     this.wolfHpGfx = this.add.graphics().setDepth(650);
     this.unitMap   = new Map();
 
@@ -332,8 +866,22 @@ export class BattleScene extends Phaser.Scene {
 
     // ── Player units — read live stats from gameState ─────────────────────
 
-    this.playerUnits = state.party.map(gs => {
-      const [col, row] = missionCfg.playerPos[gs.id] ?? [1, 1];
+    // missionCfg.playerPos only has entries for the 6 fixed FULL_ROSTER ids
+    // (reno/drace/sela/kael/trice/zora) — a generic recruit (recruitNewUnit,
+    // 2026-07-08 feedback) has an id like "recruit_3" that's never in that
+    // map, so every one of them would fall back to the exact same [1, 1] and
+    // stack invisibly on top of each other. usedStartTiles bumps any
+    // fallback (or, in theory, any config typo) that collides with a tile
+    // already claimed this battle to the next free row in the same column.
+    const usedStartTiles = new Set();
+    const claimStartTile = (col, row) => {
+      while (usedStartTiles.has(`${col},${row}`)) row = (row + 1) % ROWS;
+      usedStartTiles.add(`${col},${row}`);
+      return [col, row];
+    };
+
+    this.playerUnits = battleParty.map(gs => {
+      const [col, row] = claimStartTile(...(missionCfg.playerPos[gs.id] ?? [1, 1]));
       const eff = effectiveStats(gs);
       const hp  = gsMaxHp(gs);
       // Talent-tree units get an expanded SP pool so their tree's higher costs
@@ -350,6 +898,12 @@ export class BattleScene extends Phaser.Scene {
       // class grouping (SPORTS[*].class — Ball/Racquet/Bat & Ball/...), not
       // its accumulated history.
       const classGrouping = sportById(currentSport(gs))?.class ?? null;
+      // Lazy-inits gs.equippedSpecials/equippedSkills on the PERSISTENT unit
+      // (state.party), not just this battle's copy, if this is the unit's
+      // very first battle — so a fresh recruit isn't stuck with zero usable
+      // abilities before ever visiting LoadoutScene, and the default sticks
+      // for next time too rather than re-rolling every battle.
+      getEquippedSpecialAbilities(gs); getEquippedSkillAbilities(gs);
       return {
         id: gs.id, name: gs.name, initials: gs.initials, color: gs.color, element: gs.element,
         // t2Role/t3Role are carried (not just t1Role) so getUnitSpecials/
@@ -367,6 +921,7 @@ export class BattleScene extends Phaser.Scene {
         sp: maxSp, maxSp, hasActed: false, hasMoved: false, facing: 'right', level: gs.level ?? 1,
         talents: [...(gs.talents ?? [])],
         classSkills: [...(gs.classSkills ?? [])], skillCooldowns: {}, skillUses: {},
+        equippedSpecials: [...(gs.equippedSpecials ?? [])], equippedSkills: [...(gs.equippedSkills ?? [])],
         setUpUsedThisTurn: false, duoFreeMoveUsed: false, duoBonusUsed: false,
       };
     });
@@ -375,7 +930,7 @@ export class BattleScene extends Phaser.Scene {
       u.label = this.add.text(0, 0, u.initials, {
         fontSize: '11px', fontFamily: 'monospace', fontStyle: 'bold', color: '#ffffff',
       }).setOrigin(0.5).setDepth(1000);
-      const className = spriteKeyForRole(u.t1Role);
+      const className = spriteKeyForRole(u.roleId);
       const hKey = heroKey(className);
       const idleAnim = `${hKey}-idle`;
       if (this.textures.exists(hKey)) {
@@ -400,16 +955,32 @@ export class BattleScene extends Phaser.Scene {
     // ── Enemies — driven by mission config ────────────────────────────────
     const diff = this.difficulty ?? 1.0;
     const scaledLevel = (base) => Math.max(1, Math.round(base + (diff - 1) * 10));
+    // M0a/M0b repeat-scaling (M0-M4 redesign, Phase 5; extended to M0b
+    // 2026-07-07) — each replay after the first escalates enemies: level
+    // +2, HP (endurance/stamina) +25%, attack (strength) +10%, per repeat.
+    // Layered on top of the normal diff-multiplier scaling every mission
+    // already gets; neutral (0/1) for every other mission since only
+    // M0a/M0b's repeat counts ever get incremented (see WorldMapScene).
+    // REPEAT_LEVEL_CAP (2026-07-09, "when king wolf hit lvl 40 lvl increase
+    // should stop") — applies to the shared repeat-scaling mechanism itself,
+    // not just King Wolf/M0b, so it automatically covers every repeatable
+    // mission using this same repeatCount path (currently M0a and M0b).
+    // Only the level number is capped; HP/attack keep scaling with repeats
+    // past that point (not asked to change).
+    const repeatCount = (missionId === 'M0a' || missionId === 'M0b') ? (state.repeatCounts[missionId] ?? 0) : 0;
+    const repeatLevelBonus = repeatCount * 2;
+    const repeatHpMult = 1 + 0.25 * repeatCount;
+    const repeatAtkMult = 1 + 0.10 * repeatCount;
     this.enemyUnits = missionCfg.enemies.map(d => {
-      const lv = scaledLevel(d.level);
+      const lv = Math.min(REPEAT_LEVEL_CAP, scaledLevel(d.level) + repeatLevelBonus);
       const { primaryStat, element } = rollRegionArchetype(missionCfg.region);
       const scaled = {
         ...d, team: 'enemy',
         level:     lv,
         speed:     Math.round(d.speed     * diff),
-        strength:  Math.round(d.strength  * diff),
-        stamina:   Math.round(d.stamina   * diff),
-        endurance: Math.round(d.endurance * diff),
+        strength:  Math.round(d.strength  * diff * repeatAtkMult),
+        stamina:   Math.round(d.stamina   * diff * repeatHpMult),
+        endurance: Math.round(d.endurance * diff * repeatHpMult),
         xpValue:   40 * lv,
         primaryStat, element,
       };
@@ -418,18 +989,74 @@ export class BattleScene extends Phaser.Scene {
     });
     const ENEMY_TINT = 0x4a5566;
     for (const e of this.enemyUnits) {
-      const { x, y } = this.gridToScreen(e.col, e.row);
+      // footprintScreenPos centers a multi-tile unit (King Wolf, size:2)
+      // over its whole block instead of just its anchor tile's own cell.
+      const { x, y } = this.footprintScreenPos(e);
       const baseScale = e.spriteScale ?? 1.2;
       const depth = (e.col + e.row) * 10 + 5;
       e.sprite = this.add.sprite(x, y + TH2, e.spriteKey)
-        .play(e.animKey).setOrigin(0.5, 0.75).setScale(baseScale)
+        .setOrigin(e.fixedIdleFrames ? (e.fixedIdleOriginX ?? 0.5) : 0.5, 0.75).setScale(baseScale)
         .setTint(ENEMY_TINT).setDepth(depth);
+      // fixedIdleFrames (King Wolf, 2026-07-08 feedback, after 2 earlier
+      // single-frame-freeze attempts) — kingwolf.png's idle row has the
+      // tail painted past its own cell on every pose, AND an under-belly
+      // shadow painted the exact same pure black as the sheet's background
+      // (so BattleScene's flood-fill strip can't tell them apart and
+      // erases it, punching a hole). Freezing on one frame dodged both but
+      // killed all motion, which was itself the next complaint. This
+      // instead builds one corrected custom frame per listed pose — a
+      // wider-than-normal crop (into the empty buffer before the next
+      // cell's own art starts) for the tail, plus restoring opacity over a
+      // small rect for the belly shadow (stripping only ever zeroes alpha,
+      // never touches RGB, so the original black paints itself right back
+      // in) — and plays a real animation across all of them. See the long
+      // comment on King Wolf's UNIQUE_SPRITE_INFO entry in monsters.js for
+      // how each frame's crop/patch numbers were derived. Enemies never
+      // play any OTHER animation (playAttackAnim bails out for anything
+      // without a `.portrait`, i.e. every monster), so this is the only
+      // animation King Wolf needs.
+      if (e.fixedIdleFrames) {
+        const animKey = `${e.spriteKey}-fixedidle`;
+        if (!this.anims.exists(animKey)) {
+          const tex = this.textures.get(e.spriteKey);
+          const source = tex.source[0];
+          const canvas = document.createElement('canvas');
+          canvas.width = source.width; canvas.height = source.height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(source.image, 0, 0);
+          let dirty = false;
+          const frameNames = [];
+          for (const f of e.fixedIdleFrames) {
+            const frameName = `${e.spriteKey}-fixed${f.frame}`;
+            frameNames.push(frameName);
+            if (tex.has(frameName)) continue;
+            tex.add(frameName, 0, f.cropX, 0, f.cropWidth, e.fh);
+            if (f.patch) {
+              const { x: px, y: py, w: pw, h: ph } = f.patch;
+              const patch = ctx.getImageData(px, py, pw, ph);
+              for (let i = 3; i < patch.data.length; i += 4) patch.data[i] = 255;
+              ctx.putImageData(patch, px, py);
+              dirty = true;
+            }
+          }
+          if (dirty) source.updateSource(canvas);
+          this.anims.create({
+            key: animKey,
+            frames: frameNames.map(name => ({ key: e.spriteKey, frame: name })),
+            frameRate: 4,
+            repeat: -1,
+          });
+        }
+        e.sprite.play(animKey);
+      } else {
+        e.sprite.play(e.animKey);
+      }
       e.enemyTint = ENEMY_TINT;
       const lvColor = e.level >= 6 ? '#ff6666' : e.level >= 3 ? '#ffaa44' : '#aaaaaa';
       e.lvLabel = this.add.text(x, y + TH2 - 58, `${elementIcon(e.element)} Lv.${e.level}`, {
         fontSize: '9px', fontFamily: 'monospace', color: lvColor,
       }).setOrigin(0.5, 1).setDepth(660);
-      this.unitMap.set(`${e.col},${e.row}`, e);
+      this.registerUnit(e);
     }
 
     // ── UI ────────────────────────────────────────────────────────────────
@@ -506,7 +1133,22 @@ export class BattleScene extends Phaser.Scene {
   // ── Click handling ────────────────────────────────────────────────────────
 
   handleClick(sx, sy) {
-    const t = this.screenToGrid(sx, sy);
+    // Prefer the raw (unsnapped) tile whenever it's already a valid,
+    // currently-highlighted EMPTY destination — covers normal Move
+    // (unit_selected) and Duo's free-move tile pick (duo_targeting). Without
+    // this, snapToNearbyUnit's forgiveness radius could pull a click on a
+    // legitimately-highlighted tile onto a NEARBY unit instead — adjacent
+    // tile centers are only ~36px apart (2026-07-07 feedback: "clicking the
+    // highlighted square... doesn't register properly to move" — confirmed
+    // via measurement, every neighbor of a unit fell inside the old 40px
+    // snap radius, so an empty move-tile touching any unit was basically
+    // unclickable). Every other phase (selecting a unit, attacking, ability
+    // targeting) still benefits from snapping, unaffected by this.
+    const rawTile = this.screenToGrid(sx, sy);
+    const rawKey  = `${rawTile.col},${rawTile.row}`;
+    const rawIsActionableTile = (this.phase === 'unit_selected' || this.phase === 'duo_targeting')
+      && this.moveRange.has(rawKey) && !this.unitMap.has(rawKey);
+    const t = rawIsActionableTile ? rawTile : this.snapToNearbyUnit(sx, sy, rawTile);
     if (!this.inBounds(t)) return;
 
     const key      = `${t.col},${t.row}`;
@@ -572,6 +1214,18 @@ export class BattleScene extends Phaser.Scene {
         this.activeAbility = null;
         this.showActionMenu(u);
       }
+    } else if (this.phase === 'duo_targeting') {
+      // Waiting for the player to pick which free tile beside their partner
+      // to land on (see useDuoFreeMove/completeDuoMove).
+      if (this.moveRange.has(key) && !occupant) {
+        this.completeDuoMove(this.selectedUnit, t.col, t.row);
+      } else {
+        // Tap elsewhere cancels — the unit hasn't moved, so restore its
+        // normal move range (overwritten with Duo's candidate tiles while
+        // targeting) instead of leaving it empty or Duo-shaped.
+        this.moveRange = this.getReachableTiles(this.selectedUnit);
+        this.showActionMenu(this.selectedUnit);
+      }
     }
 
     this.redraw();
@@ -604,6 +1258,15 @@ export class BattleScene extends Phaser.Scene {
   // `free: true` (Duo's free move to a sports partner) repositions the unit
   // without consuming its normal move for the turn.
   moveUnit(unit, col, row, { free = false } = {}) {
+    // Manhattan tile distance — moveUnit is always called with the FINAL
+    // destination (getReachableTiles' BFS steps are never replayed visually),
+    // so a multi-tile move needs a proportionally longer tween. A fixed
+    // duration regardless of distance made long moves warp across the board
+    // in the same ~220ms as a 1-tile step, showing only 1-2 run-animation
+    // frames before snapping to idle — read as a "slideshow"/jump-cut,
+    // worst on classes with strong pose-to-pose contrast (2026-07-08).
+    const tileDist = Math.max(1, Math.abs(col - unit.col) + Math.abs(row - unit.row));
+
     // Track facing direction for future use
     if (unit.portrait && unit.team === 'player') {
       const { x: srcX } = this.gridToScreen(unit.col, unit.row);
@@ -626,11 +1289,33 @@ export class BattleScene extends Phaser.Scene {
     // Player hero — rAF animation (Phaser 4 tweens broken in scene.start context)
     if (unit.portrait && unit.team === 'player') {
       unit.isMoving = true;
-      const runAnim = `${heroKey(spriteKeyForRole(unit.t1Role))}-run`;
-      if (this.anims.exists(runAnim)) unit.portrait.play(runAnim);
+      const spriteKey = spriteKeyForRole(unit.roleId);
+      // noMoveAnim (e.g. Dancer — see HERO_SPRITES) — the sheet's run cycle
+      // never read well during movement even after capping/timing fixes, so
+      // these classes just hold whatever animation they're already on
+      // (idle) instead of switching to run for the slide (2026-07-08).
+      const skipMoveAnim = getSpriteInfo(spriteKey)?.noMoveAnim;
+      const runAnim = `${heroKey(spriteKey)}-run`;
+      const runAnimObj = skipMoveAnim ? null : this.anims.get(runAnim);
+      // noMoveAnim means NO animation during the slide, not "keep whatever
+      // was already playing" — idle was still looping through its own
+      // distinct poses the whole time, which read the same as the run-cycle
+      // flicker this override was meant to kill (2026-07-08 feedback:
+      // "still moving" after the first noMoveAnim pass). Stop it outright so
+      // the portrait holds a single static frame for the whole tween.
+      if (runAnimObj) unit.portrait.play(runAnim);
+      else if (skipMoveAnim) unit.portrait.anims.stop();
       const fromX = unit.portrait.x, fromY = unit.portrait.y;
       const toX = tx, toY = ty + TH2 + 10;
-      const dur = 220;
+      // A short move (esp. 1 tile) previously got a duration well under one
+      // full run-cycle (frames/frameRate), so it only ever showed ~2 of the
+      // animation's frames before snapping to idle — arithmetically
+      // indistinguishable from "flickering between 2 poses" regardless of
+      // tileDist scaling (2026-07-08 feedback: happens on every move, even
+      // 1 tile). Flooring dur at one full cycle guarantees every move —
+      // however short — plays the run animation through at least once.
+      const oneCycleMs = runAnimObj ? (runAnimObj.frames.length / runAnimObj.frameRate) * 1000 : 220;
+      const dur = Math.max(oneCycleMs, 180 * tileDist);
       const ease = t => t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t; // easeInOut quad
       const start = performance.now();
       const animate = () => {
@@ -640,7 +1325,7 @@ export class BattleScene extends Phaser.Scene {
         if (t < 1) { requestAnimationFrame(animate); return; }
         unit.isMoving = false;
         unit.portrait.setDepth((col + row) * 10 + 6);
-        this.playIdle(unit, spriteKeyForRole(unit.t1Role));
+        this.playIdle(unit, spriteKey);
         this.redraw();
       };
       requestAnimationFrame(animate);
@@ -737,22 +1422,53 @@ export class BattleScene extends Phaser.Scene {
       return dist >= 2 && dist <= 5;
     }) ?? null;
   }
+  // All empty orthogonal neighbors of (col,row) — plural sibling of
+  // findFreeTileNear (which just returns the first match, used by
+  // 'teleportToAlly'). Duo's free move lets the PLAYER pick which one
+  // (2026-07-07 feedback), so it needs the full candidate set, not just one.
+  findFreeTilesNear(col, row) {
+    const out = [];
+    for (const [dc, dr] of [[0, -1], [0, 1], [-1, 0], [1, 0]]) {
+      const c = col + dc, r = row + dr;
+      if (c < 0 || c >= COLS || r < 0 || r >= ROWS) continue;
+      if (!this.unitMap.has(`${c},${r}`)) out.push({ col: c, row: r });
+    }
+    return out;
+  }
   // Free move to a sports partner within range — doesn't consume the unit's
   // normal move (see moveUnit's `free` option). Sets duoFreeMoveUsed (once
   // per round, reset in startPlayerTurn) so it can't be spammed for
-  // ordinary repositioning, and arms the "attack twice" bonus checked in
-  // finishAbilityTurn.
+  // ordinary repositioning. No longer arms any bonus itself — the "attack
+  // twice" bonus (finishAbilityTurn) is a fully independent always-active
+  // check now, triggered by adjacency alone, not by having used this move.
+  // Enters a tile-picking phase ('duo_targeting', handled in handleClick)
+  // instead of auto-picking a destination, so the player chooses which of
+  // the partner's free neighboring tiles to land on.
   useDuoFreeMove(unit) {
     if (unit.duoFreeMoveUsed) return;
     const partner = this.findDuoPartner(unit);
     if (!partner) return;
-    const dest = this.findFreeTileNear(partner.col, partner.row);
-    if (!dest) return;
+    const candidates = this.findFreeTilesNear(partner.col, partner.row);
+    if (!candidates.length) return;
     this.hideActionMenu();
-    this.moveUnit(unit, dest.col, dest.row, { free: true });
+    this.phase = 'duo_targeting';
+    this.moveRange = new Set(candidates.map(t => `${t.col},${t.row}`));
+    this.actionHint.setText('Select a tile beside your partner');
+    this.redraw();
+  }
+  // Finishes the tile pick started by useDuoFreeMove — the actual teleport,
+  // 'DUO!' effect, and menu reopen (previously inline in useDuoFreeMove
+  // before the player got a choice of tile).
+  completeDuoMove(unit, col, row) {
+    this.moveUnit(unit, col, row, { free: true });
     unit.duoFreeMoveUsed = true;
-    const { x, y } = this.gridToScreen(dest.col, dest.row);
+    const { x, y } = this.gridToScreen(col, row);
     this.showEffect(x, y + TH2, 'DUO!', '#44ffdd');
+    // Recompute (not just clear) — the free move doesn't set hasMoved, so
+    // the unit can still move normally afterward; the action menu's dim
+    // preview and a subsequent "Move" should reflect the NEW position, not
+    // the stale pre-move range or an empty one.
+    this.moveRange = this.getReachableTiles(unit);
     this.redraw();
     this.showActionMenu(unit);
   }
@@ -777,7 +1493,7 @@ export class BattleScene extends Phaser.Scene {
     );
     if (!partner) return;
 
-    const known = [ATTACK, THROW, ...getUnitSpecials(partner), ...getUnitSkills(partner)]
+    const known = [ATTACK, THROW, ...getEquippedSpecialAbilities(partner).filter(Boolean), ...getEquippedSkillAbilities(partner).filter(Boolean)]
       .filter(ab => ab.targetType === 'enemy' && !ab.directional && (ab.multiplier ?? 0) > 0);
     if (!known.length) return;
 
@@ -878,7 +1594,7 @@ export class BattleScene extends Phaser.Scene {
       this.killsByType[unit.name] = (this.killsByType[unit.name] ?? 0) + 1;
       this.xpEarned += unit.xpValue ?? 40;
     }
-    this.unitMap.delete(`${unit.col},${unit.row}`);
+    this.unregisterUnit(unit);
     if (unit.gfx)     { unit.gfx.clear(); }
     if (unit.label)   { unit.label.setVisible(false); }
     if (unit.portrait){ unit.portrait.setVisible(false); }
@@ -896,7 +1612,7 @@ export class BattleScene extends Phaser.Scene {
         // Play celebration for all player heroes with the anim
         for (const u of this.playerUnits) {
           if (!u.isDead && u.portrait) {
-            const celebAnim = `${heroKey(spriteKeyForRole(u.t1Role))}-celebrate`;
+            const celebAnim = `${heroKey(spriteKeyForRole(u.roleId))}-celebrate`;
             if (this.anims.exists(celebAnim)) u.portrait.play(celebAnim);
           }
         }
@@ -948,8 +1664,12 @@ export class BattleScene extends Phaser.Scene {
 
     const { width, height } = this.scale;
     const { x: ux, y: uy } = this.gridToScreen(unit.col, unit.row);
-    const specials = getUnitSpecials(unit);
-    const skills   = getUnitSkills(unit); // slot-free — every known Skill, not just equipped passives
+    // Only the player-selected battle loadout, not every known ability — see
+    // getEquippedSpecialAbilities/getEquippedSkillAbilities in abilities.js
+    // (2026-07-07: capped at MAX_EQUIPPED_SPECIALS/MAX_EQUIPPED_SKILLS,
+    // selected via LoadoutScene).
+    const specials = getEquippedSpecialAbilities(unit).filter(Boolean);
+    const skills   = getEquippedSkillAbilities(unit).filter(Boolean);
 
     const IH = 30, PAD = 5;
     const ITEMS = this.buildMenuItems(unit, specials, skills);
@@ -962,25 +1682,40 @@ export class BattleScene extends Phaser.Scene {
 
     const con = this.add.container(mx, my).setDepth(4000);
     this.actionMenu = con;
+    const RADIUS = 10;
 
-    // Panel background
+    // Soft drop shadow — an offset, low-alpha rounded rect fakes depth/blur
+    // without a real filter, so the card still reads as "raised" once its
+    // own fill goes translucent.
+    const shadow = this.add.graphics();
+    shadow.fillStyle(0x000000, 0.32);
+    shadow.fillRoundedRect(4, 6, MW, MH, RADIUS);
+    con.add(shadow);
+
+    // Panel background — modern translucent "glass" card, 50% opacity
     const bg = this.add.graphics();
-    bg.fillStyle(0x0d1428, 0.97);
-    bg.fillRect(0, 0, MW, MH);
-    bg.lineStyle(1, unit.color, 0.5);
-    bg.strokeRect(0, 0, MW, MH);
+    bg.fillStyle(0x0d1428, 0.5);
+    bg.fillRoundedRect(0, 0, MW, MH, RADIUS);
+    bg.lineStyle(1.5, unit.color, 0.75);
+    bg.strokeRoundedRect(0, 0, MW, MH, RADIUS);
+    // Bright top edge accent — the "modern card" highlight strip
+    bg.fillStyle(unit.color, 0.6);
+    bg.fillRoundedRect(0, 0, MW, 3, { tl: RADIUS, tr: RADIUS, bl: 0, br: 0 });
+    con.add(bg);
 
     // Arrow connector toward unit
     const ax = toRight ? -7 : MW;
     const ay = MH / 2;
-    bg.fillStyle(0x060810, 1);
-    bg.fillTriangle(ax, ay - 6, ax, ay + 6, toRight ? ax - 7 : ax + 7, ay);
-    con.add(bg);
+    const arrowG = this.add.graphics();
+    arrowG.fillStyle(0x0d1428, 0.5);
+    arrowG.fillTriangle(ax, ay - 6, ax, ay + 6, toRight ? ax - 7 : ax + 7, ay);
+    con.add(arrowG);
 
     // Unit name header
     const nameHdr = this.add.text(MW / 2, PAD + 6, unit.name.split(' ')[0].toUpperCase(), {
       fontSize: '9px', fontFamily: 'monospace', fontStyle: 'bold',
       color: '#' + unit.color.toString(16).padStart(6, '0'),
+      stroke: '#000000', strokeThickness: 3,
     }).setOrigin(0.5, 0);
     con.add(nameHdr);
 
@@ -989,7 +1724,7 @@ export class BattleScene extends Phaser.Scene {
 
       if (separator) {
         const sepG = this.add.graphics();
-        sepG.lineStyle(1, 0x151520, 1);
+        sepG.lineStyle(1, 0xffffff, 0.08);
         sepG.lineBetween(4, iy + 2, MW - 4, iy + 2);
         con.add(sepG);
       }
@@ -998,8 +1733,11 @@ export class BattleScene extends Phaser.Scene {
       const draw = (h) => {
         g.clear();
         if (h && !disabled) {
-          g.fillStyle(0x162040, 1);
-          g.fillRect(2, iy + 3, MW - 4, IH - 5);
+          g.fillStyle(0x2a4a90, 0.5);
+          g.fillRoundedRect(2, iy + 3, MW - 4, IH - 5, 6);
+          // Left accent bar — modern "selected row" indicator
+          g.fillStyle(unit.color, 0.9);
+          g.fillRoundedRect(2, iy + 3, 3, IH - 5, 2);
         }
       };
       draw(false);
@@ -1010,19 +1748,22 @@ export class BattleScene extends Phaser.Scene {
 
       con.add(this.add.text(10, iy + IH / 2, icon, {
         fontSize: '12px', fontFamily: 'monospace', color: ic,
+        stroke: '#000000', strokeThickness: 3,
       }).setOrigin(0, 0.5));
       con.add(this.add.text(28, iy + IH / 2, label, {
         fontSize: '12px', fontFamily: 'monospace', fontStyle: disabled ? 'normal' : 'bold', color: tc,
+        stroke: '#000000', strokeThickness: disabled ? 0 : 3,
       }).setOrigin(0, 0.5));
 
       if (sub && !disabled) {
         con.add(this.add.text(MW - 8, iy + IH / 2, sub, {
-          fontSize: '9px', fontFamily: 'monospace', color: '#334466',
+          fontSize: '9px', fontFamily: 'monospace', color: '#7799cc',
+          stroke: '#000000', strokeThickness: 2,
         }).setOrigin(1, 0.5));
       }
 
       if (!disabled) {
-        const z = this.add.zone(MW / 2, iy + IH / 2, MW - 4, IH - 4)
+        const z = this.add.zone(MW / 2, iy + IH / 2, MW, IH)
           .setInteractive({ useHandCursor: true });
         z.on('pointerover',  () => draw(true));
         z.on('pointerout',   () => draw(false));
@@ -1054,10 +1795,12 @@ export class BattleScene extends Phaser.Scene {
       });
     }
 
+    const usableItems = this.usableItemGroups();
     items.push(
       { icon: '◈', label: 'Items',
-        disabled: true,
-        action: () => {} },
+        sub: usableItems.length ? `${usableItems.reduce((n, g) => n + g.count, 0)}` : null,
+        disabled: unit.hasActed || usableItems.length === 0,
+        action: () => this.showItemSubmenu(unit) },
 
       { icon: '◉', label: 'Status',
         disabled: false,
@@ -1147,25 +1890,37 @@ export class BattleScene extends Phaser.Scene {
 
     const con = this.add.container(mx, my).setDepth(4000);
     this.actionMenu = con;
+    const RADIUS = 10;
+
+    const shadow = this.add.graphics();
+    shadow.fillStyle(0x000000, 0.32);
+    shadow.fillRoundedRect(4, 6, MW, MH, RADIUS);
+    con.add(shadow);
 
     const bg = this.add.graphics();
-    bg.fillStyle(0x0d1428, 0.97);
-    bg.fillRect(0, 0, MW, MH);
-    bg.lineStyle(1, unit.color, 0.5);
-    bg.strokeRect(0, 0, MW, MH);
+    bg.fillStyle(0x0d1428, 0.5);
+    bg.fillRoundedRect(0, 0, MW, MH, RADIUS);
+    bg.lineStyle(1.5, unit.color, 0.75);
+    bg.strokeRoundedRect(0, 0, MW, MH, RADIUS);
+    bg.fillStyle(unit.color, 0.6);
+    bg.fillRoundedRect(0, 0, MW, 3, { tl: RADIUS, tr: RADIUS, bl: 0, br: 0 });
+    con.add(bg);
     const ax = toRight ? -7 : MW;
     const ay = MH / 2;
-    bg.fillStyle(0x060810, 1);
-    bg.fillTriangle(ax, ay - 6, ax, ay + 6, toRight ? ax - 7 : ax + 7, ay);
-    con.add(bg);
+    const arrowG = this.add.graphics();
+    arrowG.fillStyle(0x0d1428, 0.5);
+    arrowG.fillTriangle(ax, ay - 6, ax, ay + 6, toRight ? ax - 7 : ax + 7, ay);
+    con.add(arrowG);
 
     // Back button
     const backG = this.add.graphics();
-    const drawBack = (h) => { backG.clear(); if (h) { backG.fillStyle(0x0e1228,1); backG.fillRect(2, PAD + 2, MW - 4, IH - 4); } };
+    const drawBack = (h) => { backG.clear(); if (h) { backG.fillStyle(0x2a4a90, 0.5); backG.fillRoundedRect(2, PAD + 2, MW - 4, IH - 4, 6); } };
     drawBack(false);
     con.add(backG);
-    con.add(this.add.text(10, PAD + IH / 2, '← Back', { fontSize:'11px', fontFamily:'monospace', color:'#446688' }).setOrigin(0, 0.5));
-    const bz = this.add.zone(MW/2, PAD + IH/2, MW-4, IH-4).setInteractive({ useHandCursor:true });
+    con.add(this.add.text(10, PAD + IH / 2, '← Back', {
+      fontSize:'11px', fontFamily:'monospace', color:'#88aadd', stroke:'#000000', strokeThickness:3,
+    }).setOrigin(0, 0.5));
+    const bz = this.add.zone(MW/2, PAD + IH/2, MW, IH).setInteractive({ useHandCursor:true });
     bz.on('pointerover', () => drawBack(true)); bz.on('pointerout', () => drawBack(false));
     bz.on('pointerdown', (ptr,lx,ly,evt) => { evt.stopPropagation(); this.showActionMenu(unit); });
     con.add(bz);
@@ -1174,17 +1929,31 @@ export class BattleScene extends Phaser.Scene {
       const iy = PAD + (i + 1) * IH;
       const canUse = this.abilityUsable(unit, ab);
       const g = this.add.graphics();
-      const draw = (h) => { g.clear(); if (h && canUse) { g.fillStyle(0x0e1228,1); g.fillRect(2, iy+2, MW-4, IH-4); } };
+      const draw = (h) => {
+        g.clear();
+        if (h && canUse) {
+          g.fillStyle(0x2a4a90, 0.5);
+          g.fillRoundedRect(2, iy+2, MW-4, IH-4, 6);
+          g.fillStyle(unit.color, 0.9);
+          g.fillRoundedRect(2, iy+2, 3, IH-4, 2);
+        }
+      };
       draw(false);
       con.add(g);
 
       const tc = canUse ? '#ffffff' : '#252535';
-      const sc = canUse ? '#4499ff' : '#1e2233';
-      con.add(this.add.text(10, iy + IH / 2, `${ab.icon}  ${ab.name}`, { fontSize:'12px', fontFamily:'monospace', fontStyle:'bold', color: tc }).setOrigin(0, 0.5));
-      con.add(this.add.text(MW - 8, iy + IH / 2, this.abilitySubLabel(unit, ab), { fontSize:'10px', fontFamily:'monospace', color: sc }).setOrigin(1, 0.5));
+      const sc = canUse ? '#66aaff' : '#1e2233';
+      con.add(this.add.text(10, iy + IH / 2, `${ab.icon}  ${ab.name}`, {
+        fontSize:'12px', fontFamily:'monospace', fontStyle:'bold', color: tc,
+        stroke: '#000000', strokeThickness: canUse ? 3 : 0,
+      }).setOrigin(0, 0.5));
+      con.add(this.add.text(MW - 8, iy + IH / 2, this.abilitySubLabel(unit, ab), {
+        fontSize:'10px', fontFamily:'monospace', color: sc,
+        stroke: '#000000', strokeThickness: canUse ? 2 : 0,
+      }).setOrigin(1, 0.5));
 
       if (canUse) {
-        const z = this.add.zone(MW/2, iy + IH/2, MW-4, IH-4).setInteractive({ useHandCursor:true });
+        const z = this.add.zone(MW/2, iy + IH/2, MW, IH).setInteractive({ useHandCursor:true });
         z.on('pointerover', () => draw(true)); z.on('pointerout', () => draw(false));
         z.on('pointerdown', (ptr,lx,ly,evt) => {
           evt.stopPropagation();
@@ -1197,32 +1966,192 @@ export class BattleScene extends Phaser.Scene {
     });
   }
 
+  // Usable consumables currently in inventory (heal_herb, health/focus/
+  // vitality_potion — anything with healPct/spPct), grouped by id with a
+  // count. Inventory stores N separate copies as N separate array entries
+  // (see items.js's MATERIAL_STACK_CAP note), so grouping happens here.
+  usableItemGroups() {
+    const counts = new Map();
+    for (const it of state.inventory) {
+      if (!isUsableItem(it)) continue;
+      counts.set(it.id, (counts.get(it.id) ?? 0) + 1);
+    }
+    return [...counts.entries()]
+      .map(([id, count]) => ({ item: state.inventory.find(i => i.id === id), count }))
+      .filter(g => g.item);
+  }
+
+  // Consumes one copy of `item` from inventory and applies its heal/SP
+  // restore to `unit` (self-target only — no ally-targeting UI yet). Ends
+  // the unit's turn the same way an ability use does.
+  useItemOnUnit(unit, item) {
+    const idx = state.inventory.findIndex(i => i.id === item.id);
+    if (idx === -1) return;
+    state.inventory.splice(idx, 1);
+
+    const parts = [];
+    if (item.healPct) {
+      const heal = Math.round(unit.maxHp * item.healPct);
+      unit.hp = Math.min(unit.maxHp, unit.hp + heal);
+      parts.push(`+${heal} HP`);
+    }
+    if (item.spPct) {
+      const sp = Math.round((unit.maxSp ?? 0) * item.spPct);
+      unit.sp = Math.min(unit.maxSp ?? unit.sp, (unit.sp ?? 0) + sp);
+      parts.push(`+${sp} SP`);
+    }
+    const { x, y } = this.gridToScreen(unit.col, unit.row);
+    this.showEffect(x, y + TH2, parts.join('  '), '#44ffaa');
+
+    this.hideActionMenu();
+    this.redraw();
+    this.finishAbilityTurn(unit);
+  }
+
+  showItemSubmenu(unit) {
+    this.hideActionMenu();
+    this.phase = 'unit_menu';
+
+    const { width, height } = this.scale;
+    const { x: ux, y: uy } = this.gridToScreen(unit.col, unit.row);
+    const groups = this.usableItemGroups();
+
+    const IH = 30, PAD = 4;
+    const rowCount = Math.max(groups.length, 1);
+    const MW = 200, MH = (rowCount + 1) * IH + PAD * 2;
+    const toRight = ux + 40 + MW < width - 4;
+    const mx = toRight ? ux + 40 : ux - 40 - MW;
+    const my = Math.min(Math.max(uy - MH / 2, 6), height - MH - 6);
+
+    const con = this.add.container(mx, my).setDepth(4000);
+    this.actionMenu = con;
+    const RADIUS = 10;
+
+    const shadow = this.add.graphics();
+    shadow.fillStyle(0x000000, 0.32);
+    shadow.fillRoundedRect(4, 6, MW, MH, RADIUS);
+    con.add(shadow);
+
+    const bg = this.add.graphics();
+    bg.fillStyle(0x0d1428, 0.5);
+    bg.fillRoundedRect(0, 0, MW, MH, RADIUS);
+    bg.lineStyle(1.5, unit.color, 0.75);
+    bg.strokeRoundedRect(0, 0, MW, MH, RADIUS);
+    bg.fillStyle(unit.color, 0.6);
+    bg.fillRoundedRect(0, 0, MW, 3, { tl: RADIUS, tr: RADIUS, bl: 0, br: 0 });
+    con.add(bg);
+    const ax = toRight ? -7 : MW;
+    const ay = MH / 2;
+    const arrowG = this.add.graphics();
+    arrowG.fillStyle(0x0d1428, 0.5);
+    arrowG.fillTriangle(ax, ay - 6, ax, ay + 6, toRight ? ax - 7 : ax + 7, ay);
+    con.add(arrowG);
+
+    // Back button
+    const backG = this.add.graphics();
+    const drawBack = (h) => { backG.clear(); if (h) { backG.fillStyle(0x2a4a90, 0.5); backG.fillRoundedRect(2, PAD + 2, MW - 4, IH - 4, 6); } };
+    drawBack(false);
+    con.add(backG);
+    con.add(this.add.text(10, PAD + IH / 2, '← Back', {
+      fontSize:'11px', fontFamily:'monospace', color:'#88aadd', stroke:'#000000', strokeThickness:3,
+    }).setOrigin(0, 0.5));
+    const bz = this.add.zone(MW/2, PAD + IH/2, MW, IH).setInteractive({ useHandCursor:true });
+    bz.on('pointerover', () => drawBack(true)); bz.on('pointerout', () => drawBack(false));
+    bz.on('pointerdown', (ptr,lx,ly,evt) => { evt.stopPropagation(); this.showActionMenu(unit); });
+    con.add(bz);
+
+    if (!groups.length) {
+      con.add(this.add.text(MW / 2, PAD + IH + IH / 2, 'No items', {
+        fontSize:'11px', fontFamily:'monospace', color:'#334466',
+      }).setOrigin(0.5));
+    }
+
+    groups.forEach(({ item, count }, i) => {
+      const iy = PAD + (i + 1) * IH;
+      const g = this.add.graphics();
+      const draw = (h) => {
+        g.clear();
+        if (h) {
+          g.fillStyle(0x2a4a90, 0.5);
+          g.fillRoundedRect(2, iy+2, MW-4, IH-4, 6);
+          g.fillStyle(unit.color, 0.9);
+          g.fillRoundedRect(2, iy+2, 3, IH-4, 2);
+        }
+      };
+      draw(false);
+      con.add(g);
+
+      con.add(this.add.text(10, iy + IH / 2, item.name, {
+        fontSize:'12px', fontFamily:'monospace', fontStyle:'bold', color:'#ffffff',
+        stroke: '#000000', strokeThickness: 3,
+      }).setOrigin(0, 0.5));
+      con.add(this.add.text(MW - 8, iy + IH / 2, `×${count}`, {
+        fontSize:'10px', fontFamily:'monospace', color:'#66aaff',
+        stroke: '#000000', strokeThickness: 2,
+      }).setOrigin(1, 0.5));
+
+      const z = this.add.zone(MW/2, iy + IH/2, MW, IH).setInteractive({ useHandCursor:true });
+      z.on('pointerover', () => draw(true)); z.on('pointerout', () => draw(false));
+      z.on('pointerdown', (ptr,lx,ly,evt) => {
+        evt.stopPropagation();
+        this.useItemOnUnit(unit, item);
+      });
+      con.add(z);
+    });
+  }
+
   // Small always-on reference panel, top-right corner, below the header bar:
   // the designation triangle (Combat > Ranged > Defender > Combat) and the
   // elemental affinity pentagon (Fire > Wind > Earth > Lightning > Water >
-  // Fire) — a quick-glance cheat sheet for both damage-multiplier systems.
+  // Fire) — a quick-glance "weakness cheat sheet" for both damage-multiplier
+  // systems. Modernized (July 2026) to match the translucent glass-card
+  // action menu: each icon gets its own ring-outlined chip instead of a flat
+  // arrow-joined text string.
   drawReferenceHud(width) {
-    const PW = 172, PY = 34, PH = 44;
+    const ROW_H = 24, PAD_Y = 8;
+    const PW = 208, PY = 34, PH = PAD_Y * 2 + ROW_H * 2;
     const px = width - PW - 6;
+    const RADIUS = 8;
+
+    const shadow = this.add.graphics().setDepth(999);
+    shadow.fillStyle(0x000000, 0.28);
+    shadow.fillRoundedRect(px + 3, PY + 4, PW, PH, RADIUS);
 
     const bg = this.add.graphics().setDepth(1000);
-    bg.fillStyle(0x08101e, 0.85);
-    bg.fillRoundedRect(px, PY, PW, PH, 4);
-    bg.lineStyle(1, 0x2a3a6a, 1);
-    bg.strokeRoundedRect(px, PY, PW, PH, 4);
+    bg.fillStyle(0x08101e, 0.5);
+    bg.fillRoundedRect(px, PY, PW, PH, RADIUS);
+    bg.lineStyle(1.5, 0x3a5aa0, 0.7);
+    bg.strokeRoundedRect(px, PY, PW, PH, RADIUS);
+    bg.fillStyle(0x4a7acc, 0.5);
+    bg.fillRoundedRect(px, PY, PW, 2, { tl: RADIUS, tr: RADIUS, bl: 0, br: 0 });
 
-    const cycleText = (list, iconFn) => {
-      const icons = list.map(iconFn);
-      return [...icons, icons[0]].join('›');
+    // Draws one cycle (designation or element) as a row of icon chips
+    // joined by chevrons, wrapping back to the first icon at the end.
+    const drawCycleRow = (list, iconFn, cy, ringColor) => {
+      const icons = [...list.map(iconFn), iconFn(list[0])];
+      const n = icons.length;
+      const chipR = 8, gap = 18;
+      const totalW = n * chipR * 2 + (n - 1) * gap;
+      let cx = px + PW / 2 - totalW / 2 + chipR;
+      icons.forEach((ic, i) => {
+        const chip = this.add.graphics().setDepth(1001);
+        chip.fillStyle(ringColor, 0.28);
+        chip.fillCircle(cx, cy, chipR);
+        chip.lineStyle(1.2, ringColor, 0.9);
+        chip.strokeCircle(cx, cy, chipR);
+        this.add.text(cx, cy, ic, { fontSize: '10px', fontFamily: 'monospace' })
+          .setOrigin(0.5).setDepth(1002);
+        if (i < n - 1) {
+          this.add.text(cx + chipR + gap / 2, cy, '›', {
+            fontSize: '11px', fontFamily: 'monospace', fontStyle: 'bold', color: '#6688bb',
+          }).setOrigin(0.5).setDepth(1001);
+        }
+        cx += chipR * 2 + gap;
+      });
     };
 
-    this.add.text(px + PW / 2, PY + 9, cycleText(DESIGNATION_CYCLE, designationIcon), {
-      fontSize: '10px', fontFamily: 'monospace', color: '#ccddee',
-    }).setOrigin(0.5, 0).setDepth(1001);
-
-    this.add.text(px + PW / 2, PY + 27, cycleText(ELEMENT_CYCLE, elementIcon), {
-      fontSize: '10px', fontFamily: 'monospace', color: '#ccddee',
-    }).setOrigin(0.5, 0).setDepth(1001);
+    drawCycleRow(DESIGNATION_CYCLE, designationIcon, PY + PAD_Y + ROW_H / 2 - 2, 0x4477cc);
+    drawCycleRow(ELEMENT_CYCLE,     elementIcon,     PY + PAD_Y + ROW_H + ROW_H / 2 - 2, 0xcc7744);
   }
 
   showUnitStatus(unit) {
@@ -1237,15 +2166,26 @@ export class BattleScene extends Phaser.Scene {
 
     const con = this.add.container(px, py).setDepth(3500);
     this.statusPopup = con;
+    const RADIUS = 8;
+
+    const shadow = this.add.graphics();
+    shadow.fillStyle(0x000000, 0.32);
+    shadow.fillRoundedRect(3, 5, PW, PH, RADIUS);
+    con.add(shadow);
 
     const bg = this.add.graphics();
-    bg.fillStyle(0x0d1428, 0.97);
-    bg.fillRect(0, 0, PW, PH);
-    bg.lineStyle(1, unit.color, 0.6);
-    bg.strokeRect(0, 0, PW, PH);
+    bg.fillStyle(0x0d1428, 0.5);
+    bg.fillRoundedRect(0, 0, PW, PH, RADIUS);
+    bg.lineStyle(1.5, unit.color, 0.75);
+    bg.strokeRoundedRect(0, 0, PW, PH, RADIUS);
+    bg.fillStyle(unit.color, 0.6);
+    bg.fillRoundedRect(0, 0, PW, 3, { tl: RADIUS, tr: RADIUS, bl: 0, br: 0 });
     con.add(bg);
 
-    con.add(this.add.text(PW / 2, 8, unit.name.split(' ')[0], { fontSize:'11px', fontFamily:'monospace', fontStyle:'bold', color:'#aaaacc' }).setOrigin(0.5,0));
+    con.add(this.add.text(PW / 2, 8, unit.name.split(' ')[0], {
+      fontSize:'11px', fontFamily:'monospace', fontStyle:'bold', color:'#aaccff',
+      stroke:'#000000', strokeThickness:3,
+    }).setOrigin(0.5,0));
 
     // Affinity + designation icons, right under the name
     const badges = [
@@ -1253,7 +2193,9 @@ export class BattleScene extends Phaser.Scene {
       designations.length ? designations.map(d => designationIcon(d)).join(' ') : null,
     ].filter(Boolean).join('   ');
     if (badges) {
-      con.add(this.add.text(PW / 2, 22, badges, { fontSize:'11px', fontFamily:'monospace', color:'#ddccaa' }).setOrigin(0.5, 0));
+      con.add(this.add.text(PW / 2, 22, badges, {
+        fontSize:'11px', fontFamily:'monospace', color:'#ddccaa', stroke:'#000000', strokeThickness:3,
+      }).setOrigin(0.5, 0));
     }
 
     const rows = [
@@ -1264,11 +2206,26 @@ export class BattleScene extends Phaser.Scene {
       { label: 'END', val: `${unit.endurance}`, color: '#44cccc' },
     ];
     const PH2 = 44 + rows.length * 17 + 6;
-    if (PH2 !== PH) { bg.clear(); bg.fillStyle(0x0d1428, 0.97); bg.fillRect(0, 0, PW, PH2); bg.lineStyle(1, unit.color, 0.6); bg.strokeRect(0, 0, PW, PH2); }
+    if (PH2 !== PH) {
+      shadow.clear();
+      shadow.fillStyle(0x000000, 0.32);
+      shadow.fillRoundedRect(3, 5, PW, PH2, RADIUS);
+      bg.clear();
+      bg.fillStyle(0x0d1428, 0.5);
+      bg.fillRoundedRect(0, 0, PW, PH2, RADIUS);
+      bg.lineStyle(1.5, unit.color, 0.75);
+      bg.strokeRoundedRect(0, 0, PW, PH2, RADIUS);
+      bg.fillStyle(unit.color, 0.6);
+      bg.fillRoundedRect(0, 0, PW, 3, { tl: RADIUS, tr: RADIUS, bl: 0, br: 0 });
+    }
     rows.forEach(({ label, val, color }, i) => {
       const ry = 44 + i * 17;
-      con.add(this.add.text(10, ry, label, { fontSize:'10px', fontFamily:'monospace', color:'#446677' }));
-      con.add(this.add.text(PW - 10, ry, val, { fontSize:'10px', fontFamily:'monospace', fontStyle:'bold', color }).setOrigin(1,0));
+      con.add(this.add.text(10, ry, label, {
+        fontSize:'10px', fontFamily:'monospace', color:'#7799bb', stroke:'#000000', strokeThickness:2,
+      }));
+      con.add(this.add.text(PW - 10, ry, val, {
+        fontSize:'10px', fontFamily:'monospace', fontStyle:'bold', color, stroke:'#000000', strokeThickness:2,
+      }).setOrigin(1,0));
     });
 
     // Auto-dismiss after 3s
@@ -1512,7 +2469,7 @@ export class BattleScene extends Phaser.Scene {
     const range = ability.range ?? 3;
     const targets = [...this.playerUnits, ...this.enemyUnits].filter(o => {
       if (o === unit || o.isDead) return false;
-      if (Math.abs(unit.col - o.col) + Math.abs(unit.row - o.row) > range) return false;
+      if (this.distanceToUnit(unit.col, unit.row, o) > range) return false;
       return o.team === 'enemy' || o.classGrouping === 'Ball';
     });
 
@@ -1564,13 +2521,54 @@ export class BattleScene extends Phaser.Scene {
 
   playAttackAnim(attacker, abilityId) {
     if (!attacker.portrait || attacker.team !== 'player') return;
-    const spriteKey = spriteKeyForRole(attacker.t1Role);
+    const spriteKey = spriteKeyForRole(attacker.roleId);
     const anim = `${heroKey(spriteKey)}-attack`;
     if (!this.anims.exists(anim)) return;
     attacker.portrait.play(anim);
     attacker.portrait.once('animationcomplete', () => {
       this.playIdle(attacker, spriteKey);
     });
+  }
+
+  // Draws a projectile (arrow or ball, see PROJECTILE_BY_CLASS) flying from
+  // attacker to target for ranged attacks, then calls onArrive — used to gate
+  // the actual damage application so the hit lands when the projectile does,
+  // not before. Own rAF loop rather than a Phaser tween (see moveUnit).
+  fireProjectile(attacker, target, type, onArrive) {
+    const from = this.gridToScreen(attacker.col, attacker.row);
+    const to   = this.gridToScreen(target.col, target.row);
+    const fromX = from.x, fromY = from.y + TH2;
+    const toX   = to.x,   toY   = to.y + TH2;
+    const travelDist = Math.hypot(toX - fromX, toY - fromY);
+    const dur = Phaser.Math.Clamp(travelDist * 1.1, 120, 260);
+    const angle = Math.atan2(toY - fromY, toX - fromX);
+
+    const gfx = this.add.graphics().setDepth(3000);
+    if (type === 'arrow') {
+      gfx.lineStyle(2, 0x8a6a3a, 1);
+      gfx.lineBetween(-12, 0, 4, 0);
+      gfx.fillStyle(0xf0e0a0, 1);
+      gfx.fillTriangle(8, 0, -2, -4, -2, 4);
+    } else {
+      gfx.fillStyle(0xffffff, 1);
+      gfx.fillCircle(0, 0, 5);
+      gfx.lineStyle(1, 0x333333, 0.9);
+      gfx.strokeCircle(0, 0, 5);
+    }
+    gfx.setRotation(angle);
+
+    const start = performance.now();
+    const animate = () => {
+      if (!gfx.scene) return;
+      const t = Math.min((performance.now() - start) / dur, 1);
+      const x = fromX + (toX - fromX) * t;
+      const y = fromY + (toY - fromY) * t - Math.sin(t * Math.PI) * 14; // slight arc lift
+      gfx.setPosition(x, y);
+      if (t < 1) { requestAnimationFrame(animate); return; }
+      gfx.destroy();
+      onArrive();
+    };
+    requestAnimationFrame(animate);
   }
 
   // Return a hero portrait to its looping idle animation (falls back to a
@@ -1586,19 +2584,19 @@ export class BattleScene extends Phaser.Scene {
   // either end the unit's turn (if it already moved) or reopen its menu.
   // Callers handle their own redraw/kill-check before calling this.
   //
-  // Duo's "attack twice" (Ability Revised): after the free move
-  // (duoFreeMoveUsed), the FIRST action taken grants exactly one bonus
-  // follow-up action instead of ending/handing back to a normal move — but
-  // it locks hasMoved=true so the unit can't ALSO take its normal move
-  // afterward. That makes "attack twice" and "move again and attack"
-  // mutually exclusive, matching the sheet: acting first spends the bonus
-  // slot as a 2nd attack; moving first (hasMoved already true by the time
-  // this runs) spends it as the normal move instead, and this branch never
-  // triggers.
+  // Duo's "attack twice" (2026-07-07 feedback: made always-active) — no
+  // longer gated behind having used the free-move-to-partner action first.
+  // Whenever a Duo-equipped unit finishes ANY action while beside a sports
+  // partner (however it got there — free move, normal move, or already
+  // starting adjacent), it gets exactly one bonus follow-up action, once
+  // per round (`duoBonusUsed`, reset in startPlayerTurn same as before).
+  // Still locks hasMoved=true once granted so the bonus is strictly "attack
+  // twice," not "attack twice AND also move" — same balance intent as the
+  // original mutually-exclusive design, just decoupled from the free move.
   finishAbilityTurn(attacker) {
     attacker.hasActed = true;
     this.activeAbility = null;
-    if (attacker.duoFreeMoveUsed && !attacker.duoBonusUsed && !attacker.hasMoved) {
+    if (this.hasPassive(attacker, 'duo') && !attacker.duoBonusUsed && this.sportsPartnerAdjacent(attacker)) {
       attacker.duoBonusUsed = true;
       attacker.hasActed = false;
       attacker.hasMoved = true;
@@ -1692,51 +2690,62 @@ export class BattleScene extends Phaser.Scene {
       return;
     }
 
-    const hits = ability.hits ?? 1;
-    const dist = Math.abs(attacker.col - target.col) + Math.abs(attacker.row - target.row);
-    const mult = distanceMultiplier(ability, dist);
-    const desigMult = designationMultiplier(attacker, target, ability);
-    const elemMult = elementMultiplier(attacker, target);
-    const partnerAtkMult = this.partnerAttackMultiplier(attacker);
-    let dmg = 0;
-    for (let h = 0; h < hits; h++) dmg += Math.round(calcAtk(attacker) * mult * desigMult * elemMult * partnerAtkMult);
-    dmg = Math.round(dmg * this.partnerDefenseMultiplier(target));
-    target.hp  = Math.max(0, target.hp - dmg);
+    const dist = this.distanceToUnit(attacker.col, attacker.row, target);
 
-    const { x, y } = this.gridToScreen(target.col, target.row);
-    this.showDamage(x, y + TH2, dmg, '#ffaa22');
+    // Ranged (dist > 1) hits from a sport with natural projectile equipment
+    // (see PROJECTILE_BY_CLASS) fly there first — damage lands when the
+    // projectile arrives, not before, so e.g. an Archer's arrow visibly
+    // travels the distance rather than the target flinching instantly.
+    const projectileType = dist > 1 ? PROJECTILE_BY_CLASS[attacker.classGrouping] : null;
+    const resolveHit = () => {
+      const hits = ability.hits ?? 1;
+      const mult = distanceMultiplier(ability, dist);
+      const desigMult = designationMultiplier(attacker, target, ability);
+      const elemMult = elementMultiplier(attacker, target);
+      const partnerAtkMult = this.partnerAttackMultiplier(attacker);
+      let dmg = 0;
+      for (let h = 0; h < hits; h++) dmg += Math.round(calcAtk(attacker) * mult * desigMult * elemMult * partnerAtkMult);
+      dmg = Math.round(dmg * this.partnerDefenseMultiplier(target));
+      target.hp  = Math.max(0, target.hp - dmg);
 
-    if (target.sprite) {
-      target.sprite.setTint(0xff3300);
-      this.time.delayedCall(180, () => {
-        if (!target.isDead && target.sprite) {
-          if (target.enemyTint) target.sprite.setTint(target.enemyTint);
-          else target.sprite.clearTint();
-        }
-      });
-    }
-    if (target.team === 'player') {
-      target.hitFlash = true;
-      this.time.delayedCall(200, () => { target.hitFlash = false; this.redraw(); });
-    }
+      const { x, y } = this.gridToScreen(target.col, target.row);
+      this.showDamage(x, y + TH2, dmg, '#ffaa22');
 
-    // Apply debuff
-    if (ability.debuff?.type === 'slow') {
-      target.debuffs.push({ type: 'slow', moveReduction: ability.debuff.moveReduction, turnsLeft: ability.debuff.duration });
-      const slowTotal = target.debuffs.filter(d => d.type === 'slow').reduce((s, d) => s + d.moveReduction, 0);
-      target.moveSpeed = Math.max(1, target.baseMoveSpeed - slowTotal);
-      this.showDamage(x, y + TH2 - 22, 'SLOW', '#aaaaff');
-    } else if (ability.debuff?.type === 'statDown') {
-      const { stat, amount, duration } = ability.debuff;
-      target[stat] = Math.max(1, target[stat] - amount);
-      target.debuffs.push({ type: 'statDown', stat, amount, turnsLeft: duration });
-      this.showDamage(x, y + TH2 - 22, `${stat.toUpperCase()} DOWN`, '#ff88ff');
-    }
+      if (target.sprite) {
+        target.sprite.setTint(0xff3300);
+        this.time.delayedCall(180, () => {
+          if (!target.isDead && target.sprite) {
+            if (target.enemyTint) target.sprite.setTint(target.enemyTint);
+            else target.sprite.clearTint();
+          }
+        });
+      }
+      if (target.team === 'player') {
+        target.hitFlash = true;
+        this.time.delayedCall(200, () => { target.hitFlash = false; this.redraw(); });
+      }
 
-    if (target.hp > 0) this.triggerSetUpFollowUp(attacker, ability, target);
-    if (target.hp <= 0) this.killUnit(target);
-    else this.redraw();
-    this.finishAbilityTurn(attacker);
+      // Apply debuff
+      if (ability.debuff?.type === 'slow') {
+        target.debuffs.push({ type: 'slow', moveReduction: ability.debuff.moveReduction, turnsLeft: ability.debuff.duration });
+        const slowTotal = target.debuffs.filter(d => d.type === 'slow').reduce((s, d) => s + d.moveReduction, 0);
+        target.moveSpeed = Math.max(1, target.baseMoveSpeed - slowTotal);
+        this.showDamage(x, y + TH2 - 22, 'SLOW', '#aaaaff');
+      } else if (ability.debuff?.type === 'statDown') {
+        const { stat, amount, duration } = ability.debuff;
+        target[stat] = Math.max(1, target[stat] - amount);
+        target.debuffs.push({ type: 'statDown', stat, amount, turnsLeft: duration });
+        this.showDamage(x, y + TH2 - 22, `${stat.toUpperCase()} DOWN`, '#ff88ff');
+      }
+
+      if (target.hp > 0) this.triggerSetUpFollowUp(attacker, ability, target);
+      if (target.hp <= 0) this.killUnit(target);
+      else this.redraw();
+      this.finishAbilityTurn(attacker);
+    };
+
+    if (projectileType) this.fireProjectile(attacker, target, projectileType, resolveHit);
+    else resolveHit();
   }
 
   // ── Enemy AI ──────────────────────────────────────────────────────────────
@@ -1822,17 +2831,35 @@ export class BattleScene extends Phaser.Scene {
     const path = this.bfsPath(wolf.col, wolf.row, target.col, target.row);
     if (!path) return;
 
-    // Move up to moveSpeed steps, never walking into target's tile
-    for (let i = 0; i < path.length - 1 && i < wolf.moveSpeed; i++) {
-      const { col, row } = path[i];
-      const nk = `${col},${row}`;
-      if (this.unitMap.has(nk)) break;
-      this.unitMap.delete(`${wolf.col},${wolf.row}`);
-      wolf.col = col; wolf.row = row;
-      this.unitMap.set(nk, wolf);
+    const size = wolf.size ?? 1;
+    if (size <= 1) {
+      // Move up to moveSpeed steps, never walking into target's tile
+      for (let i = 0; i < path.length - 1 && i < wolf.moveSpeed; i++) {
+        const { col, row } = path[i];
+        const nk = `${col},${row}`;
+        if (this.unitMap.has(nk)) break;
+        this.unitMap.delete(`${wolf.col},${wolf.row}`);
+        wolf.col = col; wolf.row = row;
+        this.unitMap.set(nk, wolf);
+      }
+    } else {
+      // Multi-tile mover (King Wolf) — bfsPath itself is 1-wide/single-tile
+      // (fine for finding an approach DIRECTION, since escort wolves are
+      // the only clutter nearby), but each step here re-checks that the
+      // WHOLE size×size block fits before committing — a step that would
+      // squeeze the blob somewhere too narrow just stops the walk early,
+      // same "give up rather than corrupt state" fallback the size-1
+      // branch already has for a single blocked tile.
+      for (let i = 0; i < path.length - 1 && i < wolf.moveSpeed; i++) {
+        const { col, row } = path[i];
+        if (!this.blockFits(col, row, size, wolf)) break;
+        this.unregisterUnit(wolf);
+        wolf.col = col; wolf.row = row;
+        this.registerUnit(wolf);
+      }
     }
     if (wolf.sprite) {
-      const { x, y } = this.gridToScreen(wolf.col, wolf.row);
+      const { x, y } = this.footprintScreenPos(wolf);
       wolf.sprite.setPosition(x, y + TH2).setDepth((wolf.col + wolf.row) * 10 + 5);
     }
 
@@ -1895,14 +2922,98 @@ export class BattleScene extends Phaser.Scene {
     return reachable;
   }
 
+  // Every neighbor tile adjacent to ANY tile `unit` occupies, deduped and
+  // excluding the unit's own footprint — for a plain size-1 unit this is
+  // just its usual 4 orthogonal neighbors. Generalizes the old
+  // single-tile-only version so a multi-tile unit (King Wolf) both finds
+  // adjacent enemies from any of its own tiles AND is correctly found by
+  // an adjacent enemy checking ITS neighbors (that direction already worked
+  // before this generalization, since it's a plain unitMap lookup keyed by
+  // whichever tile is adjacent — see registerUnit).
   getAttackTargets(unit) {
+    const own = new Set(this.occupiedTiles(unit).map(t => `${t.col},${t.row}`));
+    const seen = new Set();
     const targets = [];
-    for (const [dc, dr] of [[-1,0],[1,0],[0,-1],[0,1]]) {
-      const nc = unit.col + dc, nr = unit.row + dr;
-      const occ = this.unitMap.get(`${nc},${nr}`);
-      if (occ && occ.team !== unit.team && !occ.isDead) targets.push({ col: nc, row: nr });
+    for (const { col, row } of this.occupiedTiles(unit)) {
+      for (const [dc, dr] of [[-1,0],[1,0],[0,-1],[0,1]]) {
+        const nc = col + dc, nr = row + dr;
+        const nk = `${nc},${nr}`;
+        if (own.has(nk) || seen.has(nk)) continue;
+        seen.add(nk);
+        const occ = this.unitMap.get(nk);
+        if (occ && occ.team !== unit.team && !occ.isDead) targets.push({ col: nc, row: nr });
+      }
     }
     return targets;
+  }
+
+  // ── Multi-tile units (King Wolf, 2026-07-08 feedback: "should take up 4
+  // spaces, units can move within them") ──────────────────────────────────
+  // unit.size (default 1) is an NxN footprint anchored at unit.col/row as
+  // its top-left corner. Scoped narrowly to King Wolf, not a general "large
+  // unit" system — every other monster/player unit stays plain size-1 and
+  // every helper here degrades to the old single-tile behavior for them.
+  occupiedTiles(unit) {
+    const size = unit.size ?? 1;
+    if (size <= 1) return [{ col: unit.col, row: unit.row }];
+    const tiles = [];
+    for (let dc = 0; dc < size; dc++) {
+      for (let dr = 0; dr < size; dr++) tiles.push({ col: unit.col + dc, row: unit.row + dr });
+    }
+    return tiles;
+  }
+
+  // Manhattan distance from (col,row) to the NEAREST tile `unit` occupies —
+  // equal to the old plain `|col-unit.col|+|row-unit.row|` for size-1 units,
+  // but correct for King Wolf: attacking it from a tile adjacent to one of
+  // its far corners (not its stored col/row anchor specifically) must read
+  // as range 1, not the anchor's own (possibly much longer) distance.
+  distanceToUnit(col, row, unit) {
+    let best = Infinity;
+    for (const t of this.occupiedTiles(unit)) {
+      const d = Math.abs(col - t.col) + Math.abs(row - t.row);
+      if (d < best) best = d;
+    }
+    return best;
+  }
+
+  registerUnit(unit) {
+    for (const { col, row } of this.occupiedTiles(unit)) this.unitMap.set(`${col},${row}`, unit);
+  }
+
+  // Only clears a tile if THIS unit is still the one registered there —
+  // guards against a stale unregister call ever clobbering a different
+  // unit that has since moved into one of these tiles.
+  unregisterUnit(unit) {
+    for (const { col, row } of this.occupiedTiles(unit)) {
+      const key = `${col},${row}`;
+      if (this.unitMap.get(key) === unit) this.unitMap.delete(key);
+    }
+  }
+
+  // Centered screen position for a unit's footprint — gridToScreen's linear
+  // formula tolerates fractional col/row fine, so this is just the
+  // footprint's midpoint (equal to gridToScreen(unit.col, unit.row) for the
+  // plain size-1 case).
+  footprintScreenPos(unit) {
+    const size = unit.size ?? 1;
+    return this.gridToScreen(unit.col + (size - 1) / 2, unit.row + (size - 1) / 2);
+  }
+
+  // Does a size×size block anchored at (col,row) fit entirely on the board
+  // with every tile free (or occupied only by `ignoreUnit` itself, e.g. the
+  // mover's own current tiles while test-stepping)? Used by enemyAct's
+  // multi-tile movement branch.
+  blockFits(col, row, size, ignoreUnit) {
+    for (let dc = 0; dc < size; dc++) {
+      for (let dr = 0; dr < size; dr++) {
+        const c = col + dc, r = row + dr;
+        if (!this.inBounds({ col: c, row: r })) return false;
+        const occ = this.unitMap.get(`${c},${r}`);
+        if (occ && occ !== ignoreUnit) return false;
+      }
+    }
+    return true;
   }
 
   // ── Banners ───────────────────────────────────────────────────────────────
@@ -1961,11 +3072,63 @@ export class BattleScene extends Phaser.Scene {
 
   inBounds({ col, row }) { return col >= 0 && col < COLS && row >= 0 && row < ROWS; }
 
+  // Touch taps on a unit are easy to miss with raw screenToGrid() math: unit
+  // sprites/portraits stand taller than their own tile's isometric diamond
+  // footprint (art extends up and to the sides of the actual hit-tested
+  // area, especially near the board's edge where a tap above a unit's head
+  // can compute to an out-of-bounds tile entirely), so a natural finger-tap
+  // on the visible body of a unit can land well outside that tile's own
+  // math bounds. Pure pixel-proximity to each unit's actual on-screen
+  // position (biased toward the visible sprite body, not the tile center)
+  // — first close-enough unit wins over whatever the raw math said.
+  snapToNearbyUnit(sx, sy, rawTile) {
+    // Was 40 — LARGER than the ~36px distance between adjacent tile
+    // centers (see the isometric TW2/TH2 math), so literally every tile
+    // touching a unit fell inside its snap zone, and two adjacent units'
+    // zones overlapped almost entirely (2026-07-07 feedback: "selecting
+    // units when they are close together" didn't register reliably —
+    // whichever unit was marginally closer always won, but the margin was
+    // often sub-pixel). 24px still comfortably forgives a tap landing
+    // above a tall sprite's own tile (the reason this exists at all) without
+    // swallowing an entire neighboring tile by default.
+    const SNAP_RADIUS = 24;
+    let best = null, bestDist = SNAP_RADIUS;
+    for (const u of [...this.playerUnits, ...this.enemyUnits]) {
+      if (u.isDead) continue;
+      const { x, y } = this.gridToScreen(u.col, u.row);
+      // Bias toward the visible sprite's body, not the tile's own center —
+      // portraits stand at y + TH2 + 10 with a bottom-heavy origin (0.5, 0.92).
+      const d = Math.hypot(sx - x, sy - (y + TH2 - 15));
+      if (d < bestDist) { bestDist = d; best = u; }
+    }
+    return best ? { col: best.col, row: best.row } : rawTile;
+  }
+
   // ── Draw ──────────────────────────────────────────────────────────────────
 
-  drawDiamond(x, y, color, alpha) {
-    this.hlGfx.fillStyle(color, alpha);
-    this.hlGfx.fillPoints([
+  // Pooled per-tile Graphics objects so each highlight diamond can sit at its
+  // own depth (col+row)*10+2 — above that tile's ground image (depth
+  // (col+row)*10) but below whatever stands on it (unit sprites/portraits sit
+  // at (col+row)*10+5/+6) — matching the tile's own top-face position exactly
+  // (same TILE_Y_OFFSET the tile image uses) instead of one flat-depth layer
+  // that used to draw above every sprite on the board.
+  nextHlGfx(depth) {
+    let g = this.hlPool[this.hlPoolIndex];
+    if (!g) { g = this.add.graphics(); this.hlPool.push(g); }
+    g.clear();
+    g.setDepth(depth);
+    this.hlPoolIndex++;
+    return g;
+  }
+
+  drawDiamond(col, row, color, alpha) {
+    const { x, y: y0 } = this.gridToScreen(col, row);
+    // Nudged past TILE_Y_OFFSET (which only matches the ground-tile art) so the
+    // diamond's widest point lines up with where unit sprites actually stand.
+    const y = y0 + TILE_Y_OFFSET + HL_Y_ADJUST;
+    const g = this.nextHlGfx((col + row) * 10 + 2);
+    g.fillStyle(color, alpha);
+    g.fillPoints([
       { x, y },
       { x: x + TW2, y: y + TH2 },
       { x, y: y + TILE_H },
@@ -1974,20 +3137,21 @@ export class BattleScene extends Phaser.Scene {
   }
 
   redraw() {
-    this.hlGfx.clear();
+    this.hlPoolIndex = 0;
     this.wolfHpGfx.clear();
 
     const selectedKey = this.selectedUnit ? `${this.selectedUnit.col},${this.selectedUnit.row}` : null;
     const hovKey      = this.hoveredTile  ? `${this.hoveredTile.col},${this.hoveredTile.row}`  : null;
 
-    // Move range: full highlight when picking tile, dim preview in menu
-    if (this.phase === 'unit_selected' || this.phase === 'unit_menu') {
+    // Move range: full highlight when picking tile, dim preview in menu.
+    // duo_targeting (Duo's free-move tile pick) is treated like
+    // unit_selected — actively waiting for a tile click, not just previewing.
+    if (this.phase === 'unit_selected' || this.phase === 'unit_menu' || this.phase === 'duo_targeting') {
       const dimmed = this.phase === 'unit_menu';
       for (const key of this.moveRange) {
         if (this.unitMap.has(key)) continue;
         const [col, row] = key.split(',').map(Number);
-        const { x, y } = this.gridToScreen(col, row);
-        this.drawDiamond(x, y, key === hovKey ? 0x9edaff : 0x88aaff, dimmed ? 0.18 : 0.4);
+        this.drawDiamond(col, row, key === hovKey ? 0x9edaff : 0x88aaff, dimmed ? 0.18 : 0.4);
       }
     }
 
@@ -2000,10 +3164,9 @@ export class BattleScene extends Phaser.Scene {
         for (const [dc, dr] of [[-1,0],[1,0],[0,-1],[0,1]]) {
           const col = uc + dc, row = ur + dr;
           if (col < 0 || col >= COLS || row < 0 || row >= ROWS) continue;
-          const { x, y } = this.gridToScreen(col, row);
           const occ = this.unitMap.get(`${col},${row}`);
           const isTarget = occ?.team === 'enemy' && !occ.isDead;
-          this.drawDiamond(x, y, isTarget ? 0xff2200 : 0x553300, isTarget ? 0.7 : 0.25);
+          this.drawDiamond(col, row, isTarget ? 0xff2200 : 0xffaa33, isTarget ? 0.7 : 0.32);
         }
       }
       // Directional lines
@@ -2011,27 +3174,27 @@ export class BattleScene extends Phaser.Scene {
         for (let step = 1; step <= maxR; step++) {
           const col = uc + dc * step, row = ur + dr * step;
           if (col < 0 || col >= COLS || row < 0 || row >= ROWS) break;
-          const { x, y } = this.gridToScreen(col, row);
           const occ = this.unitMap.get(`${col},${row}`);
           const isTarget = occ?.team === 'enemy' && !occ.isDead;
-          this.drawDiamond(x, y, isTarget ? 0xff4400 : 0x334466, isTarget ? 0.55 : 0.15);
+          this.drawDiamond(col, row, isTarget ? 0xff4400 : 0xffaa33, isTarget ? 0.55 : 0.3);
           if (occ) break;
         }
       }
     }
 
-    // Ability range highlight — a ring (not a filled diamond) for exact-range
-    // abilities like 3-Point.
+    // Ability/skill range highlight — every tile the selected ability can
+    // reach lights up in amber, so the range is visible before picking a
+    // target; a ring (not a filled diamond) for exact-range abilities like
+    // 3-Point since abilityRangeMatches already enforces dist === exactRange.
     if (this.phase === 'ability_targeting' && this.selectedUnit && this.activeAbility) {
       const { col: uc, row: ur } = this.selectedUnit;
       for (let col = 0; col < COLS; col++) {
         for (let row = 0; row < ROWS; row++) {
           const dist = Math.abs(col - uc) + Math.abs(row - ur);
           if (dist < 1 || !this.abilityRangeMatches(this.selectedUnit, this.activeAbility, dist)) continue;
-          const { x, y } = this.gridToScreen(col, row);
           const occ = this.unitMap.get(`${col},${row}`);
           const isTarget = occ?.team === this.activeAbility.targetType;
-          this.drawDiamond(x, y, isTarget ? 0xff8800 : 0x888800, isTarget ? 0.55 : 0.18);
+          this.drawDiamond(col, row, isTarget ? 0xff8800 : 0xffaa33, isTarget ? 0.55 : 0.32);
         }
       }
     }
@@ -2041,8 +3204,7 @@ export class BattleScene extends Phaser.Scene {
       const selOcc = this.unitMap.get(selectedKey);
       if (!selOcc?.portrait) {
         const [col, row] = selectedKey.split(',').map(Number);
-        const { x, y } = this.gridToScreen(col, row);
-        this.drawDiamond(x, y, 0xffd700, 0.5);
+        this.drawDiamond(col, row, 0xffd700, 0.5);
       }
     }
 
@@ -2050,26 +3212,21 @@ export class BattleScene extends Phaser.Scene {
     if (hovKey && !this.moveRange.has(hovKey) && hovKey !== selectedKey) {
       const hovOcc = this.unitMap.get(hovKey);
       if (!hovOcc?.portrait) {
-        const { x, y } = this.gridToScreen(this.hoveredTile.col, this.hoveredTile.row);
-        this.drawDiamond(x, y, 0x9edaff, 0.3);
+        this.drawDiamond(this.hoveredTile.col, this.hoveredTile.row, 0x9edaff, 0.3);
       }
     }
 
-    // Unit tile position glows — portrait units only glow when selected or done
+    // Unit tile shading — every player tile shows blue (brighter when selected,
+    // darker once the unit is done for the turn), every enemy tile shows dark red.
     for (const u of this.playerUnits) {
       if (u.isDead) continue;
-      const { x, y } = this.gridToScreen(u.col, u.row);
-      if (u.portrait) {
-        if (u === this.selectedUnit) this.drawDiamond(x, y, u.color, 0.45);
-        else if (u.isDone) this.drawDiamond(x, y, u.color, 0.12);
-      } else {
-        this.drawDiamond(x, y, u.color, u === this.selectedUnit ? 0.55 : (u.isDone ? 0.15 : 0.35));
-      }
+      if (u === this.selectedUnit)   this.drawDiamond(u.col, u.row, 0x55bbff, 0.55);
+      else if (u.isDone)             this.drawDiamond(u.col, u.row, 0x152a52, 0.4);
+      else                           this.drawDiamond(u.col, u.row, 0x2a6fdb, 0.4);
     }
     for (const e of this.enemyUnits) {
       if (e.isDead) continue;
-      const { x, y } = this.gridToScreen(e.col, e.row);
-      this.drawDiamond(x, y, 0xff3333, 0.22);
+      this.drawDiamond(e.col, e.row, 0x8b1a1a, 0.4);
     }
 
     // Player unit circles + HP bars
@@ -2146,5 +3303,8 @@ export class BattleScene extends Phaser.Scene {
       enemy_turn:       '', victory: '', defeat: '',
     };
     this.actionHint.setText(hints[this.phase] ?? '');
+
+    // Clear any pooled highlight graphics left over from a frame that used more tiles
+    for (let i = this.hlPoolIndex; i < this.hlPool.length; i++) this.hlPool[i].clear();
   }
 }

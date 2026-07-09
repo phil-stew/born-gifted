@@ -1,83 +1,91 @@
 import Phaser from 'phaser';
-import { state, addXP, xpToNext, completeMission, recruitCharacter } from '../data/gameState.js';
-import { randomLoot, getMissionMaterials, getKillDrops, rarityColor } from '../data/items.js';
+import { state, addXP, xpToNext, completeMission, gearLayoutForUnit, roleDisplayLabel } from '../data/gameState.js';
+import { getMissionMaterials, getKillDrops, rollHealHerbDrop, rollBracketedDrop } from '../data/items.js';
+import { BACKDROPS } from '../data/storyBackdrops.js';
+import { drawButton } from '../ui/canvasButton.js';
 
 const XP_PER_ENEMY = 40;
 
+// M1/M2/M3 no longer get a post-battle cutscene here — the M0-M4 redesign
+// (July 2026) moves those story beats to their own click-time triggers
+// instead (M1's "news" turn-in happens back at M0, M3's academy-arrival/
+// test-turn-in/craft/recruit dialogue all plays when M3 itself is clicked —
+// see WorldMapScene's onCapitalClick). M4 is the one exception: it still
+// wins its cutscene here, right after the exam battle. Drace/Sela/Zora no
+// longer auto-join at M2/M3/M4 either; they're recruited by player choice at
+// Ester/Hilbert Academy instead (see RECRUITS_AFTER below — Kael/Trice are
+// unaffected, still auto-joining at M5/M6 as before).
 const CUTSCENE_AFTER = {
-  M1F: {
-    location: 'SIRBLANC  ·  Reno\'s Home',
-    lines: [
-      { speaker:'Reno',     color:'#4488ff', text:'That should be the last of them. Time to head back.' },
-      { speaker:'Narrator', color:'#888899', text:'Reno returns home with herbs and pelts in hand — but a stranger\'s horse is tied outside.' },
-      { speaker:'Father',   color:'#cc9955', text:'You\'re back. Good timing. We have a visitor.' },
-      { speaker:'Scout',    color:'#88bbaa', text:'I am Cassel. A scout from Hilbert Academy. We\'ve had observers in the region — your son\'s Gift has been noticed.' },
-      { speaker:'Reno',     color:'#4488ff', text:'...Hilbert Academy noticed me?' },
-      { speaker:'Scout',    color:'#88bbaa', text:'Master Hilbert has personally requested you come and demonstrate your abilities. A formal trial. An opportunity very few receive.' },
-      { speaker:'Mother',   color:'#88aacc', text:'Reno. This is exactly what we always hoped for. Don\'t let it pass you by.' },
-      { speaker:'Father',   color:'#cc9955', text:'The outskirts road is the fastest route north. Leave at dawn. And keep your guard up — the boars have been very territorial lately.' },
-      { speaker:'Reno',     color:'#4488ff', text:'...I\'ll be ready.' },
-    ],
-  },
-  M2: {
-    location: 'HILBERT ACADEMY  ·  Main Hall',
-    lines: [
-      { speaker:'Narrator',       color:'#888899', text:'After clearing the outskirts road, Reno arrives at Hilbert Academy — a towering institution at the heart of the northern district.' },
-      { speaker:'Drace',          color:'#44cc44', text:'Hey. You must be the new recruit. I\'m Drace. Football linebacker. Gift of Fire.' },
-      { speaker:'Sela',           color:'#44cccc', text:'Sela. Soccer goalkeeper. Water-element. Master Hilbert will meet with you shortly.' },
-      { speaker:'Kael',           color:'#ff8844', text:'Kael. Volleyball spiker. Don\'t let the academy size throw you off — it\'s just a building.' },
-      { speaker:'Trice',          color:'#aa44ff', text:'Trice. Basketball center. If Hilbert brought you here himself, you must have something worth seeing.' },
-      { speaker:'Reno',           color:'#4488ff', text:'...Good to meet you all.' },
-      { speaker:'Master Hilbert', color:'#ddcc88', text:'Reno Sirblanc. Welcome. You arrive at a critical time.' },
-      { speaker:'Master Hilbert', color:'#ddcc88', text:'The Kingdom Tournament is held once every four years. Districts across the realm send their best athletes. It begins in three months.' },
-      { speaker:'Master Hilbert', color:'#ddcc88', text:'To compete, your team must be ready on four fronts.' },
-      { speaker:'Master Hilbert', color:'#ddcc88', text:'First — craft your gear. The borderlands have materials. Gather them and forge equipment that suits your team\'s strengths.' },
-      { speaker:'Master Hilbert', color:'#ddcc88', text:'Second — upgrade that gear. Stronger materials make stronger equipment. Push your tools to their peak.' },
-      { speaker:'Master Hilbert', color:'#ddcc88', text:'Third — train through battle. Real growth comes from real conflict. The field teaches what no classroom can.' },
-      { speaker:'Master Hilbert', color:'#ddcc88', text:'Fourth — build your team. Five individuals is not a team. Learn each other\'s strengths. Fight as one.' },
-      { speaker:'Reno',           color:'#4488ff', text:'...Where do we start?' },
-      { speaker:'Master Hilbert', color:'#ddcc88', text:'The Greenfield Plains to the north. Wolves have been crossing the border. Clear them out and bring back what they drop — you\'ll need it for the forge.' },
-    ],
-  },
-  M3: {
-    location: 'HILBERT ACADEMY  ·  Training Hall',
-    lines: [
-      { speaker:'Master Hilbert', color:'#ddcc88', text:'Well done. The Greenfield Plains are clear, and you\'ve returned with materials.' },
-      { speaker:'Drace',          color:'#44cc44', text:'Iron ore and leather strips. That\'s solid. We can work with that.' },
-      { speaker:'Sela',           color:'#44cccc', text:'The forge is open to you now. Head to the academy smith and start crafting.' },
-      { speaker:'Kael',           color:'#ff8844', text:'Better gear means better fighting. Don\'t skip it.' },
-      { speaker:'Reno',           color:'#4488ff', text:'...The forge. Let\'s see what we can make.' },
-    ],
-  },
   M4: {
-    location: 'HILBERT ACADEMY  ·  Grand Hall',
+    location: 'ARENA ATLROS',
+    backdrop: BACKDROPS.school,
     lines: [
-      { speaker:'Master Hilbert', color:'#ddcc88', text:'The caves are clear. Outstanding work — those were no ordinary creatures.' },
-      { speaker:'Narrator',       color:'#888899', text:'As the team steps out of the briefing room, a figure leans against the far wall — arms crossed, watching.' },
-      { speaker:'Zora',           color:'#ff44aa', text:'So you\'re the soccer kid who cleared Hollow Caves. Not bad.' },
-      { speaker:'Reno',           color:'#4488ff', text:'...Who are you?' },
-      { speaker:'Zora',           color:'#ff44aa', text:'Zora Fen. Track and Field. Sprinter. Master Hilbert says I\'m joining your team.' },
-      { speaker:'Zora',           color:'#ff44aa', text:'I\'m fast. Faster than anyone here. If the tournament requires speed, I\'m your answer. Try to keep up.' },
-      { speaker:'Master Hilbert', color:'#ddcc88', text:'Zora is one of our most gifted athletes. Her speed will prove invaluable in the battles ahead.' },
-      { speaker:'Reno',           color:'#4488ff', text:'...Welcome to the team, Zora.' },
-      { speaker:'Zora',           color:'#ff44aa', text:'Don\'t slow me down.' },
+      { speaker:'Instructor', color:'#ddcc88', text:'...Well fought. You\'ve more than earned your place.' },
+      { speaker:'Reno',       color:'#4488ff', text:'...Didn\'t think I\'d be fighting our own instructor.' },
+      { speaker:'Instructor', color:'#ddcc88', text:'Welcome to the Academy. Meet me back at the Capital.' },
+    ],
+  },
+  M5: {
+    location: 'ALTROES  ·  Ember Hollow',
+    backdrop: BACKDROPS.cave,
+    lines: [
+      { speaker:'Narrator', color:'#888899', text:'The passage clears, embers still glowing in the scorched rock — Kael catches up, having tailed the group since the academy.' },
+      { speaker:'Kael',     color:'#ff8844', text:'Mind if I tag along properly from here? Been meaning to ask.' },
+      { speaker:'Reno',     color:'#4488ff', text:'...Glad to have you, Kael.' },
+    ],
+  },
+  M6: {
+    location: 'ALTROES  ·  Stormpeak Ridge',
+    backdrop: BACKDROPS.wilds,
+    lines: [
+      { speaker:'Narrator', color:'#888899', text:'The storm passes as the ridge trail levels out — Trice is waiting at the far end, arms crossed.' },
+      { speaker:'Trice',    color:'#aa44ff', text:'Figured I\'d catch up with you here. Room for one more?' },
+      { speaker:'Reno',     color:'#4488ff', text:'...Glad to have you, Trice.' },
     ],
   },
 };
 
 const MISSION_NAMES = {
-  M1F:'Hilbert Forest', M2:'Hilbert Outskirts', M3:'Greenfield Plains',
-  M4:'Hollow Caves',    M5:'Neutral Ground',    M6:'Hilbert Field',
-  M7:'Arena Altroes',   M8:'Arena Altroes',     M9:'Arena Altroes',
-  M10:'Grand Arena',    M11:'Grand Arena',       M12:'Grand Arena',
-  M13:'Grand Arena',    M14:'Grand Arena',       M15:'Grand Arena',
+  M1:'Sirblanc Outskirts', M2:'Thunder Plains',   M4:'Arena Atlros',
+  M0a:'Hidden Cave', M0b:"Wolf's Den",
+  M3a:'Northern Cave',     M3b:'Hilbert Low Lands',
+  M5:'Ember Hollow',       M6:'Stormpeak Ridge',
+  M7:'Frostbite Hollow',   M8:'Windswept Grotto', M9:'Glacial Bluff',
+  M10:'Rootdeep Cavern',   M11:'Duskstone Mine',  M12:'Earthscar Basin',
+  M13:'Stormpeak Overlook',M14:'Frozen Cove',     M15:'Sunken Quarry',
 };
 
+// M12 no longer chains into M13-M15 — those are repurposed as optional side
+// battles (see SIDE_MISSION_UNLOCK below), not a continuation of the main
+// Tournament-arc line. The main chain currently ends at M12.
+//
+// M1 has no entry here on purpose — winning it doesn't unlock M2 by itself;
+// the player has to return to M0 (Hidden Village) to turn the mission in,
+// which is what actually unlocks M2 (see WorldMapScene's M0 click handler).
+// M3 is a hub now (The Capital), not a battle, so it never completes through
+// VictoryScene either — M2 still unlocks it via this table, but there's no
+// 'M3:...' entry here since nothing ever looks it up that way. M4's unlock
+// into M5 stays as-is for once Phase 4 wires the real exam-boss battle.
 const MISSION_NEXT = {
-  M1F:'M2', M2:'M3', M3:'M4', M4:'M5', M5:'M6', M6:'M7',
-  M7:'M8', M8:'M9', M9:'M10', M10:'M11', M11:'M12', M12:'M13',
-  M13:'M14', M14:'M15',
+  M2:'M3', M4:'M5', M5:'M6', M6:'M7',
+  M7:'M8', M8:'M9', M9:'M10', M10:'M11', M11:'M12',
 };
+
+// Side battles unlock alongside their region's final mission, independent
+// of the main chain's own next-unlock above — one per region. M2:'M0a' is
+// the M0-M4 redesign's Phase 5 addition — the Hidden Cave ore mission
+// unlocks the moment M3 does (both fire off M2's completion), even though
+// M0a branches off M0, not M2 — this mechanism never required the unlock
+// source and the branch parent to match (same trick M3:'M0a' would have
+// used, but M3 never completes through VictoryScene since it's a hub).
+const SIDE_MISSION_UNLOCK = { M2:'M0a', M6:'M13', M9:'M14', M12:'M15' };
+
+// Roster characters who join the party right after a given mission's
+// cutscene. Only Kael (M5) and Trice (M6) auto-join this way now — Drace/
+// Sela/Zora were cut from the old M2/M3/M4 auto-join beats (July 2026
+// redesign) and are recruited by player choice at Ester/Hilbert Academy
+// instead (RecruitClassScene, triggered from the Capital questline).
+const RECRUITS_AFTER = { M5: ['kael'], M6: ['trice'] };
 
 export class VictoryScene extends Phaser.Scene {
   constructor() { super({ key: 'VictoryScene' }); }
@@ -102,13 +110,41 @@ export class VictoryScene extends Phaser.Scene {
       if (result) this.levelUps.push({ unit, gains: result });
     }
 
-    // Drop loot: per-kill drops → guaranteed materials → random equipment
+    // Drop loot: per-kill drops → guaranteed materials → herb chance → level-bracketed equipment
     const killDrops = getKillDrops(this.killsByType);
     for (const item of killDrops) state.inventory.push(item);
     const materials = getMissionMaterials(this.missionId);
     for (const mat of materials) state.inventory.push(mat);
-    const drop = randomLoot(this.missionId);
-    if (drop) state.inventory.push(drop);
+    // Heal Herb: 25% chance per battle, independent of the guaranteed
+    // MISSION_MATERIALS table above (which still separately guarantees one on M1).
+    const herbDrop = rollHealHerbDrop();
+    if (herbDrop) state.inventory.push(herbDrop);
+
+    // Level-bracketed equipment drop, rolled against the protagonist's
+    // level (2026-07-08 feedback: a level 20 party was still getting common
+    // gear off Wolf kills). Used to be the M0a-only "Hidden Cave" bonus roll
+    // (M0-M4 redesign, Phase 5) layered on top of every OTHER mission's own
+    // flat, level-blind MISSION_LOOT pool — but that pool only ever listed
+    // common/uncommon static items (no rare+ gear exists as a static item at
+    // all, see project_items_cleanup memory), so no amount of leveling could
+    // ever improve a normal mission's drop. Now every mission uses this same
+    // bracketed roll instead of a fixed pool — same fix ShopScene already
+    // applied to its own gear list (see SHOP_RARITY_UNLOCKS), just via the
+    // "single roll" shape this system already had rather than the shop's
+    // "additive tiers" shape.
+    const leader = state.party[0];
+    const leaderClassMult = leader ? gearLayoutForUnit(leader).classItemMultiplier : 1;
+    const bracketDrops = rollBracketedDrop(leader?.level ?? 1, leader?.talents ?? [], leaderClassMult, leader ? roleDisplayLabel(leader) : undefined);
+    if (bracketDrops) for (const item of bracketDrops) state.inventory.push(item);
+    // Grouped for display same as killDropSummary — the ore outcome returns
+    // the same material twice (its "×2" flavor) rather than one item with a
+    // count field, so it needs the same id-grouping treatment.
+    const bracketDropSummary = [];
+    if (bracketDrops) {
+      const counts = new Map();
+      for (const item of bracketDrops) counts.set(item.id, (counts.get(item.id) ?? 0) + 1);
+      for (const [id, count] of counts) bracketDropSummary.push({ item: bracketDrops.find(i => i.id === id), count });
+    }
 
     // Group kill drops by item id for display (e.g. Bone × 3) — kills no
     // longer map to a fixed material per enemy name (see getKillDrops:
@@ -122,16 +158,25 @@ export class VictoryScene extends Phaser.Scene {
     this.allDrops = [
       ...killDropSummary,
       ...materials.map(item => ({ item, count: 1 })),
-      ...(drop ? [{ item: drop, count: 1 }] : []),
+      ...(herbDrop ? [{ item: herbDrop, count: 1 }] : []),
+      ...bracketDropSummary,
     ];
 
-    // Complete mission and unlock next
+    // Complete mission and unlock next (main chain + any side-battle branch)
     const nextMission = MISSION_NEXT[this.missionId];
     completeMission(this.missionId, nextMission);
+    const sideUnlock = SIDE_MISSION_UNLOCK[this.missionId];
+    if (sideUnlock) completeMission(this.missionId, sideUnlock);
 
-    // M4 first clear: Zora joins the party
-    if (this.missionId === 'M4' && this.isFirstClear) {
-      recruitCharacter('zora');
+    // Winning the exam retires the Capital questline (M0-M4 redesign,
+    // Phase 4) — nothing left to turn in at M3 after this.
+    if (this.missionId === 'M4') state.capitalQuest = 'done';
+
+    // M0a/M0b require re-accepting at the Hidden Village's Quest Menu
+    // before every attempt, including replays (2026-07-07 feedback) — reset
+    // the acceptance flag on every completion, not just the first.
+    if (this.missionId === 'M0a' || this.missionId === 'M0b') {
+      state.questAccepted[this.missionId] = false;
     }
 
     // ── Background ────────────────────────────────────────────────────────
@@ -165,28 +210,6 @@ export class VictoryScene extends Phaser.Scene {
       y += 54;
     }
 
-    // ── Loot drop ─────────────────────────────────────────────────────────
-    const lootY = y + 10;
-    if (this.allDrops.length > 0) {
-      this.add.text(width / 2, lootY, 'LOOT', {
-        fontSize: '11px', fontFamily: 'monospace', color: '#666666',
-      }).setOrigin(0.5);
-      let dy = lootY + 20;
-      for (const { item, count } of this.allDrops) {
-        const isMat = item.type === 'material';
-        const col = isMat ? '#aacc88' : '#' + rarityColor(item.rarity).toString(16).padStart(6, '0');
-        const tag  = isMat ? 'Material' : item.rarity.charAt(0).toUpperCase() + item.rarity.slice(1);
-        const label = count > 1 ? `${item.name}  ×${count}` : item.name;
-        this.add.text(width / 2, dy, label, {
-          fontSize: '15px', fontFamily: 'monospace', fontStyle: 'bold', color: col,
-        }).setOrigin(0.5);
-        this.add.text(width / 2, dy + 16, tag, {
-          fontSize: '9px', fontFamily: 'monospace', color: '#444455',
-        }).setOrigin(0.5);
-        dy += 36;
-      }
-    }
-
     // ── Level up notice ───────────────────────────────────────────────────
     if (this.levelUps.length > 0) {
       this.add.text(width / 2, height - 90, '★  LEVEL UP! ★', {
@@ -198,24 +221,41 @@ export class VictoryScene extends Phaser.Scene {
     }
 
     // ── Continue button ───────────────────────────────────────────────────
+    // Recruits join AFTER their introduction cutscene plays (not immediately
+    // on victory) — the cutscene's own nextScene/nextSceneData chain is
+    // redirected through RecruitClassScene so the class-choice + "joined
+    // the team" announcement happens right where the story introduces them.
     const cutscene = this.isFirstClear ? CUTSCENE_AFTER[this.missionId] : null;
-    const afterScene     = cutscene ? 'StoryScene'    : 'WorldMapScene';
-    const afterSceneData = cutscene ? { lines: cutscene.lines, location: cutscene.location, nextScene: 'WorldMapScene', nextSceneData: {} } : {};
+    const recruits = this.isFirstClear ? RECRUITS_AFTER[this.missionId] : null;
+    const postCutsceneScene = recruits ? 'RecruitClassScene' : 'WorldMapScene';
+    const postCutsceneData  = recruits ? { recruitIds: recruits, nextScene: 'WorldMapScene', nextSceneData: {} } : {};
+    const afterScene     = cutscene ? 'StoryScene' : postCutsceneScene;
+    const afterSceneData = cutscene
+      ? { lines: cutscene.lines, location: cutscene.location, backdrop: cutscene.backdrop, nextScene: postCutsceneScene, nextSceneData: postCutsceneData }
+      : postCutsceneData;
 
-    const btnLabel = this.levelUps.length > 0 ? 'LEVEL UP  ▶' : (cutscene ? 'CONTINUE  ▶' : 'WORLD MAP  ▶');
-    const btn = this.add.text(width / 2, height - 30, btnLabel, {
-      fontSize: '16px', fontFamily: 'monospace', fontStyle: 'bold',
-      color: '#ffffff', backgroundColor: '#224422', padding: { x: 20, y: 8 },
-    }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+    // Loot now gets its own screen (2026-07-08 feedback: the inline grid
+    // used to share this screen with the level-up notice/button below it,
+    // both at fixed height-anchored positions, so a big haul routinely ran
+    // underneath them and was unreadable) — build the handoff chain
+    // backwards from the original destination: afterScene, wrapped by
+    // LevelUpScene if anyone leveled, wrapped by LootScene if anything dropped.
+    const afterLevelUp = { scene: afterScene, data: afterSceneData };
+    const afterLoot = this.levelUps.length > 0
+      ? { scene: 'LevelUpScene', data: { levelUps: this.levelUps, nextScene: afterLevelUp.scene, nextSceneData: afterLevelUp.data } }
+      : afterLevelUp;
+    const firstStep = this.allDrops.length > 0
+      ? { scene: 'LootScene', data: { allDrops: this.allDrops, nextScene: afterLoot.scene, nextSceneData: afterLoot.data } }
+      : afterLoot;
 
-    btn.on('pointerover', () => btn.setStyle({ color: '#ffff88' }));
-    btn.on('pointerout',  () => btn.setStyle({ color: '#ffffff' }));
-    btn.on('pointerdown', () => {
-      if (this.levelUps.length > 0) {
-        this.scene.start('LevelUpScene', { levelUps: this.levelUps, nextScene: afterScene, nextSceneData: afterSceneData });
-      } else {
-        this.scene.start(afterScene, afterSceneData);
-      }
+    const btnLabel = this.allDrops.length > 0 ? 'LOOT  ▶'
+      : this.levelUps.length > 0 ? 'LEVEL UP  ▶'
+      : (cutscene ? 'CONTINUE  ▶' : 'WORLD MAP  ▶');
+    drawButton(this, {
+      x: width / 2, y: height - 30, w: 200, h: 40, label: btnLabel,
+      fontSize: '16px', bg: 0x224422, bgHover: 0x2e582e, border: 0x44aa44, accent: 0xffff88,
+      textColor: '#ffffff', textHoverColor: '#ffff88',
+      onClick: () => this.scene.start(firstStep.scene, firstStep.data),
     });
   }
 
