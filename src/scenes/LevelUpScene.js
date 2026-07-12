@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { pendingPromotion, t3SportOptions, sportById, chainById, promoteUnit, roleDisplayLabel } from '../data/gameState.js';
+import { drawButton } from '../ui/canvasButton.js';
 
 export class LevelUpScene extends Phaser.Scene {
   constructor() { super({ key: 'LevelUpScene' }); }
@@ -137,16 +138,15 @@ export class LevelUpScene extends Phaser.Scene {
     }
 
     if (pending) {
-      const btn = this.add.text(width / 2, height - 28, 'PROMOTION AVAILABLE  ▶', {
-        fontSize: '15px', fontFamily: 'monospace', fontStyle: 'bold',
-        color: '#ffffff', backgroundColor: '#443322', padding: { x: 18, y: 8 },
-      }).setOrigin(0.5).setInteractive({ useHandCursor: true });
-      btn.on('pointerover', () => btn.setStyle({ color: '#ffdd88' }));
-      btn.on('pointerout',  () => btn.setStyle({ color: '#ffffff' }));
-      btn.on('pointerdown', () => {
-        this.promoTier = pending;
-        this.subPhase = 'promoPrompt';
-        this.showCurrent();
+      drawButton(this, {
+        x: width / 2, y: height - 28, w: 260, h: 42, label: 'PROMOTION AVAILABLE  ▶',
+        fontSize: '15px', bg: 0x443322, bgHover: 0x5a4530, border: 0x886644, accent: 0xffdd88,
+        textColor: '#ffffff', textHoverColor: '#ffdd88',
+        onClick: () => {
+          this.promoTier = pending;
+          this.subPhase = 'promoPrompt';
+          this.showCurrent();
+        },
       });
       return;
     }
@@ -158,14 +158,12 @@ export class LevelUpScene extends Phaser.Scene {
     const { width, height } = this.scale;
     const isLast = this.index >= this.levelUps.length - 1;
     const btnText = isLast ? 'WORLD MAP  ▶' : 'NEXT  ▶';
-    const btn = this.add.text(width / 2, height - 28, btnText, {
-      fontSize: '16px', fontFamily: 'monospace', fontStyle: 'bold',
-      color: '#ffffff', backgroundColor: '#223344', padding: { x: 22, y: 8 },
-    }).setOrigin(0.5).setInteractive({ useHandCursor: true });
-
-    btn.on('pointerover', () => btn.setStyle({ color: '#ffff88' }));
-    btn.on('pointerout',  () => btn.setStyle({ color: '#ffffff' }));
-    btn.on('pointerdown', () => this.advance());
+    drawButton(this, {
+      x: width / 2, y: height - 28, w: 200, h: 42, label: btnText,
+      fontSize: '16px', bg: 0x223344, bgHover: 0x2e4458, border: 0x4477aa, accent: 0xffff88,
+      textColor: '#ffffff', textHoverColor: '#ffff88',
+      onClick: () => this.advance(),
+    });
   }
 
   // ── Promotion: optional/deferrable — the player can decline and stay at
@@ -252,13 +250,18 @@ export class LevelUpScene extends Phaser.Scene {
   }
 
   makeButton(x, y, w, h, label, sub, onClick) {
+    const shadow = this.add.graphics();
+    shadow.fillStyle(0x000000, 0.3);
+    shadow.fillRoundedRect(x - w / 2 + 2, y - h / 2 + 3, w, h, 6);
+
     const g = this.add.graphics();
     const draw = (hover) => {
       g.clear();
       g.fillStyle(hover ? 0x2a1f10 : 0x1a1408, 1);
       g.fillRoundedRect(x - w / 2, y - h / 2, w, h, 6);
-      g.lineStyle(1, hover ? 0xffaa44 : 0x664422, 1);
+      g.lineStyle(1.5, hover ? 0xffaa44 : 0x664422, 1);
       g.strokeRoundedRect(x - w / 2, y - h / 2, w, h, 6);
+      if (hover) { g.fillStyle(0xffaa44, 0.9); g.fillRoundedRect(x - w / 2, y - h / 2, 3, h, 2); }
     };
     draw(false);
 

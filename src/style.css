@@ -24,6 +24,14 @@ canvas {
   display: block;
 }
 
+/* Landscape is the designed orientation (see main.js's best-effort
+   screen.orientation.lock), but portrait isn't blocked — no overlay, no
+   pausing. A rotate prompt was tried twice (blocking overlay, then a CSS
+   auto-rotate trick) and both added more friction than they solved on real
+   phones, especially since iOS Safari can't combine true fullscreen with a
+   forced lock anyway. Portrait just renders smaller/letterboxed via FIT
+   scale mode instead — fully playable, not optimized. */
+
 /* ══════════════════════════════════════════════════════════════════════
    Modern UI layer (menus/story) — per the 2026-07-04 visual style guide.
    Battle stays pixel art; everything mounted into #ui-root uses this
@@ -405,6 +413,68 @@ canvas {
   font-weight: 700;
 }
 
+/* ── Index (2026-07-08) — browsable classes/abilities/monsters/weaknesses
+   reference, opened from WorldMapScene. Single scrollable panel instead of
+   .ui-body's default list+detail grid split. ── */
+.ui-index-tabbar {
+  flex: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 12px 28px;
+  border-bottom: 1px solid var(--ui-border);
+}
+
+.ui-index-body {
+  grid-template-columns: 1fr;
+}
+
+.ui-index-panel {
+  padding: 20px 24px;
+}
+
+.ui-index-chain {
+  margin-bottom: 18px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--ui-border);
+}
+
+.ui-index-chain-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.ui-index-step {
+  min-width: 140px;
+}
+
+.ui-index-arrow {
+  color: var(--ui-text-faint);
+  font-size: 16px;
+}
+
+.ui-index-list {
+  padding-left: 20px;
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--ui-text-muted);
+}
+
+.ui-index-ability-grid, .ui-index-monster-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 10px;
+}
+
+.ui-index-ability, .ui-index-monster {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius-sm);
+  padding: 10px 12px;
+}
+
 .ui-slot-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -420,6 +490,34 @@ canvas {
   background: rgba(255, 255, 255, 0.02);
   border: 1px solid var(--ui-border);
   font-size: 12px;
+  gap: 8px;
+}
+
+.ui-slot-main {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.ui-gear-icon {
+  width: 22px;
+  height: 22px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.ui-gear-icon-fallback {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  line-height: 1;
+}
+
+.ui-equip-option-row {
+  display: flex;
+  align-items: center;
   gap: 8px;
 }
 
@@ -549,6 +647,8 @@ canvas {
   flex-direction: column;
   gap: 10px;
   margin-top: 20px;
+  max-height: 50vh;
+  overflow-y: auto;
 }
 
 .ui-btn {
@@ -588,4 +688,28 @@ canvas {
   font-weight: 400;
   color: var(--ui-text-muted);
   margin-top: 2px;
+}
+
+.ui-text-input {
+  width: 100%;
+  margin-top: 16px;
+  padding: 11px 14px;
+  font-family: inherit;
+  font-size: 14px;
+  color: var(--ui-text);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--ui-border-strong);
+  border-radius: var(--ui-radius-sm);
+  outline: none;
+}
+
+.ui-text-input:focus {
+  border-color: var(--ui-accent);
+}
+
+.ui-btn-danger {
+  color: #ff6666;
+  text-align: center;
+  border-color: rgba(255, 102, 102, 0.35);
+  background: rgba(255, 102, 102, 0.08);
 }

@@ -1,4 +1,4 @@
-import { unlockedRoleIds, classSkillSlotCount, TALENT_STAT_KEY, CLASS_TIER_LEVELS, roleById, sportById } from './gameState.js';
+import { unlockedRoleIds, classSkillSlotCount, TALENT_STAT_KEY, CLASS_TIER_LEVELS, roleById, sportById, currentDesignations, MAX_EQUIPPED_SPECIALS, MAX_EQUIPPED_SKILLS } from './gameState.js';
 
 // ── Universal baseline moves ─────────────────────────────────────────────────
 // Every unit starts with these, regardless of class — no cost, no cooldown.
@@ -71,8 +71,8 @@ export const ABILITIES = {
   },
   tri_shot: {
     id: 'tri_shot', name: 'Tri-Shot', icon: '🎯', category: 'skill',
-    cooldown: 3, range: 1, targetType: 'enemy', multiplier: 1.5, hits: 3,
-    desc: '3× 1.5× dmg  ·  range 1  ·  CD 3',
+    cooldown: 3, range: 4, targetType: 'enemy', multiplier: 1.5, hits: 3,
+    desc: '3× 1.5× dmg  ·  range 4  ·  CD 2',
   },
   tackle_kick: {
     id: 'tackle_kick', name: 'Tackle Kick', icon: '💥', category: 'skill',
@@ -111,7 +111,12 @@ export const ABILITIES = {
     id: 'tackle', name: 'Tackle', icon: '💥', category: 'skill',
     cooldown: 3, range: 1, targetType: 'enemy', multiplier: 1.3,
     debuff: { type: 'stun', duration: 1 },
-    desc: '1.3× dmg  ·  stuns 1 turn  ·  CD 3',
+    // Always resolves as a Combat-type hit for the designation triangle,
+    // regardless of the attacker's own designation (Drace is Defender, not
+    // Combat) — mirrors how fixedElement overrides an attacker's natural
+    // element for a specific move. See attackDesignations() in BattleScene.js.
+    fixedDesignationType: 'C',
+    desc: '1.3× dmg  ·  stuns 1 turn  ·  Combat-type  ·  CD 3',
   },
   bulldoze: {
     id: 'bulldoze', name: 'Bulldoze', icon: '🚧', category: 'skill',
@@ -160,13 +165,6 @@ export const ABILITIES = {
   },
 
   // ── Runner (T1) ────────────────────────────────────────────────────────────
-  dash: {
-    id: 'dash', name: 'Dash', icon: '➤', category: 'skill',
-    cooldown: 2, targetType: 'enemy',
-    directional: true, mustBeforeMove: true, consumesMove: true, maxRange: 5,
-    scaleByDist: { min: 1.3, max: 1.8, maxRange: 5 },
-    desc: '1.3–1.8× dmg  ·  directional  ·  before move  ·  CD 2',
-  },
   run_through: {
     id: 'run_through', name: 'Run Through', icon: '💨', category: 'skill',
     cooldown: 3, targetType: 'enemy',
@@ -469,7 +467,14 @@ export const ABILITIES = {
   duo: {
     id: 'duo', name: 'Duo', icon: '👯', category: 'passive',
     passiveEffect: 'freeMoveToPartner', partnerRadius: 5,
-    desc: 'Within 5 blocks of sports partner: free move to them, then attack twice OR move again + attack (Class Skill)',
+    // Always-active passive (2026-07-07 feedback: was previously gated
+    // behind manually using the free-move-to-partner action first — see
+    // BattleScene.js's finishAbilityTurn) — beside a sports partner after
+    // acting = an automatic bonus second attack, no button press needed.
+    // The free move (within 5 blocks, player picks which adjacent tile) is
+    // now just a repositioning tool for CLOSING the distance, independent
+    // of the bonus.
+    desc: 'Beside sports partner after acting: free bonus attack. Also: free move to within 5 blocks of partner, player picks the tile (Class Skill)',
   },
   flying_jump: {
     id: 'flying_jump', name: 'Flying Jump', icon: '🦵', category: 'special',
@@ -609,7 +614,6 @@ export const TALENT_PASSIVE_POOL = {
 // redesign's role ids — same content, seeding Layer 4's role-exclusive kit.
 export const ROLE_SKILL_POOL = {
   runner: [
-    { id: 'dash',        minLevel: 1 },
     { id: 'run_through', minLevel: 5 },
     { id: 'blitz',       minLevel: 8 },
     { id: 'speed_up',    minLevel: 10 },
@@ -848,6 +852,7 @@ function passesSportGate(ability, unit) {
   return true;
 }
 
+
 // Special Attack (SP-cost) abilities a unit currently knows — accumulated
 // across every tier reached so far (promoting doesn't erase earlier-tier
 // specials — see unlockedRoleIds). Slot-free, always usable once known.
@@ -864,7 +869,17 @@ export function getUnitSpecials(unit) {
     .filter(e => (unit[e.statKey] ?? 0) >= e.minStat)
     .map(e => ABILITIES[e.id]);
 
-  const designationSpecials = (unit.designations ?? [])
+  // currentDesignations(unit) — NOT unit.designations, which is never
+  // actually persisted on a real gameState unit (only BattleScene's
+  // ephemeral playerUnit copy sets it, as a cache of this same function).
+  // Reading the raw field directly silently returned [] for every call from
+  // LoadoutScene/PartyScene (and, since 2026-07-07's equip-cap lazy-init
+  // runs against the raw persisted unit, from the battle-loadout defaulting
+  // too) — any Ranged-designation-only special like Tri-Throw was
+  // unreachable outside of battles fought before the cap existed. Bug
+  // pre-dates the equip cap; the cap just made it visible (2026-07-07
+  // feedback: "ability tri throw what happened to it").
+  const designationSpecials = currentDesignations(unit)
     .flatMap(d => DESIGNATION_SPECIALS[d] ?? [])
     .filter(e => level >= e.minLevel)
     .map(e => ABILITIES[e.id]);
@@ -899,7 +914,9 @@ export function getUnitSkills(unit) {
     .filter(e => (unit[e.statKey] ?? 0) >= e.minStat)
     .map(e => ABILITIES[e.id]);
 
-  const designationPool = (unit.designations ?? [])
+  // See the identical note in getUnitSpecials above — currentDesignations(),
+  // not unit.designations (never actually persisted on a real unit).
+  const designationPool = currentDesignations(unit)
     .flatMap(d => DESIGNATION_SKILL_POOL[d] ?? [])
     .filter(e => level >= e.minLevel)
     .map(e => ABILITIES[e.id]);
@@ -919,6 +936,53 @@ export function getUnitSkills(unit) {
   return [...rolePool, ...talentPool, ...designationPool, ...classPool, ...crossClassPool].filter(Boolean);
 }
 
+// ── Battle loadout (2026-07-07) ──────────────────────────────────────────────
+// getUnitSpecials/getUnitSkills above return everything a unit KNOWS — that
+// used to be exactly what battle offered too, uncapped. Now battle only
+// offers a player-selected subset (unit.equippedSpecials/equippedSkills,
+// arrays of ability ids sized MAX_EQUIPPED_SPECIALS/MAX_EQUIPPED_SKILLS,
+// mutated via equipSpecialSlot/equipSkillSlot in gameState.js). The first
+// time either array is read (equippedSpecials/equippedSkills still null —
+// never visited LoadoutScene, or a freshly recruited/created unit), it's
+// lazily initialized to that unit's first known abilities so a unit is never
+// stuck with zero battle options out of the box. After that first init it's
+// real persisted data — the player can freely empty slots without it ever
+// auto-refilling again.
+function ensureEquippedAbilities(unit) {
+  if (unit.equippedSpecials == null) {
+    unit.equippedSpecials = getUnitSpecials(unit).slice(0, MAX_EQUIPPED_SPECIALS).map(a => a.id);
+  }
+  if (unit.equippedSkills == null) {
+    unit.equippedSkills = getUnitSkills(unit).slice(0, MAX_EQUIPPED_SKILLS).map(a => a.id);
+  }
+}
+
+// Fixed-length (MAX_EQUIPPED_SPECIALS) array of ability objects or null for
+// empty/invalid slots — shaped for LoadoutScene's per-slot UI. Iterates a
+// fixed 0..MAX-1 range rather than mapping unit.equippedSpecials directly,
+// since the lazy-init above can leave that array SHORTER than MAX (e.g. a
+// unit who only knows 2 Specials gets a 2-element array) — without this,
+// unfilled trailing slots would silently vanish instead of showing as
+// empty. A previously equipped id the unit somehow no longer knows
+// (shouldn't normally happen — unlockedRoleIds only accumulates) also reads
+// back as an empty slot rather than throwing.
+export function getEquippedSpecialAbilities(unit) {
+  ensureEquippedAbilities(unit);
+  const known = new Set(getUnitSpecials(unit).map(a => a.id));
+  return Array.from({ length: MAX_EQUIPPED_SPECIALS }, (_, i) => {
+    const id = unit.equippedSpecials[i];
+    return (id && known.has(id)) ? ABILITIES[id] : null;
+  });
+}
+export function getEquippedSkillAbilities(unit) {
+  ensureEquippedAbilities(unit);
+  const known = new Set(getUnitSkills(unit).map(a => a.id));
+  return Array.from({ length: MAX_EQUIPPED_SKILLS }, (_, i) => {
+    const id = unit.equippedSkills[i];
+    return (id && known.has(id)) ? ABILITIES[id] : null;
+  });
+}
+
 // Full pool of passives (Class Skills) a unit currently knows, sourced from
 // the talent/designation/class-grouping passive pools authored above.
 // ENGINE TODO: BattleScene.js reads getUnitSpecials/getUnitSkills but does
@@ -935,7 +999,9 @@ export function getUnitPassivePool(unit) {
     .filter(e => (unit[e.statKey] ?? 0) >= e.minStat)
     .map(e => ABILITIES[e.id]);
 
-  const designationPassives = (unit.designations ?? [])
+  // See the identical note in getUnitSpecials above — currentDesignations(),
+  // not unit.designations (never actually persisted on a real unit).
+  const designationPassives = currentDesignations(unit)
     .flatMap(d => DESIGNATION_PASSIVE_POOL[d] ?? [])
     .filter(e => level >= e.minLevel)
     .map(e => ABILITIES[e.id]);

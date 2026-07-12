@@ -5,9 +5,9 @@ import {
   DESIGNATION_BEATS, designationIcon, DESIGNATION_CYCLE, ELEMENT_CYCLE, ELEMENT_BEATS,
 } from '../data/gameState.js';
 import { ATTACK, THROW, getEquippedSpecialAbilities, getEquippedSkillAbilities, getEquippedPassives } from '../data/abilities.js';
-import { loadHeroSprites, createHeroAnims, stripHeroBackground, stripBackgroundByKey, trimmedSheetConfig, heroKey, getSpriteInfo, firstFrame, spriteKeyForRole } from '../data/heroSprites.js';
-import { buildMonster, spriteInfoForBase } from '../data/monsters.js';
-import { isUsableItem } from '../data/items.js';
+import { loadHeroSprites, createHeroAnims, stripHeroBackground, stripBackgroundByKey, trimmedSheetConfig, heroKey, getSpriteInfo, firstFrame, spriteKeyForRole, HERO_SPRITES } from '../data/heroSprites.js';
+import { buildMonster, buildMonsterKit, spriteInfoForBase } from '../data/monsters.js';
+import { isUsableItem, rollGearItem } from '../data/items.js';
 
 const COLS = 10, ROWS = 10;
 // Bigger isometric tiles (2026-07-07 feedback) — was 64×32 at .setScale(2)
@@ -229,101 +229,37 @@ const STAGE_CONFIGS = {
     },
   },
 
-  // ── Region cave locations + signature elemental areas (July 2026) ────────
-  // Each region gets 2 caves + 1 elemental "unique area" per REGION_ARCHETYPES
-  // (Altroes=Lightning/Fire, Gale=Wind/Water(Ice), Lametus=Wind/Earth).
-  // Altroes previously counted the old M4 "Hollow Caves" as its cave #1;
-  // now that M4 is the Arena Atlros exam boss instead, Altroes is down to
-  // one on-the-books cave (M5) until M0a "Hidden Cave" (the M0-M4 redesign's
-  // new ore mission off the Hidden Village) is wired up as its replacement
-  // cave #1 — see Phase 5 of the redesign plan. No new tile art exists for
-  // ice/desert terrain, so these reuse the existing grass/stone/water tile
-  // categories, differentiated by bgColor tint and layout, same convention
-  // as M1-M4.
-  'M5': {
-    // Ember Hollow — Altroes cave #2, warmer/redder than Hollow Caves
-    tiles: ['000','001','002','003','055','056','057','061','062','004'],
-    label: 'EMBER HOLLOW',
-    bgColor: 0x1a0604,
+  // ── Hilbert Academy quest battles (2026-07-11) ────────────────────────────
+  // Three new locations off Hilbert Academy (A2), distinct from M3a/M3b's
+  // Capital-trial fights above (same-flavored area, different place — user
+  // confirmed these should be their own nodes rather than reuse M3a/M3b).
+  'A2a': {
+    // Lion's Pride — Defeat the King quest (King Lion + 2 Lions). Same
+    // greenfield layout family as M3b (thematically "more of Hilbert Low
+    // Lands"), new label/tint so it doesn't read as a duplicate of M3b.
+    tiles: ['022','026','027','033','034','037','041','088','089','090'],
+    label: "LION'S PRIDE",
+    bgColor: 0x0a1608,
     layout(col, row) {
       const p = th(col, row);
-      const edge = col === 0 || row === 0 || col === 9 || row === 9;
-      if (edge) return p < 50 ? '061' : '062';
-      if (p < 14) return '004'; // scorched ember-red patch
-      if (p < 26) return p < 20 ? '055' : '056';
-      if (p < 34) return '057';
-      const v = (col * 3 + row * 7) % 4;
-      return ['000','001','002','003'][v];
-    },
-  },
-  'M6': {
-    // Stormpeak Ridge — Altroes's Lightning/Fire signature outdoor area
-    tiles: ['033','034','027','037','061','062','063','065','068'],
-    label: 'STORMPEAK RIDGE',
-    bgColor: 0x181022,
-    layout(col, row) {
-      const p = th(col, row);
-      const edge = col === 0 || row === 0 || col === 9 || row === 9;
-      if (edge) return p < 50 ? '033' : '034';
-      if (p < 10) return p < 4 ? '063' : (p < 7 ? '065' : '068'); // jagged rock outcrops
-      if (p < 22) return p < 16 ? '061' : '062';
-      if (p < 55) return '027';
-      return p < 78 ? '037' : '034';
-    },
-  },
-  'M7': {
-    // Frostbite Hollow — Gale cave #1
-    tiles: ['000','001','002','003','060','063','065','068'],
-    label: 'FROSTBITE HOLLOW',
-    bgColor: 0x040a16,
-    layout(col, row) {
-      const p = th(col, row);
-      const edge = col === 0 || row === 0 || col === 9 || row === 9;
-      if (edge) return p < 50 ? '063' : '065';
-      if (p < 16) return p < 8 ? '060' : '068';
-      const v = (col * 3 + row * 7) % 4;
-      return ['000','001','002','003'][v];
-    },
-  },
-  'M8': {
-    // Windswept Grotto — Gale cave #2, frozen pool accents
-    tiles: ['055','056','057','061','062','070','086','091'],
-    label: 'WINDSWEPT GROTTO',
-    bgColor: 0x061422,
-    layout(col, row) {
-      const p = th(col, row);
-      const edge = col === 0 || row === 0 || col === 9 || row === 9;
-      if (edge) return p < 50 ? '061' : '062';
-      const dist = Math.abs(col - 5) + Math.abs(row - 5);
-      if (dist <= 1) return p < 60 ? '091' : '086'; // frozen pool center
-      if (dist === 2) return '070';
-      if (p < 20) return p < 10 ? '055' : '056';
-      if (p < 30) return '057';
-      return p < 65 ? '055' : '056';
-    },
-  },
-  'M9': {
-    // Glacial Bluff — Gale's Wind/Ice signature outdoor area
-    tiles: ['033','034','037','088','089','090','061','062','063'],
-    label: 'GLACIAL BLUFF',
-    bgColor: 0x0c1c2c,
-    layout(col, row) {
-      const p = th(col, row);
-      const dist = Math.abs(col - 5) + Math.abs(row - 4);
-      if (dist <= 2) return p < 60 ? '088' : '089'; // frozen lake (ice reuses water art)
+      const dist = Math.abs(col - 6) + Math.abs(row - 5);
+      if (dist <= 2) return p < 60 ? '088' : '089';
       if (dist === 3) return p < 50 ? '089' : '090';
       const edge = col === 0 || row === 0 || col === 9 || row === 9;
-      if (edge) return p < 40 ? '063' : (p < 70 ? '061' : '062');
-      if (p < 45) return '033';
-      if (p < 75) return '034';
-      return '037';
+      if (edge) return p < 50 ? '033' : '034';
+      if (p < 5)  return '041';
+      if (p < 40) return '022';
+      if (p < 65) return '026';
+      if (p < 80) return '037';
+      return '027';
     },
   },
-  'M10': {
-    // Rootdeep Cavern — Lametus cave #1
+  'A2b': {
+    // Goblin Warcamp — Goblin King quest (wave-spawning goblins). Same cave
+    // layout family as M3a/M4, new label/tint.
     tiles: ['000','001','002','003','055','056','057','061','062'],
-    label: 'ROOTDEEP CAVERN',
-    bgColor: 0x120e06,
+    label: 'GOBLIN WARCAMP',
+    bgColor: 0x140a02,
     layout(col, row) {
       const p = th(col, row);
       const edge = col === 0 || row === 0 || col === 9 || row === 9;
@@ -334,25 +270,35 @@ const STAGE_CONFIGS = {
       return ['000','001','002','003'][v];
     },
   },
-  'M11': {
-    // Duskstone Mine — Lametus cave #2, dirt-heavy mine floor
-    tiles: ['004','010','015','020','055','056','057'],
-    label: 'DUSKSTONE MINE',
-    bgColor: 0x1c1206,
+  'A2c': {
+    // Cave Depths — Clear the Northern Cave quest (3 random monsters,
+    // waves every 3rd turn). Same cave layout family as M3a/A2b, distinct
+    // label/tint so it reads as "deeper than" M3a's Northern Cave rather
+    // than a duplicate of it.
+    tiles: ['000','001','002','003','055','056','057','061','062'],
+    label: 'CAVE DEPTHS',
+    bgColor: 0x05040a,
     layout(col, row) {
       const p = th(col, row);
       const edge = col === 0 || row === 0 || col === 9 || row === 9;
-      if (edge) return p < 50 ? '055' : '056';
-      if (p < 20) return '057';
-      const v = (col * 5 + row * 3) % 4;
-      return ['004','010','015','020'][v];
+      if (edge) return p < 50 ? '061' : '062';
+      if (p < 18) return p < 9 ? '055' : '056';
+      if (p < 28) return '057';
+      const v = (col * 3 + row * 7) % 4;
+      return ['000','001','002','003'][v];
     },
   },
-  'M12': {
-    // Earthscar Basin — Lametus's Wind/Earth signature outdoor area
+
+  // ── Ester Academy quest battles (2026-07-11) ──────────────────────────────
+  // Three new locations off Ester Academy (A1), mirroring Hilbert Academy's
+  // A2a/A2b/A2c treatment above — own nodes, distinct tile-set tints.
+  'A1a': {
+    // Dragon's Roost — Defeat 1 dragon and two wyverns quest. Rugged/rocky
+    // family (same tiles as M12 Earthscar Basin) reads better for a
+    // dragon's lair than a grass/cave layout.
     tiles: ['004','010','015','020','033','034','061','062'],
-    label: 'EARTHSCAR BASIN',
-    bgColor: 0x241a0c,
+    label: "DRAGON'S ROOST",
+    bgColor: 0x1c1006,
     layout(col, row) {
       const p = th(col, row);
       const edge = col === 0 || row === 0 || col === 9 || row === 9;
@@ -362,52 +308,96 @@ const STAGE_CONFIGS = {
       return ['004','010','015','020'][v];
     },
   },
+  'A1b': {
+    // The Great Boulder — damage-race quest against a stationary Rock. Same
+    // sandy-arena family as M4 Arena Atlros, fitting a training-drill feel.
+    tiles: ['000','001','002','003','055','056','057','061','062'],
+    label: 'THE GREAT BOULDER',
+    bgColor: 0x140e08,
+    layout(col, row) {
+      const p = th(col, row);
+      const edge = col === 0 || row === 0 || col === 9 || row === 9;
+      if (edge) return p < 50 ? '061' : '062';
+      const ring = col === 1 || row === 1 || col === 8 || row === 8;
+      if (ring) return p < 40 ? '057' : (p < 70 ? '055' : '056');
+      const v = (col * 3 + row * 7) % 4;
+      return ['000','001','002','003'][v];
+    },
+  },
 
-  // ── Side battles (optional, July 2026) ────────────────────────────────────
-  // Same terrain family as their parent mission (M6/M9/M12 respectively) —
-  // read as "further into the same area" rather than needing new tile art.
-  'M13': {
-    // Stormpeak Overlook — Altroes side battle, off Stormpeak Ridge (M6)
-    tiles: ['033','034','027','037','061','062','063','065','068'],
-    label: 'STORMPEAK OVERLOOK',
-    bgColor: 0x181022,
+  // ── Region cave locations + signature elemental areas (July 2026) ────────
+  // Each region gets 2 caves + 1 elemental "unique area" per REGION_ARCHETYPES
+  // (Altroes=Lightning/Fire, Gale=Wind/Water(Ice), Lametus=Wind/Earth).
+  // Altroes previously counted the old M4 "Hollow Caves" as its cave #1;
+  // now that M4 is the Arena Atlros exam boss instead, Altroes has no
+  // on-the-books cave until M0a "Hidden Cave" (the M0-M4 redesign's new ore
+  // mission off the Hidden Village) is wired up as its replacement cave #1
+  // — see Phase 5 of the redesign plan. M5 "Ember Hollow" (Altroes cave #2)
+  // and M6-M11 (Altroes's own unique area, both Gale caves + unique area,
+  // both Lametus caves) were removed entirely 2026-07-11 ("going to
+  // rewrite"). M12 (Lametus's unique area) and its M15 side battle briefly
+  // replaced them, then were removed the same day too ("remove m12") —
+  // nothing is left of this section; the main chain ends at M5 (Gale) now.
+
+  // ── Altroes Trials + the next school's tournament (2026-07-11) ───────────
+  // Same sandy-arena family as M4 Arena Atlros — fitting for hero-vs-hero
+  // competitive fights, distinct label/tint per stop.
+  'AT1': {
+    tiles: ['000','001','002','003','055','056','057','061','062'],
+    label: 'ALTROES TRIALS I',
+    bgColor: 0x140e08,
     layout(col, row) {
       const p = th(col, row);
       const edge = col === 0 || row === 0 || col === 9 || row === 9;
-      if (edge) return p < 50 ? '033' : '034';
-      if (p < 14) return p < 6 ? '063' : (p < 10 ? '065' : '068');
-      if (p < 26) return p < 20 ? '061' : '062';
-      if (p < 55) return '027';
-      return p < 78 ? '037' : '034';
+      if (edge) return p < 50 ? '061' : '062';
+      const ring = col === 1 || row === 1 || col === 8 || row === 8;
+      if (ring) return p < 40 ? '057' : (p < 70 ? '055' : '056');
+      const v = (col * 3 + row * 7) % 4;
+      return ['000','001','002','003'][v];
     },
   },
-  'M14': {
-    // Frozen Cove — Gale side battle, off Glacial Bluff (M9)
-    tiles: ['033','034','037','088','089','090','061','062','063'],
-    label: 'FROZEN COVE',
-    bgColor: 0x0c1c2c,
+  'AT2': {
+    tiles: ['000','001','002','003','055','056','057','061','062'],
+    label: 'ALTROES TRIALS II',
+    bgColor: 0x1c1206,
     layout(col, row) {
       const p = th(col, row);
-      const dist = Math.abs(col - 5) + Math.abs(row - 4);
-      if (dist <= 2) return p < 65 ? '088' : '089';
-      if (dist === 3) return p < 45 ? '089' : '090';
       const edge = col === 0 || row === 0 || col === 9 || row === 9;
-      if (edge) return p < 40 ? '063' : (p < 70 ? '061' : '062');
-      if (p < 45) return '033';
-      if (p < 75) return '034';
-      return '037';
+      if (edge) return p < 50 ? '061' : '062';
+      const ring = col === 1 || row === 1 || col === 8 || row === 8;
+      if (ring) return p < 40 ? '057' : (p < 70 ? '055' : '056');
+      const v = (col * 3 + row * 7) % 4;
+      return ['000','001','002','003'][v];
     },
   },
-  'M15': {
-    // Sunken Quarry — Lametus side battle, off Earthscar Basin (M12)
+  // Alpha King Dragon (2026-07-11) — boss node NE of Artfall. No dedicated
+  // snow/ice tileset exists anywhere in this project (confirmed when M5/
+  // M5b were built the same day) — reuses the same rugged/rocky family as
+  // M12/A1a's old "Dragon's Roost" layout, close enough for a mountain lair.
+  'DK': {
     tiles: ['004','010','015','020','033','034','061','062'],
-    label: 'SUNKEN QUARRY',
-    bgColor: 0x241a0c,
+    label: 'THE FROZEN PEAKS',
+    bgColor: 0x0c1420,
     layout(col, row) {
       const p = th(col, row);
       const edge = col === 0 || row === 0 || col === 9 || row === 9;
       if (edge) return p < 45 ? '033' : '034';
-      if (p < 18) return p < 9 ? '061' : '062';
+      if (p < 12) return p < 6 ? '061' : '062';
+      const v = (col * 5 + row * 3) % 4;
+      return ['004','010','015','020'][v];
+    },
+  },
+  // Monster Hunt (2026-07-11) — Gale quest, NE of Zester. Same rocky/icy
+  // family as DK for map consistency in this corner.
+  'MH': {
+    tiles: ['004','010','015','020','033','034','061','062'],
+    label: 'MONSTER HUNT',
+    bgColor: 0x0c1420,
+    layout(col, row) {
+      const p = th(col, row);
+      const edge = col === 0 || row === 0 || col === 9 || row === 9;
+      if (edge) return p < 45 ? '033' : '034';
+      if (p < 12) return p < 6 ? '061' : '062';
       const v = (col * 5 + row * 3) % 4;
       return ['004','010','015','020'][v];
     },
@@ -421,6 +411,59 @@ const STAGE_CONFIGS = {
 // matched the new "Thunder Plains, 2 Boars" spec exactly). M3 is now a hub
 // (The Capital), not a battle, so the old M3 roster is gone entirely; M4
 // (Arena Atlros exam boss) has its own fresh content below.
+// Cave Depths' "3 random type of monster" (2026-07-11) — restricted to the
+// 5 base species with real sprite art (monsterSpriteInfos() only preloads
+// these by default; the other 5 base monsters have no sprite loaded in
+// this scene, see monsters.js's own "data first" scope note).
+const RANDOM_MONSTER_POOL = ['Wolf', 'Boar', 'Deer', 'Goblin', 'Lion'];
+function pickRandomSpecies(n) {
+  return Array.from({ length: n }, () => RANDOM_MONSTER_POOL[Math.floor(Math.random() * RANDOM_MONSTER_POOL.length)]);
+}
+
+// ── Altroes Trials + the next school's tournament (2026-07-11) ─────────────
+// "Fight other units, 4 random classes" — samples n DISTINCT class names
+// from the full HERO_SPRITES roster (all 47 have real wired art, unlike
+// monsters' "data first" 5-of-10 situation, so no restriction needed).
+// Sampled without replacement so a single fight never repeats a class.
+const TOURNAMENT_HERO_CLASSES = Object.keys(HERO_SPRITES);
+function pickRandomHeroClasses(n) {
+  const pool = [...TOURNAMENT_HERO_CLASSES];
+  const picks = [];
+  for (let i = 0; i < n && pool.length; i++) {
+    picks.push(pool.splice(Math.floor(Math.random() * pool.length), 1)[0]);
+  }
+  return picks;
+}
+
+// Real Epic-rarity gear across all 5 slots (2026-07-11, "all units will
+// have epic gears") — reuses rollGearItem(), the same roller player loot
+// uses, with no talents/class-grouping resolution (tournament enemies
+// aren't full player-shaped units) — flat DEFAULT_GEAR_LAYOUT treatment for
+// all of them regardless of class. Consumed by buildEnemyUnit via
+// effectiveStats(), same generic stat/bonusHp/bonusSp aggregation player
+// gear already goes through.
+function rollEpicEquip() {
+  const equip = {};
+  for (const slot of ['weapon', 'headwear', 'footwear', 'chest', 'handwear']) {
+    equip[slot] = rollGearItem({ slot, rarity: 'epic', talents: [] });
+  }
+  return equip;
+}
+
+// Builds one raw tournament enemy def (M4 Instructor's shape: heroClass +
+// explicit stat block, not buildMonster) — `epic` attaches rollEpicEquip().
+// AT1 uses it (real tournament team, 2026-07-11 third follow-up); AT2
+// fights the same random classes without it.
+function tournamentEnemyDef(col, row, className, level, stats, epic = false) {
+  return {
+    col, row, name: className, heroClass: className,
+    spriteKey: heroKey(className), animKey: `${heroKey(className)}-idle`,
+    spriteScale: 0.38, moveSpeed: 3, level,
+    ...stats,
+    ...(epic ? { equip: rollEpicEquip() } : {}),
+  };
+}
+
 const MISSION_CONFIGS = {
   // Hidden Cave — M0a, the ore mission (unlocked alongside M3, see
   // SIDE_MISSION_UNLOCK in VictoryScene.js). Repeatable with escalating
@@ -498,6 +541,109 @@ const MISSION_CONFIGS = {
     ],
   },
 
+  // ── Hilbert Academy quests (2026-07-11) ───────────────────────────────────
+  // "Hilbert Academy will have 3 quests" — own nodes (A2a/A2b/A2c), separate
+  // from the Capital-trial M3a/M3b fights above (user: "lets just add it
+  // own nodes i was trying to reuse nodes extentions on M3b and M3a").
+  // Wired to the map/quest-accept flow in WorldMapScene.js/gameState.js.
+  'A2a': {
+    // Defeat the King — King Lion + 2 regular Lions (tier 2, matching
+    // M3b's own Lion tier — a reasonable "same difficulty class" default,
+    // not specified by the sheet). Standard win condition (all dead).
+    region: 'Altroes',
+    playerPos: { reno:[1,3], drace:[1,4], sela:[1,2], kael:[1,5], trice:[1,1] },
+    enemies: [
+      { col:6, row:4, ...buildMonster({ base: 'Lion', kind: 'unique', name: 'King Lion' }) },
+      { col:8, row:2, ...buildMonster({ base: 'Lion', tier: 2 }) },
+      { col:8, row:7, ...buildMonster({ base: 'Lion', tier: 2 }) },
+    ],
+  },
+  'A2b': {
+    // Goblin King — 2 Goblins start on the board (the wave cadence's own
+    // "turn one" per the user's spec is read as already-present at battle
+    // start, not a special-cased extra spawn — see startPlayerTurn's
+    // reinforce hook, which only fires turn 4+). `reinforce.pool()` spawns
+    // 2 more Goblins every 3rd turn after that (turns 4, 7, 10...).
+    // winCondition is boss-only: the regular Goblins (starting AND
+    // wave-spawned) never need to be cleared, only the King.
+    region: 'Altroes',
+    playerPos: { reno:[1,3], drace:[1,4], sela:[1,2], kael:[1,5], trice:[1,1] },
+    enemies: [
+      { col:7, row:4, ...buildMonster({ base: 'Goblin', kind: 'unique', name: 'Goblin King' }) },
+      { col:8, row:2, ...buildMonster({ base: 'Goblin', tier: 1 }) },
+      { col:8, row:7, ...buildMonster({ base: 'Goblin', tier: 1 }) },
+    ],
+    reinforce: { every: 3, tier: 1, pool: () => ['Goblin', 'Goblin'] },
+    winCondition: { type: 'bossName', name: 'Goblin King' },
+  },
+  'A2c': {
+    // Cave Depths — 3 random-type monsters, redrawn fresh every time the
+    // mission is entered (`enemies` as a function — see create()'s
+    // typeof-check). Every 3rd turn, 3 more of random type spawn. No
+    // winCondition override — "monster count needs to equal zero to win"
+    // is the standard all-dead check, called out explicitly by the user
+    // just to confirm it still holds despite the waves, not because it
+    // needs different logic. Species pool is the 5 base monsters with
+    // real sprite art (see RANDOM_MONSTER_POOL) — Bear/Golem/Dragon/
+    // Wyvern/Hawk have no sprite loaded by default in this scene
+    // (monsterSpriteInfos only preloads Wolf/Boar/Deer/Goblin/Lion).
+    region: 'Altroes',
+    playerPos: { reno:[1,3], drace:[1,4], sela:[1,2], kael:[1,5], trice:[1,1] },
+    enemies: () => {
+      const [s1, s2, s3] = pickRandomSpecies(3);
+      return [
+        { col:7, row:2, ...buildMonster({ base: s1, tier: 2 }) },
+        { col:8, row:5, ...buildMonster({ base: s2, tier: 2 }) },
+        { col:7, row:8, ...buildMonster({ base: s3, tier: 2 }) },
+      ];
+    },
+    reinforce: { every: 3, tier: 2, pool: () => pickRandomSpecies(3) },
+  },
+
+  // ── Ester Academy quests (2026-07-11) ─────────────────────────────────────
+  // "3 quest at ester" — own nodes (A1a/A1b), separate from A1's existing
+  // kill_king_wolf (dropped from A1's quest list, same treatment kill_king_
+  // wolf got when Hilbert's own 3 quests replaced it there).
+  'A1a': {
+    // Defeat 1 dragon and two wyverns — Dragon at boss tier (Alpha Ace
+    // Dragon, matching the existing Alpha Ace convention rather than
+    // inventing a fixed name), 2 regular-tier Wyverns as escorts — same
+    // "1 elevated + N regular" shape as A2a's King Lion. Standard win
+    // condition (all three dead).
+    region: 'Altroes',
+    playerPos: { reno:[1,3], drace:[1,4], sela:[1,2], kael:[1,5], trice:[1,1] },
+    enemies: [
+      { col:6, row:4, ...buildMonster({ base: 'Dragon', kind: 'boss' }) },
+      { col:8, row:2, ...buildMonster({ base: 'Wyvern', tier: 2 }) },
+      { col:8, row:7, ...buildMonster({ base: 'Wyvern', tier: 2 }) },
+    ],
+  },
+  'A1b': {
+    // "Do as much damage to the rock as possible, must deal 15,000 damage
+    // within 10 turns" — fixedMaxHp:15000 makes "kill it" and "deal 15,000
+    // damage" the same win condition (enemy HP never regenerates, nothing
+    // heals monsters), so the standard all-dead check already covers it —
+    // no new winCondition type needed. turnLimit:10 (checked in
+    // startPlayerTurn) fails the mission if the Rock is still alive after
+    // turn 10. alwaysWeak:true — "weak to everything" (see designation/
+    // elementMultiplier). noAttack:true + moveSpeed:0 — a stationary
+    // punching bag, never acts. size:2 — 4-tile footprint, same mechanism
+    // as King Wolf. Raw enemy def (no `base`/buildMonster — there's no
+    // "Rock" species in MONSTER_BASE_STATS) with a procedurally-generated
+    // placeholder texture (see spawnEnemyVisual's ensureRockTexture).
+    region: 'Altroes',
+    playerPos: { reno:[1,3], drace:[1,4], sela:[1,2], kael:[1,5], trice:[1,1] },
+    turnLimit: 10,
+    enemies: [
+      {
+        col: 5, row: 5, size: 2, name: 'Rock',
+        spriteKey: 'rock-proc', animKey: null, spriteScale: 0.95, moveSpeed: 0,
+        speed: 0, strength: 0, stamina: 1, endurance: 1, level: 12,
+        fixedMaxHp: 15000, alwaysWeak: true, noAttack: true,
+      },
+    ],
+  },
+
   // Arena Atlros — M4, the exam boss (non-repeatable, gated by
   // WorldMapScene's onMissionClick). Not a Monster — a hero-sprite enemy
   // (Hockey Player Ace Forward class), the first of its kind: preload()/
@@ -522,112 +668,102 @@ const MISSION_CONFIGS = {
   },
 
   // ── Region cave/unique-area missions (July 2026) ──────────────────────────
-  // Enemies stay plain Wolf/Boar objects (same shape as M1F-M4) since only
-  // those 3 base monsters have sprite art wired in (see monsters.js) —
-  // `region` drives rollRegionArchetype at battle-create time, so these
-  // enemies automatically pick up each region's element pair (Gale=Wind/
-  // Water, Lametus=Wind/Earth) with no extra work here. Zora (recruited on
-  // M4 clear) gets an explicit playerPos slot since she's in the party for
-  // all of these.
-  'M5': {
+  // M6-M11 removed 2026-07-11 ("going to rewrite"); M12 (this section's last
+  // survivor) removed the same day too ("remove m12") — nothing left here.
+
+  // ── Altroes Trials + the next school's tournament (2026-07-11) ───────────
+  // "After all 6 questions are done player can take the Altroes trials...
+  // go to the next school to take part in their tournament, which is M5...
+  // fight other units, 4 random classes, in two battles." Each fight rolls
+  // 4 DISTINCT random hero classes fresh every attempt (pickRandomHeroClasses)
+  // — same "randomized roster" shape as Cave Depths' random monsters.
+  // `enemyHeroClasses` preloads the FULL 47-class roster (not just this
+  // battle's 4 picks) so preload() and create() never disagree on which
+  // classes actually got sprite-loaded, regardless of what create()'s own
+  // independent pickRandomHeroClasses() call happens to roll.
+  // AT1 (2026-07-11 third follow-up, "the m5a should be one of the At1
+  // battles where the units are players with epic gear... remove m5a") —
+  // absorbs the old M5a's content wholesale (epic gear, level 13, that
+  // stat baseline) instead of AT1's own original weaker/ungeared stats.
+  // AT1/AT2 ARE the tournament battles now, cleared before Gale (M5)
+  // becomes reachable — no separate "trial, then tournament" tiering.
+  // region stays 'Altroes' (unchanged location/flavor, only the enemy
+  // quality changed).
+  'AT1': {
     region: 'Altroes',
     playerPos: { reno:[1,3], drace:[1,4], sela:[1,2], kael:[1,5], trice:[1,1], zora:[1,0] },
-    enemies: [
-      { col:7, row:3, name:'Wolf', spriteKey:'wolf-idle', animKey:'wolf-idle', spriteScale:0.35, moveSpeed:2, speed:8, strength:13, stamina:10, endurance:9,  level:4 },
-      { col:8, row:6, name:'Boar', spriteKey:'boar-idle', animKey:'boar-idle', spriteScale:0.35, moveSpeed:2, speed:6, strength:17, stamina:12, endurance:13, level:4 },
-    ],
+    enemyHeroClasses: TOURNAMENT_HERO_CLASSES,
+    enemies: () => {
+      const classes = pickRandomHeroClasses(4);
+      const pos = [[7,2],[8,4],[7,6],[8,8]];
+      const stats = { speed:13, strength:21, stamina:15, endurance:14 };
+      return classes.map((c, i) => tournamentEnemyDef(pos[i][0], pos[i][1], c, 13, stats, true));
+    },
   },
-  'M6': {
+  'AT2': {
     region: 'Altroes',
     playerPos: { reno:[1,3], drace:[1,4], sela:[1,2], kael:[1,5], trice:[1,1], zora:[1,0] },
-    enemies: [
-      { col:7, row:2, name:'Wolf', spriteKey:'wolf-idle', animKey:'wolf-idle', spriteScale:0.35, moveSpeed:3, speed:8,  strength:14, stamina:11, endurance:10, level:5 },
-      { col:8, row:5, name:'Boar', spriteKey:'boar-idle', animKey:'boar-idle', spriteScale:0.35, moveSpeed:2, speed:6,  strength:18, stamina:13, endurance:14, level:5 },
-      { col:6, row:8, ...buildMonster({ base:'Deer', tier:2 }) },
-    ],
+    enemyHeroClasses: TOURNAMENT_HERO_CLASSES,
+    enemies: () => {
+      const classes = pickRandomHeroClasses(4);
+      const pos = [[7,2],[8,4],[7,6],[8,8]];
+      const stats = { speed:15, strength:26, stamina:18, endurance:16 };
+      return classes.map((c, i) => tournamentEnemyDef(pos[i][0], pos[i][1], c, 12, stats));
+    },
   },
-  'M7': {
+  // M5b removed (2026-07-11 fourth follow-up, "need to remove m5b") — Gale
+  // (M5, see WorldMapScene.js's HUB_CONFIGS) has no battle attached to it
+  // at all now; M5a was folded into AT1 earlier the same day.
+
+  // Alpha King Dragon (2026-07-11) — boss node NE of Artfall Academy.
+  // "3 times hp and 3 times attack" is exactly what kind:'boss' already
+  // gives via BOSS_STAT_MULT=3.0 in monsters.js — applied uniformly to
+  // speed/strength/stamina/endurance, so both the HP formula
+  // ((endurance+stamina)*(2+level)) and the attack formula
+  // (strength + 0.5*speed) come out ~3x a same-level regular Dragon's,
+  // with no new multiplier mechanic needed. `name` override reuses the
+  // same fixed-name pattern as King Wolf/King Lion/Goblin King (skips the
+  // random bossName()/rollUniqueName() generation). `level:16` overrides
+  // buildMonster()'s boss/unique placeholder (always 5) — this is meant
+  // to read as end-of-content-so-far, above AT1/AT2's 12-13.
+  'DK': {
     region: 'Gale',
     playerPos: { reno:[1,3], drace:[1,4], sela:[1,2], kael:[1,5], trice:[1,1], zora:[1,0] },
     enemies: [
-      { col:7, row:3, name:'Wolf', spriteKey:'wolf-idle', animKey:'wolf-idle', spriteScale:0.35, moveSpeed:3, speed:9, strength:16, stamina:12, endurance:10, level:6 },
-      { col:8, row:6, name:'Boar', spriteKey:'boar-idle', animKey:'boar-idle', spriteScale:0.35, moveSpeed:2, speed:7, strength:20, stamina:14, endurance:16, level:6 },
-    ],
-  },
-  'M8': {
-    region: 'Gale',
-    playerPos: { reno:[1,3], drace:[1,4], sela:[1,2], kael:[1,5], trice:[1,1], zora:[1,0] },
-    enemies: [
-      { col:7, row:4, name:'Wolf', spriteKey:'wolf-idle', animKey:'wolf-idle', spriteScale:0.35, moveSpeed:3, speed:10, strength:17, stamina:13, endurance:11, level:6 },
-      { col:8, row:2, name:'Boar', spriteKey:'boar-idle', animKey:'boar-idle', spriteScale:0.35, moveSpeed:2, speed:7,  strength:21, stamina:15, endurance:17, level:6 },
-    ],
-  },
-  'M9': {
-    region: 'Gale',
-    playerPos: { reno:[1,3], drace:[1,4], sela:[1,2], kael:[1,5], trice:[1,1], zora:[1,0] },
-    enemies: [
-      { col:7, row:2, name:'Wolf', spriteKey:'wolf-idle', animKey:'wolf-idle', spriteScale:0.35, moveSpeed:3, speed:11, strength:18, stamina:14, endurance:12, level:7 },
-      { col:8, row:7, name:'Boar', spriteKey:'boar-idle', animKey:'boar-idle', spriteScale:0.35, moveSpeed:2, speed:8,  strength:23, stamina:17, endurance:18, level:7 },
-      { col:2, row:8, ...buildMonster({ base:'Deer', tier:3 }) },
-    ],
-  },
-  'M10': {
-    region: 'Lametus',
-    playerPos: { reno:[1,3], drace:[1,4], sela:[1,2], kael:[1,5], trice:[1,1], zora:[1,0] },
-    enemies: [
-      { col:7, row:3, name:'Wolf', spriteKey:'wolf-idle', animKey:'wolf-idle', spriteScale:0.35, moveSpeed:3, speed:11, strength:19, stamina:14, endurance:13, level:8 },
-      { col:8, row:6, name:'Boar', spriteKey:'boar-idle', animKey:'boar-idle', spriteScale:0.35, moveSpeed:2, speed:8,  strength:24, stamina:18, endurance:19, level:8 },
-    ],
-  },
-  'M11': {
-    region: 'Lametus',
-    playerPos: { reno:[1,3], drace:[1,4], sela:[1,2], kael:[1,5], trice:[1,1], zora:[1,0] },
-    enemies: [
-      { col:7, row:4, name:'Wolf', spriteKey:'wolf-idle', animKey:'wolf-idle', spriteScale:0.35, moveSpeed:3, speed:12, strength:20, stamina:15, endurance:14, level:8 },
-      { col:8, row:2, name:'Boar', spriteKey:'boar-idle', animKey:'boar-idle', spriteScale:0.35, moveSpeed:2, speed:9,  strength:26, stamina:19, endurance:20, level:8 },
-    ],
-  },
-  'M12': {
-    region: 'Lametus',
-    playerPos: { reno:[1,3], drace:[1,4], sela:[1,2], kael:[1,5], trice:[1,1], zora:[1,0] },
-    enemies: [
-      { col:7, row:2, name:'Wolf', spriteKey:'wolf-idle', animKey:'wolf-idle', spriteScale:0.35, moveSpeed:3, speed:13, strength:22, stamina:16, endurance:14, level:9 },
-      { col:8, row:7, name:'Boar', spriteKey:'boar-idle', animKey:'boar-idle', spriteScale:0.35, moveSpeed:2, speed:9,  strength:27, stamina:20, endurance:22, level:9 },
-      { col:2, row:8, ...buildMonster({ base:'Deer', tier:4 }) },
+      { col:5, row:5, ...buildMonster({ base: 'Dragon', kind: 'boss', name: 'Alpha King Dragon' }), level: 16 },
     ],
   },
 
-  // ── Side battles (optional, July 2026) ────────────────────────────────────
-  // Each is a slightly tougher version of the region's final mission above
-  // it branches from (M6/M9/M12) — an optional bonus fight, not required to
-  // progress past that region.
-  'M13': {
-    region: 'Altroes',
-    playerPos: { reno:[1,3], drace:[1,4], sela:[1,2], kael:[1,5], trice:[1,1], zora:[1,0] },
-    enemies: [
-      { col:7, row:2, name:'Wolf', spriteKey:'wolf-idle', animKey:'wolf-idle', spriteScale:0.35, moveSpeed:3, speed:9,  strength:16, stamina:12, endurance:11, level:6 },
-      { col:8, row:5, name:'Boar', spriteKey:'boar-idle', animKey:'boar-idle', spriteScale:0.35, moveSpeed:2, speed:7,  strength:20, stamina:14, endurance:15, level:6 },
-      { col:6, row:8, ...buildMonster({ base:'Deer', tier:2 }) },
-    ],
-  },
-  'M14': {
+  // Monster Hunt (2026-07-11, "kill as many monster as you can in 6 turn,
+  // 5 monster spawn each to a max of 10") — repeatable score-attack quest,
+  // NE of Zester. turnLimit:6 + turnLimitVictory:true (see startPlayerTurn)
+  // means turn 7 ends the battle in VICTORY regardless of how many enemies
+  // are left standing — kills/XP already banked stand as the "score",
+  // there's no fail state. reinforce.maxTotal:10 caps the SECOND wave of 5
+  // (spawning turn 4, same as Goblin King's every:3 cadence) so nothing
+  // spawns a 3rd time even though 3 turns remain after it — 5 initial +
+  // 5 reinforced = the stated cap exactly. Standard all-dead check still
+  // applies if the player manages to clear all 10 before turn 6 (early/
+  // full-credit finish, no override needed). No missionId — same
+  // no-accept-gate shape as DK above and kill_king_wolf, "quest" here just
+  // means "tracked in Gale's list", not "needs an accept step first".
+  'MH': {
     region: 'Gale',
     playerPos: { reno:[1,3], drace:[1,4], sela:[1,2], kael:[1,5], trice:[1,1], zora:[1,0] },
-    enemies: [
-      { col:7, row:2, name:'Wolf', spriteKey:'wolf-idle', animKey:'wolf-idle', spriteScale:0.35, moveSpeed:3, speed:12, strength:20, stamina:15, endurance:13, level:8 },
-      { col:8, row:7, name:'Boar', spriteKey:'boar-idle', animKey:'boar-idle', spriteScale:0.35, moveSpeed:2, speed:9,  strength:25, stamina:18, endurance:19, level:8 },
-      { col:2, row:8, ...buildMonster({ base:'Deer', tier:3 }) },
-    ],
+    turnLimit: 6,
+    turnLimitVictory: true,
+    enemies: () => {
+      const species = pickRandomSpecies(5);
+      const pos = [[6,1],[8,2],[6,4],[8,6],[6,8]];
+      return species.map((s, i) => ({ col: pos[i][0], row: pos[i][1], ...buildMonster({ base: s, tier: 3 }) }));
+    },
+    reinforce: { every: 3, tier: 3, pool: () => pickRandomSpecies(5), maxTotal: 10 },
   },
-  'M15': {
-    region: 'Lametus',
-    playerPos: { reno:[1,3], drace:[1,4], sela:[1,2], kael:[1,5], trice:[1,1], zora:[1,0] },
-    enemies: [
-      { col:7, row:3, name:'Wolf', spriteKey:'wolf-idle', animKey:'wolf-idle', spriteScale:0.35, moveSpeed:3, speed:14, strength:24, stamina:17, endurance:15, level:10 },
-      { col:8, row:6, name:'Boar', spriteKey:'boar-idle', animKey:'boar-idle', spriteScale:0.35, moveSpeed:2, speed:10, strength:29, stamina:21, endurance:23, level:10 },
-      { col:2, row:8, ...buildMonster({ base:'Deer', tier:4 }) },
-    ],
-  },
+
+  // ── Side battles (optional, July 2026) ────────────────────────────────────
+  // M13/M14 (off M6/M9) removed 2026-07-11 along with M6/M9 themselves;
+  // M15 (off M12) removed the same day too, alongside M12 ("remove m12") —
+  // nothing left here either.
 };
 
 const enemyMaxHp = u => (u.endurance + u.stamina) * (2 + (u.level ?? 1));
@@ -665,6 +801,10 @@ function attackDesignations(attacker, ability) {
   return [...new Set(live)];
 }
 function designationMultiplier(attacker, defender, ability) {
+  // alwaysWeak (Ester Academy's "Rock" quest, 2026-07-11) — a defender that's
+  // "weak to everything" always takes the same advantage bonus a matching
+  // designation would give, regardless of the attacker's own designation set.
+  if (defender.alwaysWeak) return 1.25;
   const live = attackDesignations(attacker, ability);
   const defDesigs = defender.designations ?? [];
   if (!live.length || !defDesigs.length) return 1.0;
@@ -679,6 +819,7 @@ function designationMultiplier(attacker, defender, ability) {
 // Fire > Wind > Earth > Lightning > Water > Fire. Beating the defender's
 // element deals 1.5x damage; being beaten by it reduces damage to 0.8x.
 function elementMultiplier(attacker, defender) {
+  if (defender.alwaysWeak) return 1.5; // see designationMultiplier's alwaysWeak note
   const a = attacker.element, d = defender.element;
   if (!a || !d) return 1.0;
   if (ELEMENT_BEATS[a] === d) return 1.5;
@@ -725,7 +866,11 @@ export class BattleScene extends Phaser.Scene {
       const info = spriteInfoForBase(base);
       infos.set(info.spriteKey, info);
     }
-    for (const e of missionCfg?.enemies ?? []) {
+    // `enemies` can be a function for a mission with a randomized roster
+    // (Cave Depths, 2026-07-11) — resolve it the same way create() does so
+    // preload() doesn't crash trying to iterate a function.
+    const enemyDefs = typeof missionCfg?.enemies === 'function' ? missionCfg.enemies() : (missionCfg?.enemies ?? []);
+    for (const e of enemyDefs) {
       if (e.spriteKey && e.file && !infos.has(e.spriteKey)) infos.set(e.spriteKey, e);
     }
     return [...infos.values()];
@@ -789,6 +934,11 @@ export class BattleScene extends Phaser.Scene {
     const missionId  = state.currentMission ?? 'M1';
     const missionCfg = MISSION_CONFIGS[missionId] ?? MISSION_CONFIGS['M1'];
     const stageCfg   = STAGE_CONFIGS[missionId]   ?? STAGE_CONFIGS['M1'];
+    // Stored so later methods (checkEndConditions' win-condition check,
+    // startPlayerTurn's reinforcement-wave trigger) can read it without
+    // threading it through every call — 2026-07-11 ("Goblin King"/"Cave
+    // Depths" quests, see spawnReinforcements/isVictory below).
+    this.missionCfg = missionCfg;
 
     // phase: 'player_turn' | 'unit_menu' | 'unit_selected' | 'ability_targeting' | 'enemy_turn' | 'victory' | 'defeat'
     this.phase = 'player_turn';
@@ -971,93 +1121,17 @@ export class BattleScene extends Phaser.Scene {
     const repeatLevelBonus = repeatCount * 2;
     const repeatHpMult = 1 + 0.25 * repeatCount;
     const repeatAtkMult = 1 + 0.10 * repeatCount;
-    this.enemyUnits = missionCfg.enemies.map(d => {
-      const lv = Math.min(REPEAT_LEVEL_CAP, scaledLevel(d.level) + repeatLevelBonus);
-      const { primaryStat, element } = rollRegionArchetype(missionCfg.region);
-      const scaled = {
-        ...d, team: 'enemy',
-        level:     lv,
-        speed:     Math.round(d.speed     * diff),
-        strength:  Math.round(d.strength  * diff * repeatAtkMult),
-        stamina:   Math.round(d.stamina   * diff * repeatHpMult),
-        endurance: Math.round(d.endurance * diff * repeatHpMult),
-        xpValue:   40 * lv,
-        primaryStat, element,
-      };
-      scaled[primaryStat] = Math.round(scaled[primaryStat] * PRIMARY_STAT_BOOST);
-      return { ...scaled, hp: enemyMaxHp(scaled), maxHp: enemyMaxHp(scaled), isDead: false, debuffs: [], baseMoveSpeed: d.moveSpeed };
-    });
-    const ENEMY_TINT = 0x4a5566;
-    for (const e of this.enemyUnits) {
-      // footprintScreenPos centers a multi-tile unit (King Wolf, size:2)
-      // over its whole block instead of just its anchor tile's own cell.
-      const { x, y } = this.footprintScreenPos(e);
-      const baseScale = e.spriteScale ?? 1.2;
-      const depth = (e.col + e.row) * 10 + 5;
-      e.sprite = this.add.sprite(x, y + TH2, e.spriteKey)
-        .setOrigin(e.fixedIdleFrames ? (e.fixedIdleOriginX ?? 0.5) : 0.5, 0.75).setScale(baseScale)
-        .setTint(ENEMY_TINT).setDepth(depth);
-      // fixedIdleFrames (King Wolf, 2026-07-08 feedback, after 2 earlier
-      // single-frame-freeze attempts) — kingwolf.png's idle row has the
-      // tail painted past its own cell on every pose, AND an under-belly
-      // shadow painted the exact same pure black as the sheet's background
-      // (so BattleScene's flood-fill strip can't tell them apart and
-      // erases it, punching a hole). Freezing on one frame dodged both but
-      // killed all motion, which was itself the next complaint. This
-      // instead builds one corrected custom frame per listed pose — a
-      // wider-than-normal crop (into the empty buffer before the next
-      // cell's own art starts) for the tail, plus restoring opacity over a
-      // small rect for the belly shadow (stripping only ever zeroes alpha,
-      // never touches RGB, so the original black paints itself right back
-      // in) — and plays a real animation across all of them. See the long
-      // comment on King Wolf's UNIQUE_SPRITE_INFO entry in monsters.js for
-      // how each frame's crop/patch numbers were derived. Enemies never
-      // play any OTHER animation (playAttackAnim bails out for anything
-      // without a `.portrait`, i.e. every monster), so this is the only
-      // animation King Wolf needs.
-      if (e.fixedIdleFrames) {
-        const animKey = `${e.spriteKey}-fixedidle`;
-        if (!this.anims.exists(animKey)) {
-          const tex = this.textures.get(e.spriteKey);
-          const source = tex.source[0];
-          const canvas = document.createElement('canvas');
-          canvas.width = source.width; canvas.height = source.height;
-          const ctx = canvas.getContext('2d');
-          ctx.drawImage(source.image, 0, 0);
-          let dirty = false;
-          const frameNames = [];
-          for (const f of e.fixedIdleFrames) {
-            const frameName = `${e.spriteKey}-fixed${f.frame}`;
-            frameNames.push(frameName);
-            if (tex.has(frameName)) continue;
-            tex.add(frameName, 0, f.cropX, 0, f.cropWidth, e.fh);
-            if (f.patch) {
-              const { x: px, y: py, w: pw, h: ph } = f.patch;
-              const patch = ctx.getImageData(px, py, pw, ph);
-              for (let i = 3; i < patch.data.length; i += 4) patch.data[i] = 255;
-              ctx.putImageData(patch, px, py);
-              dirty = true;
-            }
-          }
-          if (dirty) source.updateSource(canvas);
-          this.anims.create({
-            key: animKey,
-            frames: frameNames.map(name => ({ key: e.spriteKey, frame: name })),
-            frameRate: 4,
-            repeat: -1,
-          });
-        }
-        e.sprite.play(animKey);
-      } else {
-        e.sprite.play(e.animKey);
-      }
-      e.enemyTint = ENEMY_TINT;
-      const lvColor = e.level >= 6 ? '#ff6666' : e.level >= 3 ? '#ffaa44' : '#aaaaaa';
-      e.lvLabel = this.add.text(x, y + TH2 - 58, `${elementIcon(e.element)} Lv.${e.level}`, {
-        fontSize: '9px', fontFamily: 'monospace', color: lvColor,
-      }).setOrigin(0.5, 1).setDepth(660);
-      this.registerUnit(e);
-    }
+    // Stored for spawnReinforcements (2026-07-11) to reuse the exact same
+    // scaling a mission's initial roster gets, so a mid-battle wave isn't
+    // weaker/stronger than the enemies already on the board.
+    this._enemyCtx = { diff, repeatLevelBonus, repeatHpMult, repeatAtkMult, region: missionCfg.region, scaledLevel };
+    // `enemies` is normally a static array (built once at module load via
+    // inline buildMonster() calls), but a mission that wants a freshly
+    // randomized roster each time it's entered (Cave Depths' "3 random
+    // type of monster") needs it evaluated NOW instead — see A2c below.
+    const enemyDefs = typeof missionCfg.enemies === 'function' ? missionCfg.enemies() : missionCfg.enemies;
+    this.enemyUnits = enemyDefs.map(d => this.buildEnemyUnit(d));
+    for (const e of this.enemyUnits) this.spawnEnemyVisual(e);
 
     // ── UI ────────────────────────────────────────────────────────────────
     // Top HUD bar background
@@ -1128,6 +1202,231 @@ export class BattleScene extends Phaser.Scene {
 
     this.showPhaseBanner('PLAYER TURN');
     this.redraw();
+  }
+
+  // Builds one scaled enemy unit object from a mission-config enemy def (a
+  // buildMonster() result plus col/row) — factored out of create()'s
+  // initial-roster loop (2026-07-11) so spawnReinforcements can create
+  // mid-battle reinforcements with the exact same scaling/kit-rebuild logic
+  // instead of duplicating it. Reads this._enemyCtx, set once in create().
+  buildEnemyUnit(d) {
+    const { diff, repeatLevelBonus, repeatHpMult, repeatAtkMult, region, scaledLevel } = this._enemyCtx;
+    const lv = Math.min(REPEAT_LEVEL_CAP, scaledLevel(d.level) + repeatLevelBonus);
+    const { primaryStat, element } = rollRegionArchetype(region);
+    const scaled = {
+      ...d, team: 'enemy',
+      level:     lv,
+      speed:     Math.round(d.speed     * diff),
+      strength:  Math.round(d.strength  * diff * repeatAtkMult),
+      stamina:   Math.round(d.stamina   * diff * repeatHpMult),
+      endurance: Math.round(d.endurance * diff * repeatHpMult),
+      xpValue:   40 * lv,
+      primaryStat, element,
+    };
+    scaled[primaryStat] = Math.round(scaled[primaryStat] * PRIMARY_STAT_BOOST);
+    // equip (the next school's tournament, 2026-07-11, "all units will have
+    // epic gear") — real Item objects rolled via rollEpicEquip(), applied
+    // through the SAME effectiveStats() aggregation player gear already
+    // uses (it only needs unit.speed/strength/stamina/endurance/equip, no
+    // player-only fields, so it works unmodified on a raw enemy def).
+    // Regular enemies have no `d.equip` at all, so this is a pure no-op for
+    // every monster/instructor built before this feature existed.
+    let bonusHp = 0, bonusSp = 0;
+    if (d.equip) {
+      scaled.equip = d.equip;
+      const gearStats = effectiveStats(scaled);
+      scaled.speed = gearStats.speed; scaled.strength = gearStats.strength;
+      scaled.stamina = gearStats.stamina; scaled.endurance = gearStats.endurance;
+      bonusHp = gearStats.bonusHp; bonusSp = gearStats.bonusSp;
+    }
+    // 2026-07-09 ("increased number of skills as the monsters level
+    // increases") — d.abilities/d.passives were built at module-load
+    // time off buildMonster()'s placeholder tier-level (see the NOTE in
+    // buildMonster), not the real scaled `lv` computed just above.
+    // Rebuild the kit here so skill/passive COUNT actually reflects the
+    // level a repeat-scaled enemy ends up at in this specific battle.
+    const { skills, passives } = buildMonsterKit(d.base, { kind: d.kind, level: lv });
+    // fixedMaxHp (Ester Academy's "Rock" quest, 2026-07-11) — bypasses the
+    // endurance/stamina/level HP formula for a one-off encounter that needs
+    // an exact HP pool (15,000, matching "deal 15,000 damage to the rock")
+    // regardless of the difficulty picker's stat multiplier.
+    const maxHp = d.fixedMaxHp ?? (enemyMaxHp(scaled) + bonusHp);
+    return {
+      ...scaled, abilities: skills, passives,
+      hp: maxHp, maxHp, isDead: false, debuffs: [], baseMoveSpeed: d.moveSpeed,
+      sp: (scaled.maxSp ?? 0) + bonusSp, skillCooldowns: {}, skillUses: {},
+    };
+  }
+
+  // Creates the sprite/animation/level-label for an already-built enemy
+  // unit and registers it on the board — factored out of create()'s
+  // initial-roster loop (2026-07-11) for the same reason as buildEnemyUnit
+  // above. Mutates `e` in place (sprite/lvLabel/enemyTint), matching how
+  // the rest of BattleScene treats unit objects.
+  // Bakes a simple boulder shape into a real texture via
+  // Graphics.generateTexture() (Ester Academy's "Rock" damage-race quest,
+  // 2026-07-11) — no rock art asset exists, and a raw Shape GameObject
+  // doesn't support setTint/clearTint the way every hit-flash call site
+  // below assumes, so this drops a procedural texture into the same
+  // add.sprite() pipeline every other enemy uses instead.
+  ensureRockTexture() {
+    if (this.textures.exists('rock-proc')) return;
+    const g = this.add.graphics();
+    g.fillStyle(0x4a4238, 1);
+    g.fillEllipse(120, 130, 220, 150);
+    g.fillStyle(0x6a6256, 1);
+    g.fillEllipse(85, 85, 130, 95);
+    g.fillStyle(0x2e2a22, 1);
+    g.fillEllipse(150, 65, 55, 36);
+    g.lineStyle(4, 0x201d18, 1);
+    g.strokeEllipse(120, 130, 220, 150);
+    g.generateTexture('rock-proc', 240, 200);
+    g.destroy();
+  }
+
+  spawnEnemyVisual(e) {
+    const ENEMY_TINT = 0x4a5566;
+    if (e.spriteKey === 'rock-proc') this.ensureRockTexture();
+    // footprintScreenPos centers a multi-tile unit (King Wolf, size:2)
+    // over its whole block instead of just its anchor tile's own cell.
+    const { x, y } = this.footprintScreenPos(e);
+    const baseScale = e.spriteScale ?? 1.2;
+    const depth = (e.col + e.row) * 10 + 5;
+    e.sprite = this.add.sprite(x, y + TH2, e.spriteKey)
+      .setOrigin(e.fixedIdleFrames ? (e.fixedIdleOriginX ?? 0.5) : 0.5, 0.75).setScale(baseScale)
+      .setTint(ENEMY_TINT).setDepth(depth);
+    // fixedIdleFrames (King Wolf, 2026-07-08 feedback, after 2 earlier
+    // single-frame-freeze attempts) — kingwolf.png's idle row has the
+    // tail painted past its own cell on every pose, AND an under-belly
+    // shadow painted the exact same pure black as the sheet's background
+    // (so BattleScene's flood-fill strip can't tell them apart and
+    // erases it, punching a hole). Freezing on one frame dodged both but
+    // killed all motion, which was itself the next complaint. This
+    // instead builds one corrected custom frame per listed pose — a
+    // wider-than-normal crop (into the empty buffer before the next
+    // cell's own art starts) for the tail, plus restoring opacity over a
+    // small rect for the belly shadow (stripping only ever zeroes alpha,
+    // never touches RGB, so the original black paints itself right back
+    // in) — and plays a real animation across all of them. See the long
+    // comment on King Wolf's UNIQUE_SPRITE_INFO entry in monsters.js for
+    // how each frame's crop/patch numbers were derived. Enemies never
+    // play any OTHER animation (playAttackAnim bails out for anything
+    // without a `.portrait`, i.e. every monster), so this is the only
+    // animation King Wolf needs.
+    if (e.fixedIdleFrames) {
+      const animKey = `${e.spriteKey}-fixedidle`;
+      if (!this.anims.exists(animKey)) {
+        const tex = this.textures.get(e.spriteKey);
+        const source = tex.source[0];
+        const canvas = document.createElement('canvas');
+        canvas.width = source.width; canvas.height = source.height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(source.image, 0, 0);
+        let dirty = false;
+        const frameNames = [];
+        for (const f of e.fixedIdleFrames) {
+          const frameName = `${e.spriteKey}-fixed${f.frame}`;
+          frameNames.push(frameName);
+          if (tex.has(frameName)) continue;
+          tex.add(frameName, 0, f.cropX, 0, f.cropWidth, e.fh);
+          if (f.patch) {
+            const { x: px, y: py, w: pw, h: ph } = f.patch;
+            const patch = ctx.getImageData(px, py, pw, ph);
+            for (let i = 3; i < patch.data.length; i += 4) patch.data[i] = 255;
+            ctx.putImageData(patch, px, py);
+            dirty = true;
+          }
+        }
+        if (dirty) source.updateSource(canvas);
+        this.anims.create({
+          key: animKey,
+          frames: frameNames.map(name => ({ key: e.spriteKey, frame: name })),
+          frameRate: 4,
+          repeat: -1,
+        });
+      }
+      e.sprite.play(animKey);
+    } else if (e.animKey) {
+      e.sprite.play(e.animKey);
+    }
+    e.enemyTint = ENEMY_TINT;
+    const lvColor = e.level >= 6 ? '#ff6666' : e.level >= 3 ? '#ffaa44' : '#aaaaaa';
+    e.lvLabel = this.add.text(x, y + TH2 - 58, `${elementIcon(e.element)} Lv.${e.level}`, {
+      fontSize: '9px', fontFamily: 'monospace', color: lvColor,
+    }).setOrigin(0.5, 1).setDepth(660);
+    this.registerUnit(e);
+  }
+
+  // Picks up to `count` free tiles for a reinforcement wave to spawn on,
+  // preferring the enemy half of the board (col >= COLS/2) so newcomers
+  // don't appear on top of/adjacent to the player party. Falls back to any
+  // free tile if the enemy half is too crowded; may return fewer than
+  // `count` if the whole board is nearly full (spawnReinforcements just
+  // spawns as many as it got tiles for).
+  findSpawnTiles(count) {
+    const free = [];
+    for (let col = 0; col < COLS; col++) {
+      for (let row = 0; row < ROWS; row++) {
+        if (!this.unitMap.has(`${col},${row}`)) free.push({ col, row });
+      }
+    }
+    const enemyHalf = free.filter(t => t.col >= Math.floor(COLS / 2));
+    const pool = enemyHalf.length >= count ? enemyHalf : free;
+    for (let i = pool.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [pool[i], pool[j]] = [pool[j], pool[i]];
+    }
+    return pool.slice(0, count);
+  }
+
+  // Mid-battle reinforcement wave (2026-07-11, "Goblin King spawns 2
+  // goblins every 3rd turn" / "Cave Depths... every 3rd 3 more spawn") —
+  // builds each new enemy through the same buildEnemyUnit/spawnEnemyVisual
+  // pipeline the initial roster uses, so a spawned-in reinforcement is
+  // scaled identically to a mission's starting enemies. `missionCfg.reinforce
+  // .pool()` returns an array of base-species names — called fresh each
+  // wave so a mission wanting fresh randomization (Cave Depths) gets it;
+  // a mission wanting a fixed composition (Goblin King's 2 Goblins) just
+  // returns the same array every time.
+  spawnReinforcements() {
+    const cfg = this.missionCfg?.reinforce;
+    if (!cfg) return;
+    // maxTotal (Gale's "5 monster spawn each, to a max of 10" quest,
+    // 2026-07-11) — caps cumulative spawns across the whole battle, not
+    // just currently-alive count (killUnit never removes a dead unit from
+    // enemyUnits, only flags isDead, so .length already IS the running
+    // total ever spawned — no separate counter needed). Missions without
+    // maxTotal (Goblin King, Cave Depths) keep waving indefinitely as before.
+    if (cfg.maxTotal && this.enemyUnits.length >= cfg.maxTotal) return;
+    const species = cfg.pool();
+    const tiles = this.findSpawnTiles(species.length);
+    let spawned = 0;
+    for (let i = 0; i < tiles.length; i++) {
+      const { col, row } = tiles[i];
+      const d = { ...buildMonster({ base: species[i], tier: cfg.tier ?? 1 }), col, row };
+      const e = this.buildEnemyUnit(d);
+      this.enemyUnits.push(e);
+      this.spawnEnemyVisual(e);
+      spawned++;
+    }
+    if (spawned > 0) {
+      this.showPhaseBanner('REINFORCEMENTS!');
+      this.redraw();
+    }
+  }
+
+  // Standard win condition is "every enemy dead"; a mission can override
+  // via missionCfg.winCondition (2026-07-11, "Goblin King... to win player
+  // must kill the goblin king" — the regular goblins its wave spawns don't
+  // need to be cleared). Only one override kind exists so far; add more
+  // `type`s here if a future quest needs a different rule.
+  isVictory() {
+    const win = this.missionCfg?.winCondition;
+    if (win?.type === 'bossName') {
+      const boss = this.enemyUnits.find(e => e.name === win.name);
+      return !!boss?.isDead;
+    }
+    return this.enemyUnits.every(e => e.isDead);
   }
 
   // ── Click handling ────────────────────────────────────────────────────────
@@ -1605,26 +1904,8 @@ export class BattleScene extends Phaser.Scene {
   }
 
   checkEndConditions() {
-    if (this.enemyUnits.every(e => e.isDead)) {
-      this.time.delayedCall(500, () => {
-        this.phase = 'victory';
-        this.showPhaseBanner('VICTORY!');
-        // Play celebration for all player heroes with the anim
-        for (const u of this.playerUnits) {
-          if (!u.isDead && u.portrait) {
-            const celebAnim = `${heroKey(spriteKeyForRole(u.roleId))}-celebrate`;
-            if (this.anims.exists(celebAnim)) u.portrait.play(celebAnim);
-          }
-        }
-        this.time.delayedCall(1000, () =>
-          this.scene.start('VictoryScene', {
-            mission:       state.currentMission,
-            enemiesKilled: this.killedEnemies,
-            killsByType:   this.killsByType,
-            xpEarned:      this.xpEarned,
-          })
-        );
-      });
+    if (this.isVictory()) {
+      this.triggerVictory();
     } else if (this.playerUnits.every(p => p.isDead)) {
       this.time.delayedCall(500, () => {
         this.phase = 'defeat';
@@ -1632,6 +1913,37 @@ export class BattleScene extends Phaser.Scene {
         this.time.delayedCall(2500, () => this.scene.start('WorldMapScene'));
       });
     }
+  }
+
+  // Factored out of checkEndConditions() (2026-07-11, Gale's "kill as many
+  // monsters as you can in 6 turns" quest) so the turnLimit check in
+  // startPlayerTurn() can also reach victory on timeout instead of the
+  // normal DEFEAT-on-timeout path (see missionCfg.turnLimitVictory) —
+  // "as many as you can" always counts as a completed attempt, XP/kills
+  // already earned so far stand regardless of how many enemies are left.
+  // `this.phase` is set synchronously (not inside the delay) to match how
+  // the DEFEAT paths already set phase immediately, closing the same
+  // stray-click window a delayed set would leave open.
+  triggerVictory() {
+    this.phase = 'victory';
+    this.time.delayedCall(500, () => {
+      this.showPhaseBanner('VICTORY!');
+      // Play celebration for all player heroes with the anim
+      for (const u of this.playerUnits) {
+        if (!u.isDead && u.portrait) {
+          const celebAnim = `${heroKey(spriteKeyForRole(u.roleId))}-celebrate`;
+          if (this.anims.exists(celebAnim)) u.portrait.play(celebAnim);
+        }
+      }
+      this.time.delayedCall(1000, () =>
+        this.scene.start('VictoryScene', {
+          mission:       state.currentMission,
+          enemiesKilled: this.killedEnemies,
+          killsByType:   this.killsByType,
+          xpEarned:      this.xpEarned,
+        })
+      );
+    });
   }
 
   showDamage(x, y, amount, color) {
@@ -2757,6 +3069,16 @@ export class BattleScene extends Phaser.Scene {
     this.redraw();
 
     const aliveEnemies = this.enemyUnits.filter(e => !e.isDead);
+    // SP regen + skill-cooldown tick, mirroring startPlayerTurn's player
+    // resource regen (2026-07-09, "monster will need sp as well to use
+    // skills") — enemies regen on their OWN turn start, same as players do
+    // on theirs.
+    for (const e of aliveEnemies) {
+      if (e.maxSp != null) e.sp = Math.min(e.maxSp, (e.sp ?? 0) + 1);
+      for (const id of Object.keys(e.skillCooldowns ?? {})) {
+        e.skillCooldowns[id] = Math.max(0, e.skillCooldowns[id] - 1);
+      }
+    }
     let i = 0;
 
     const actNext = () => {
@@ -2776,6 +3098,37 @@ export class BattleScene extends Phaser.Scene {
     if (this.phase === 'victory' || this.phase === 'defeat') return;
     this.turnCount++;
     this.turnText.setText(`Turn ${this.turnCount}`);
+    // turnLimit (Ester Academy's "Rock" quest, 2026-07-11, "within 10
+    // turns") — a hard turn-count loss, distinct from the normal
+    // all-players-dead defeat. Checked here (not checkEndConditions, which
+    // only fires off a kill) since running out of turns needs no kill to
+    // trigger. turnLimitVictory (Gale's "kill as many monsters as you can
+    // in 6 turns" quest, same day) flips this to a WIN on timeout instead
+    // — "as many as you can" has no fail state, whatever got killed by
+    // the deadline stands.
+    if (this.missionCfg?.turnLimit && this.turnCount > this.missionCfg.turnLimit) {
+      if (this.missionCfg.turnLimitVictory) {
+        this.triggerVictory();
+      } else {
+        this.phase = 'defeat';
+        this.showEndBanner('OUT OF TURNS', '#ff4444');
+        this.time.delayedCall(2500, () => this.scene.start('WorldMapScene'));
+      }
+      return;
+    }
+    // Reinforcement waves (2026-07-11, "Goblin King"/"Cave Depths" quests)
+    // — a mission's initial `enemies` roster already covers its "turn one"
+    // wave, so the recurring cadence starts at the NEXT multiple of
+    // `every` after turn 1: turnCount 4, 7, 10... for every:3. Hooked here
+    // (not startEnemyTurn) so newly-spawned enemies always land on a
+    // player-turn boundary — matches "monster count must equal zero
+    // DURING PLAYER TURN to win" (Cave Depths): the only turn boundary
+    // where enemyUnits' size changes from either direction (kills happen
+    // during the player's own turn; spawns happen here) is this one.
+    const reinforce = this.missionCfg?.reinforce;
+    if (reinforce && this.turnCount > 1 && (this.turnCount - 1) % reinforce.every === 0) {
+      this.spawnReinforcements();
+    }
     for (const u of this.playerUnits) {
       if (!u.isDead) {
         u.isDone = false;
@@ -2824,6 +3177,9 @@ export class BattleScene extends Phaser.Scene {
   }
 
   enemyAct(wolf) {
+    // noAttack (Ester Academy's "Rock" quest, 2026-07-11) — a stationary
+    // punching-bag target that never moves or fights back.
+    if (wolf.noAttack) return;
     const target = this.nearestPlayer(wolf);
     if (!target) return;
 
@@ -2863,6 +3219,13 @@ export class BattleScene extends Phaser.Scene {
       wolf.sprite.setPosition(x, y + TH2).setDepth((wolf.col + wolf.row) * 10 + 5);
     }
 
+    // 2026-07-09 ("monster will need sp as well to use skills") — try an
+    // equipped attack skill first (it may reach targets a plain adjacent
+    // basic attack can't, e.g. a Ranged-designation monster's Tri-Throw at
+    // range 5); only fall back to the basic attack below if no skill was
+    // usable/in-range this turn.
+    if (this.tryEnemySkill(wolf)) return;
+
     // Attack any adjacent player
     const targets = this.getAttackTargets(wolf);
     if (targets.length > 0) {
@@ -2871,6 +3234,84 @@ export class BattleScene extends Phaser.Scene {
       const enemy = this.unitMap.get(`${t.col},${t.row}`);
       if (enemy && !enemy.isDead) this.doAttack(wolf, enemy);
     }
+  }
+
+  // Picks the first equipped, currently-usable, damage-dealing skill with
+  // an in-range hostile target and casts it. Scoped to targetType:'enemy'
+  // abilities with a numeric `multiplier` — the only kind that's ever
+  // meaningfully "an attack skill" (support-only skills like Shield have
+  // no wired ally-support engine either, matching the player side's own
+  // still-decorative shieldPct — see [[project_ability_revised]]).
+  // Returns true if a skill was cast (caller should skip its basic attack).
+  tryEnemySkill(attacker) {
+    const kit = attacker.abilities;
+    if (!kit || !kit.length) return false;
+    const hostiles = attacker.team === 'enemy' ? this.playerUnits : this.enemyUnits;
+    for (const entry of kit) {
+      const ab = entry.ability;
+      if (!ab || ab.targetType !== 'enemy' || typeof ab.multiplier !== 'number') continue;
+      if (!this.abilityUsable(attacker, ab)) continue;
+      if (ab.requiresRecentHit && !attacker.recentlyHit) continue;
+      const range = ab.range ?? 1;
+      let candidates = hostiles.filter(u => !u.isDead && this.distanceToUnit(attacker.col, attacker.row, u) <= range);
+      if (ab.atMaxRangeOnly) candidates = candidates.filter(u => this.distanceToUnit(attacker.col, attacker.row, u) === range);
+      if (!candidates.length) continue;
+      candidates.sort((a, b) => this.distanceToUnit(attacker.col, attacker.row, a) - this.distanceToUnit(attacker.col, attacker.row, b));
+      this.enemySkillAttack(attacker, ab, candidates[0]);
+      return true;
+    }
+    return false;
+  }
+
+  // Damage-skill cast for enemy AI — same formula as executeAbility's
+  // resolveHit, minus the player-only turn bookkeeping (facing/portrait,
+  // projectile visuals, finishAbilityTurn's showActionMenu/endUnitTurn),
+  // none of which apply to an AI-controlled unit.
+  enemySkillAttack(attacker, ability, target) {
+    this.consumeAbilityResource(attacker, ability);
+
+    const dist = this.distanceToUnit(attacker.col, attacker.row, target);
+    const hits = ability.hits ?? 1;
+    const mult = distanceMultiplier(ability, dist);
+    const desigMult = designationMultiplier(attacker, target, ability);
+    const elemMult = elementMultiplier(attacker, target);
+    const partnerAtkMult = this.partnerAttackMultiplier(attacker);
+    let dmg = 0;
+    for (let h = 0; h < hits; h++) dmg += Math.round(calcAtk(attacker) * mult * desigMult * elemMult * partnerAtkMult);
+    dmg = Math.round(dmg * this.partnerDefenseMultiplier(target));
+    target.hp = Math.max(0, target.hp - dmg);
+
+    const { x, y } = this.gridToScreen(target.col, target.row);
+    this.showDamage(x, y + TH2, dmg, '#ff8844');
+
+    if (target.sprite) {
+      target.sprite.setTint(0xff2222);
+      this.time.delayedCall(180, () => {
+        if (!target.isDead && target.sprite) {
+          if (target.enemyTint) target.sprite.setTint(target.enemyTint);
+          else target.sprite.clearTint();
+        }
+      });
+    }
+    if (target.team === 'player') {
+      target.hitFlash = true;
+      this.time.delayedCall(200, () => { target.hitFlash = false; this.redraw(); });
+    }
+
+    if (ability.debuff?.type === 'slow') {
+      target.debuffs.push({ type: 'slow', moveReduction: ability.debuff.moveReduction, turnsLeft: ability.debuff.duration });
+      const slowTotal = target.debuffs.filter(d => d.type === 'slow').reduce((s, d) => s + d.moveReduction, 0);
+      target.moveSpeed = Math.max(1, target.baseMoveSpeed - slowTotal);
+      this.showDamage(x, y + TH2 - 22, 'SLOW', '#aaaaff');
+    } else if (ability.debuff?.type === 'statDown') {
+      const { stat, amount, duration } = ability.debuff;
+      target[stat] = Math.max(1, target[stat] - amount);
+      target.debuffs.push({ type: 'statDown', stat, amount, turnsLeft: duration });
+      this.showDamage(x, y + TH2 - 22, `${stat.toUpperCase()} DOWN`, '#ff88ff');
+    }
+
+    if (target.hp <= 0) this.killUnit(target);
+    else this.redraw();
   }
 
   nearestPlayer(wolf) {

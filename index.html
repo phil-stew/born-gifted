@@ -3,8 +3,20 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>Fantasy Sports Tactics</title>
+
+    <!-- Add-to-Home-Screen fullscreen support (2026-07-04) — a plain Safari/
+         Chrome tab always shows browser chrome (address bar etc.), which no
+         amount of layout CSS can remove; the only real fix is launching from
+         a home-screen icon in standalone mode. See manifest.json for the
+         Android/Chrome side (installable PWA, display:"fullscreen"). -->
+    <link rel="manifest" href="/manifest.json" />
+    <link rel="apple-touch-icon" href="/favicon.svg" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="FS Tactics" />
+    <meta name="mobile-web-app-capable" content="yes" />
   </head>
   <body>
     <div id="app"></div>

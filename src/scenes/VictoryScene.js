@@ -13,8 +13,14 @@ const XP_PER_ENEMY = 40;
 // see WorldMapScene's onCapitalClick). M4 is the one exception: it still
 // wins its cutscene here, right after the exam battle. Drace/Sela/Zora no
 // longer auto-join at M2/M3/M4 either; they're recruited by player choice at
-// Ester/Hilbert Academy instead (see RECRUITS_AFTER below — Kael/Trice are
-// unaffected, still auto-joining at M5/M6 as before).
+// Ester/Hilbert Academy instead (see RECRUITS_AFTER below). M5 "Ember
+// Hollow" (2026-07-11) and M6-M11 + their M13/M14 side battles
+// (2026-07-11, "going to rewrite") were removed entirely, along with
+// Kael's (M5) and Trice's (M6) tag-along cutscenes/auto-joins — neither
+// has a recruit path left; nothing currently wires them into the
+// newRecruit/RecruitClassScene flow the way Drace is, so they're
+// effectively cut from the game until/unless that's added back some other
+// way (presumably as part of the M6-M11 rewrite).
 const CUTSCENE_AFTER = {
   M4: {
     location: 'ARENA ATLROS',
@@ -25,50 +31,49 @@ const CUTSCENE_AFTER = {
       { speaker:'Instructor', color:'#ddcc88', text:'Welcome to the Academy. Meet me back at the Capital.' },
     ],
   },
-  M5: {
-    location: 'ALTROES  ·  Ember Hollow',
-    backdrop: BACKDROPS.cave,
-    lines: [
-      { speaker:'Narrator', color:'#888899', text:'The passage clears, embers still glowing in the scorched rock — Kael catches up, having tailed the group since the academy.' },
-      { speaker:'Kael',     color:'#ff8844', text:'Mind if I tag along properly from here? Been meaning to ask.' },
-      { speaker:'Reno',     color:'#4488ff', text:'...Glad to have you, Kael.' },
-    ],
-  },
-  M6: {
-    location: 'ALTROES  ·  Stormpeak Ridge',
-    backdrop: BACKDROPS.wilds,
-    lines: [
-      { speaker:'Narrator', color:'#888899', text:'The storm passes as the ridge trail levels out — Trice is waiting at the far end, arms crossed.' },
-      { speaker:'Trice',    color:'#aa44ff', text:'Figured I\'d catch up with you here. Room for one more?' },
-      { speaker:'Reno',     color:'#4488ff', text:'...Glad to have you, Trice.' },
-    ],
-  },
 };
 
 const MISSION_NAMES = {
   M1:'Sirblanc Outskirts', M2:'Thunder Plains',   M4:'Arena Atlros',
   M0a:'Hidden Cave', M0b:"Wolf's Den",
   M3a:'Northern Cave',     M3b:'Hilbert Low Lands',
-  M5:'Ember Hollow',       M6:'Stormpeak Ridge',
-  M7:'Frostbite Hollow',   M8:'Windswept Grotto', M9:'Glacial Bluff',
-  M10:'Rootdeep Cavern',   M11:'Duskstone Mine',  M12:'Earthscar Basin',
-  M13:'Stormpeak Overlook',M14:'Frozen Cove',     M15:'Sunken Quarry',
+  // AT1's enemies are a real tournament team in epic gear now (2026-07-11
+  // third follow-up) — its own M5a battle slot was removed and folded in.
+  AT1:'Altroes Trials I', AT2:'Altroes Trials II',
+  DK: 'The Frozen Peaks', MH: 'Monster Hunt',
 };
 
-// M12 no longer chains into M13-M15 — those are repurposed as optional side
-// battles (see SIDE_MISSION_UNLOCK below), not a continuation of the main
-// Tournament-arc line. The main chain currently ends at M12.
+// Tytrate rewards on mission clear (2026-07-11, "all the mission should
+// give you some tytrate i keep forget[ting] to code it in") — no mission
+// has ever paid Tytrate through VictoryScene before this (only the
+// separate capitalQuest/RewardPopupScene stages at M3 do). Scoped to
+// just the 2 Gale missions actually in front of us this session, not a
+// retroactive pass over every existing mission — that's a bigger ask than
+// what was on the table here. DK (300) matches the "Ready For The Exam"
+// tier, the biggest one-off reward already in the game; MH (150) is lower
+// since it's meant to be run repeatedly (avoids runaway currency farming).
+const MISSION_TYTRATE = { DK: 300, MH: 150 };
+
+// M12/M15 removed 2026-07-11 ("remove m12", fifth follow-up — M15 went
+// with it, see WorldMapScene.js's NODES comment) — the main chain now ends
+// at M5 (Gale), a pure hub with nothing to clear past it.
 //
 // M1 has no entry here on purpose — winning it doesn't unlock M2 by itself;
 // the player has to return to M0 (Hidden Village) to turn the mission in,
 // which is what actually unlocks M2 (see WorldMapScene's M0 click handler).
 // M3 is a hub now (The Capital), not a battle, so it never completes through
 // VictoryScene either — M2 still unlocks it via this table, but there's no
-// 'M3:...' entry here since nothing ever looks it up that way. M4's unlock
-// into M5 stays as-is for once Phase 4 wires the real exam-boss battle.
+// 'M3:...' entry here since nothing ever looks it up that way. M4 used to
+// unlock M5, then M6, next; both were removed (2026-07-11, "going to
+// rewrite"). M4 no longer unlocks anything directly here — neither does
+// AT1 or AT2. Altroes Trials (AT1+AT2) are offered as a "Tournament" choice
+// at M3 once all 6 academy quests are done (see onCapitalClick in
+// WorldMapScene.js) — a deliberate player action, not an auto-unlock. M5 is
+// now a HUB (Gale, the next kingdom city — see HUB_CONFIGS) with no battle
+// attached to it at all, reached via the same live "AT1 AND AT2 both
+// completed" check (see WorldMapScene's create()), not through this table.
 const MISSION_NEXT = {
-  M2:'M3', M4:'M5', M5:'M6', M6:'M7',
-  M7:'M8', M8:'M9', M9:'M10', M10:'M11', M11:'M12',
+  M2:'M3',
 };
 
 // Side battles unlock alongside their region's final mission, independent
@@ -78,14 +83,19 @@ const MISSION_NEXT = {
 // M0a branches off M0, not M2 — this mechanism never required the unlock
 // source and the branch parent to match (same trick M3:'M0a' would have
 // used, but M3 never completes through VictoryScene since it's a hub).
-const SIDE_MISSION_UNLOCK = { M2:'M0a', M6:'M13', M9:'M14', M12:'M15' };
+// M6:'M13'/M9:'M14' removed 2026-07-11 along with M6/M9/M13/M14 themselves;
+// M12:'M15' removed the same day too, along with M12/M15 themselves.
+const SIDE_MISSION_UNLOCK = { M2:'M0a' };
 
 // Roster characters who join the party right after a given mission's
-// cutscene. Only Kael (M5) and Trice (M6) auto-join this way now — Drace/
-// Sela/Zora were cut from the old M2/M3/M4 auto-join beats (July 2026
-// redesign) and are recruited by player choice at Ester/Hilbert Academy
-// instead (RecruitClassScene, triggered from the Capital questline).
-const RECRUITS_AFTER = { M5: ['kael'], M6: ['trice'] };
+// cutscene. Drace/Sela/Zora were cut from the old M2/M3/M4 auto-join beats
+// (July 2026 redesign) and are recruited by player choice at Ester/Hilbert
+// Academy instead (RecruitClassScene, triggered from the Capital
+// questline). Kael's M5 and Trice's M6 entries were removed 2026-07-11
+// along with M5/M6 themselves — see the note on CUTSCENE_AFTER above.
+// Empty for now; kept as a const (not deleted) since VictoryScene still
+// reads RECRUITS_AFTER[missionId] generically for every mission.
+const RECRUITS_AFTER = {};
 
 export class VictoryScene extends Phaser.Scene {
   constructor() { super({ key: 'VictoryScene' }); }
@@ -115,6 +125,8 @@ export class VictoryScene extends Phaser.Scene {
     for (const item of killDrops) state.inventory.push(item);
     const materials = getMissionMaterials(this.missionId);
     for (const mat of materials) state.inventory.push(mat);
+    const tytrateReward = MISSION_TYTRATE[this.missionId] ?? 0;
+    if (tytrateReward) state.tytrate += tytrateReward;
     // Heal Herb: 25% chance per battle, independent of the guaranteed
     // MISSION_MATERIALS table above (which still separately guarantees one on M1).
     const herbDrop = rollHealHerbDrop();
@@ -199,7 +211,8 @@ export class VictoryScene extends Phaser.Scene {
       fontSize: '13px', fontFamily: 'monospace', color: '#888888',
     }).setOrigin(0.5);
 
-    this.add.text(width / 2, 104, `+${totalXP} XP  ·  ${this.enemiesKilled} enemies defeated`, {
+    this.add.text(width / 2, 104,
+      `+${totalXP} XP  ·  ${this.enemiesKilled} enemies defeated` + (tytrateReward ? `  ·  +${tytrateReward} T` : ''), {
       fontSize: '14px', fontFamily: 'monospace', color: '#aaaacc',
     }).setOrigin(0.5);
 

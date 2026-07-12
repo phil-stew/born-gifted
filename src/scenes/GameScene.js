@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
-import { hasSave, loadGame } from '../data/gameState.js';
+import { loadGame, getSaveSummary, deleteSave, SAVE_SLOTS } from '../data/gameState.js';
+import { drawButton } from '../ui/canvasButton.js';
 
 export class GameScene extends Phaser.Scene {
   constructor() {
@@ -20,8 +21,8 @@ export class GameScene extends Phaser.Scene {
     const cy = height / 2;
 
     this.lineIndex = 0;
-    // 'splash' (dev credit) | 'crawl' | 'title' | 'done' — splash only plays on
-    // a true cold boot, never when returning here from the world map.
+    // 'splash' (dev credit) -> 'title' -> 'crawl' (only entered via New Game) -> 'done'.
+    // splash only plays on a true cold boot, never when returning here from the world map.
     this.phase = this.skipCrawl ? 'title' : 'splash';
     this.canAdvance = false;
     this.autoTimer = null;
@@ -42,12 +43,18 @@ export class GameScene extends Phaser.Scene {
 
     this.add.rectangle(cx, cy, width, height, 0x000000);
 
+    // Title-phase visuals — collected so startCrawl() can clear them all at
+    // once when the player picks New Game (crawl now plays after the title,
+    // not before it).
+    this.titleElements = [];
+
     // Title background photo + dark scrim — hidden until showTitle() fades
-    // them in (stays plain black during the splash/crawl, on purpose).
+    // them in (stays plain black during the splash, on purpose).
     this.titleBg = this.add.image(cx, cy, 'titlebg').setAlpha(0);
     const bgScale = Math.max(width / this.titleBg.width, height / this.titleBg.height);
     this.titleBg.setScale(bgScale);
     this.titleScrim = this.add.rectangle(cx, cy, width, height, 0x05050a, 0.6).setAlpha(0);
+    this.titleElements.push(this.titleBg, this.titleScrim);
 
     // Dev splash — plays once on a true cold boot, never on skipCrawl (that's
     // the "return to title from world map" path, not a fresh launch).
@@ -91,14 +98,30 @@ export class GameScene extends Phaser.Scene {
       color: '#aabbdd',
     }).setOrigin(0.5).setAlpha(0);
 
-    this.promptText = this.add.text(cx, cy + 70, 'TAP  TO  BEGIN', {
-      fontSize: '13px',
-      fontFamily: 'monospace',
-      color: '#ffffff',
-    }).setOrigin(0.5).setAlpha(0);
+    this.titleElements.push(this.titleText, this.subtitleText);
 
     this.input.on('pointerdown', () => this.handleTap());
     this.input.keyboard?.on('keydown', () => this.handleTap());
+
+    // Fullscreen API request, on a real user gesture — progressive
+    // enhancement only. iOS Safari doesn't support requestFullscreen() on
+    // arbitrary DOM elements at all (that's what Add to Home Screen +
+    // manifest.json/apple-mobile-web-app-capable in index.html are for
+    // instead), so this button just doesn't render there. Mainly helps
+    // Android Chrome / desktop players who'd rather not install the PWA.
+    if (document.fullscreenEnabled) {
+      const fsBtn = drawButton(this, {
+        x: width - 60, y: 24, w: 100, h: 32, label: '⛶ FULLSCREEN',
+        fontSize: '10px', radius: 6,
+        bg: 0x14142a, bgHover: 0x1e1e3a, border: 0x334477, accent: 0xaaaaff,
+        textColor: '#8899cc', depth: 50,
+        onClick: () => {
+          if (document.fullscreenElement) document.exitFullscreen();
+          else document.documentElement.requestFullscreen().catch(() => {});
+        },
+      });
+      this.titleElements.push(fsBtn.container);
+    }
 
     if (this.skipCrawl) {
       this.crawlText.setAlpha(0);
@@ -132,10 +155,23 @@ export class GameScene extends Phaser.Scene {
       alpha: 0,
       duration: 500,
       ease: 'Power1',
-      onComplete: () => {
-        this.phase = 'crawl';
-        this.showLine();
-      },
+      onComplete: () => this.showTitle(),
+    });
+  }
+
+  // Crawl now plays after New Game is chosen (not before the title screen).
+  // Clears the title-screen visuals, then runs the same line-by-line crawl
+  // before handing off to CharacterCreationScene.
+  startCrawl(slot) {
+    this.pendingSlot = slot;
+    this.cameras.main.fadeOut(400, 0, 0, 0);
+    this.cameras.main.once('camerafadeoutcomplete', () => {
+      this.titleElements.forEach(o => o.destroy());
+      this.titleElements = [];
+      this.phase = 'crawl';
+      this.lineIndex = 0;
+      this.cameras.main.fadeIn(300, 0, 0, 0);
+      this.showLine();
     });
   }
 
@@ -172,7 +208,7 @@ export class GameScene extends Phaser.Scene {
         if (this.lineIndex < this.lines.length) {
           this.showLine();
         } else {
-          this.showTitle();
+          this.goToCreation(this.pendingSlot);
         }
       },
     });
@@ -189,13 +225,7 @@ export class GameScene extends Phaser.Scene {
       this.titleScrim.setAlpha(1);
       this.titleText.setAlpha(1);
       this.subtitleText.setAlpha(1);
-      if (hasSave()) {
-        this.showSaveButtons(cx, cy);
-      } else {
-        this.promptText.setAlpha(1);
-        this.tweens.add({ targets: this.promptText, alpha: 0.15, duration: 850, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
-        this.canAdvance = true;
-      }
+      this.showSlotPicker(cx, cy);
       return;
     }
 
@@ -204,68 +234,110 @@ export class GameScene extends Phaser.Scene {
     this.tweens.add({ targets: this.titleText,    alpha: 1, duration: 1200, delay: 300,  ease: 'Power2' });
     this.tweens.add({ targets: this.subtitleText, alpha: 1, duration: 800,  delay: 900,  ease: 'Power1' });
 
-    this.time.delayedCall(1600, () => {
-      if (hasSave()) {
-        this.showSaveButtons(cx, cy);
-      } else {
-        this.tweens.add({
-          targets: this.promptText, alpha: 1, duration: 500, ease: 'Power1',
-          onComplete: () => {
-            this.tweens.add({ targets: this.promptText, alpha: 0.15, duration: 850, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
-            this.canAdvance = true;
-          },
-        });
-      }
-    });
+    this.time.delayedCall(1600, () => this.showSlotPicker(cx, cy));
   }
 
-  showSaveButtons(cx, cy) {
-    const btnW = 200, btnH = 46, gap = 16;
-    const by   = cy + 60;
+  // Three independent save slots — each row loads/continues if occupied, or
+  // starts a new game in that slot if empty. An occupied slot also gets a
+  // small "NEW" reset control (tap-twice-to-confirm, same pattern the old
+  // single NEW GAME button used) to wipe just that slot and start over.
+  showSlotPicker(cx, cy) {
+    this.armedResetSlot = null;
+    this.resetLabels = {};
 
-    // CONTINUE
-    const cg = this.add.graphics();
-    const drawC = (h) => {
-      cg.clear();
-      cg.fillStyle(h ? 0x0e1e10 : 0x09150b, 1);
-      cg.fillRect(cx - btnW / 2, by, btnW, btnH);
-      cg.lineStyle(2, h ? 0x44cc66 : 0x226633, 1);
-      cg.strokeRect(cx - btnW / 2, by, btnW, btnH);
-    };
-    drawC(false);
-    this.add.text(cx, by + btnH / 2, 'CONTINUE', {
-      fontSize: '15px', fontFamily: 'monospace', fontStyle: 'bold', color: '#44cc66',
-    }).setOrigin(0.5);
-    const cz = this.add.zone(cx, by + btnH / 2, btnW, btnH).setInteractive({ useHandCursor: true });
-    cz.on('pointerover',  () => drawC(true));
-    cz.on('pointerout',   () => drawC(false));
-    cz.on('pointerdown',  () => { loadGame(); this.goToMap(); });
+    const rowW = 340, rowH = 64, gap = 12;
+    let y = cy + 20;
 
-    // NEW GAME
-    const by2 = by + btnH + gap;
-    const ng   = this.add.graphics();
-    const drawN = (h) => {
-      ng.clear();
-      ng.fillStyle(h ? 0x1a0e0e : 0x110808, 1);
-      ng.fillRect(cx - btnW / 2, by2, btnW, btnH);
-      ng.lineStyle(1, h ? 0xaa4444 : 0x552222, 1);
-      ng.strokeRect(cx - btnW / 2, by2, btnW, btnH);
-    };
-    drawN(false);
-    this.newGameLabel = this.add.text(cx, by2 + btnH / 2, 'NEW GAME', {
-      fontSize: '13px', fontFamily: 'monospace', color: '#885555',
-    }).setOrigin(0.5);
-    const nz = this.add.zone(cx, by2 + btnH / 2, btnW, btnH).setInteractive({ useHandCursor: true });
-    nz.on('pointerover',  () => drawN(true));
-    nz.on('pointerout',   () => drawN(false));
-    nz.on('pointerdown',  () => {
-      if (this.confirmingNew) {
-        this.goToCreation();
-      } else {
-        this.confirmingNew = true;
-        this.newGameLabel.setText('CONFIRM? (tap again)').setColor('#ff6666');
+    for (const slot of SAVE_SLOTS) {
+      this.drawSlotRow(cx, y, rowW, rowH, slot);
+      y += rowH + gap;
+    }
+  }
+
+  drawSlotRow(cx, y, w, h, slot) {
+    const summary = getSaveSummary(slot);
+    const occupied = !!summary;
+
+    const shadow = this.add.graphics();
+    shadow.fillStyle(0x000000, 0.3);
+    shadow.fillRoundedRect(cx - w / 2 + 2, y + 3, w, h, 8);
+    this.titleElements.push(shadow);
+
+    const g = this.add.graphics();
+    const drawBg = (hover) => {
+      g.clear();
+      g.fillStyle(hover ? (occupied ? 0x0e1e10 : 0x14142a) : (occupied ? 0x09150b : 0x0e0e20), 1);
+      g.fillRoundedRect(cx - w / 2, y, w, h, 8);
+      g.lineStyle(2, hover ? (occupied ? 0x44cc66 : 0x4488ff) : (occupied ? 0x226633 : 0x334477), 1);
+      g.strokeRoundedRect(cx - w / 2, y, w, h, 8);
+      if (hover) {
+        g.fillStyle(occupied ? 0x44cc66 : 0x4488ff, 0.9);
+        g.fillRoundedRect(cx - w / 2, y, 4, h, 2);
       }
+    };
+    drawBg(false);
+    this.titleElements.push(g);
+
+    const slotLabel = this.add.text(cx - w / 2 + 14, y + 8, `SLOT ${slot}`, {
+      fontSize: '9px', fontFamily: 'monospace', color: '#556688',
     });
+    this.titleElements.push(slotLabel);
+
+    if (occupied) {
+      const savedStr = summary.savedAt ? new Date(summary.savedAt).toLocaleDateString() : '';
+      this.titleElements.push(this.add.text(cx - w / 2 + 14, y + 22, summary.leadName, {
+        fontSize: '14px', fontFamily: 'monospace', fontStyle: 'bold', color: '#dddddd',
+      }));
+      this.titleElements.push(this.add.text(cx - w / 2 + 14, y + 42, `Lv.${summary.level}  ·  ${summary.missionsCompleted}/15 missions  ·  ${savedStr}`, {
+        fontSize: '10px', fontFamily: 'monospace', color: '#667788',
+      }));
+    } else {
+      this.titleElements.push(this.add.text(cx - w / 2 + 14, y + h / 2 - 7, '— empty —', {
+        fontSize: '13px', fontFamily: 'monospace', color: '#556688',
+      }));
+      this.titleElements.push(this.add.text(cx - w / 2 + 14, y + h / 2 + 9, 'tap to start a new game', {
+        fontSize: '9px', fontFamily: 'monospace', color: '#445566',
+      }));
+    }
+
+    // Reset control (occupied slots only) — sits in its own small zone on
+    // the right so it doesn't fight the row's main continue/start action.
+    const resetW = 64;
+    const mainW  = occupied ? w - resetW : w;
+    const mainCx = occupied ? cx - resetW / 2 : cx;
+    const zone = this.add.zone(mainCx, y + h / 2, mainW, h).setInteractive({ useHandCursor: true });
+    zone.on('pointerover', () => drawBg(true));
+    zone.on('pointerout',  () => drawBg(false));
+    zone.on('pointerdown', () => {
+      if (occupied) { loadGame(slot); this.goToMap(); }
+      else { this.startCrawl(slot); }
+    });
+    this.titleElements.push(zone);
+
+    if (occupied) {
+      const rx = cx + w / 2 - resetW / 2 - 6;
+      const resetLabel = this.add.text(rx, y + h / 2, 'NEW', {
+        fontSize: '10px', fontFamily: 'monospace', fontStyle: 'bold', color: '#885555',
+      }).setOrigin(0.5);
+      this.resetLabels[slot] = resetLabel;
+      this.titleElements.push(resetLabel);
+
+      const rz = this.add.zone(rx, y + h / 2, resetW - 8, h).setInteractive({ useHandCursor: true });
+      rz.on('pointerover', () => resetLabel.setColor('#ff6666'));
+      rz.on('pointerout',  () => resetLabel.setColor(this.armedResetSlot === slot ? '#ff6666' : '#885555'));
+      rz.on('pointerdown', (pointer, lx, ly, event) => {
+        event?.stopPropagation();
+        if (this.armedResetSlot === slot) {
+          deleteSave(slot);
+          this.startCrawl(slot);
+        } else {
+          if (this.armedResetSlot != null) this.resetLabels[this.armedResetSlot]?.setText('NEW').setColor('#885555');
+          this.armedResetSlot = slot;
+          resetLabel.setText('CONFIRM?').setColor('#ff6666');
+        }
+      });
+      this.titleElements.push(rz);
+    }
   }
 
   goToMap() {
@@ -274,10 +346,10 @@ export class GameScene extends Phaser.Scene {
     this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start('WorldMapScene'));
   }
 
-  goToCreation() {
+  goToCreation(slot) {
     this.phase = 'done';
     this.cameras.main.fadeOut(600, 0, 0, 0);
-    this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start('CharacterCreationScene'));
+    this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start('CharacterCreationScene', { slot }));
   }
 
   handleTap() {
@@ -285,11 +357,7 @@ export class GameScene extends Phaser.Scene {
       this.advanceSplash();
     } else if (this.phase === 'crawl') {
       this.advance();
-    } else if (this.phase === 'title' && this.canAdvance) {
-      // Only auto-advance via tap when there is no save — otherwise let the buttons handle it
-      if (!hasSave()) {
-        this.goToCreation();
-      }
     }
+    // 'title' phase has no generic tap action — each slot row handles its own tap.
   }
 }

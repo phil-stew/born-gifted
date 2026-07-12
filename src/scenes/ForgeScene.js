@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { state, roleDisplayLabel, gearLayoutForUnit } from '../data/gameState.js';
-import { FORGE_RECIPES, ORE_TIER_TO_RARITY, rollGearItem, getItem } from '../data/items.js';
+import { FORGE_RECIPES, ORE_TIER_TO_RARITY, RARITY_GEAR_VALUE, rollGearItem, getItem } from '../data/items.js';
 
 // Cost to reinforce: 75 per level (level 0→1 costs 75, 1→2 costs 150, 2→3 costs 225)
 const REINFORCE_BASE = 75;
@@ -49,10 +49,12 @@ export class ForgeScene extends Phaser.Scene {
       fontSize: '14px', fontFamily: 'monospace', fontStyle: 'bold', color: '#ffdd66',
     }).setOrigin(1, 0.5).setDepth(10);
 
-    const back = this.add.text(14, height - 24, '◀  BACK', {
+    // Moved into the header (2026-07-11, "have the back button at top of
+    // menues") — was bottom-left, now top-left, same row as the title.
+    const back = this.add.text(14, 14, '◀  BACK', {
       fontSize: '13px', fontFamily: 'monospace', color: '#7777aa',
       backgroundColor: '#0e0e20', padding: { x: 10, y: 5 },
-    }).setOrigin(0, 0.5).setInteractive({ useHandCursor: true });
+    }).setOrigin(0, 0.5).setInteractive({ useHandCursor: true }).setDepth(10);
     back.on('pointerover', () => back.setStyle({ color: '#ffffff' }));
     back.on('pointerout',  () => back.setStyle({ color: '#7777aa' }));
     back.on('pointerdown', () => {
@@ -626,7 +628,8 @@ export class ForgeScene extends Phaser.Scene {
     const layout = gearLayoutForUnit(unit);
     const classItemMultiplier = resultSlot === 'weapon' ? layout.classItemMultiplier : 1;
     const item = rollGearItem({
-      slot: resultSlot, rarity, talents: unit.talents ?? [], classItemMultiplier, cost: 0,
+      slot: resultSlot, rarity, talents: unit.talents ?? [], classItemMultiplier,
+      cost: RARITY_GEAR_VALUE[rarity] ?? 0,
       forClass: roleDisplayLabel(unit),
     });
     state.inventory.push(item);

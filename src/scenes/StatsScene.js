@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { state, effectiveStats, maxHp, xpToNext, currentRoleId, roleDisplayLabel, roleById, elementIcon } from '../data/gameState.js';
 import { loadHeroSprites, stripHeroBackground, heroKey, firstFrame, spriteKeyForRole } from '../data/heroSprites.js';
+import { drawButton } from '../ui/canvasButton.js';
 
 const SLOT_NAMES = ['weapon', 'footwear', 'handwear', 'chest', 'headwear'];
 
@@ -31,7 +32,7 @@ export class StatsScene extends Phaser.Scene {
     this.drawHeader(width);
     this.drawPartyList(height);
     this.drawDetail(width, height);
-    this.drawBackBtn(height);
+    this.drawBackBtn();
   }
 
   drawHeader(width) {
@@ -45,12 +46,15 @@ export class StatsScene extends Phaser.Scene {
   }
 
   drawPartyList(height) {
-    const listX = 10, listW = 150;
+    const listX = 10, listW = 150, listH = height - 90;
+    const shadow = this.add.graphics();
+    shadow.fillStyle(0x000000, 0.3);
+    shadow.fillRoundedRect(listX + 2, 47, listW, listH, 8);
     const gfx = this.add.graphics();
     gfx.fillStyle(0x0d0d20, 1);
-    gfx.fillRect(listX, 44, listW, height - 90);
-    gfx.lineStyle(1, 0x222244, 1);
-    gfx.strokeRect(listX, 44, listW, height - 90);
+    gfx.fillRoundedRect(listX, 44, listW, listH, 8);
+    gfx.lineStyle(1.5, 0x222244, 1);
+    gfx.strokeRoundedRect(listX, 44, listW, listH, 8);
 
     this.partyBtns = [];
     state.party.forEach((unit, i) => {
@@ -78,10 +82,12 @@ export class StatsScene extends Phaser.Scene {
     const lx = 14, w = 142;
     const bg = selected ? 0x1a1a3a : hovered ? 0x141428 : 0x0d0d20;
     gfx.fillStyle(bg, 1);
-    gfx.fillRect(lx, y, w, 78);
+    gfx.fillRoundedRect(lx, y, w, 78, 6);
     if (selected) {
       gfx.lineStyle(2, unit.color, 0.8);
-      gfx.strokeRect(lx, y, w, 78);
+      gfx.strokeRoundedRect(lx, y, w, 78, 6);
+      gfx.fillStyle(unit.color, 0.9);
+      gfx.fillRoundedRect(lx, y, 3, 78, 2);
     }
 
     // Color dot
@@ -118,11 +124,16 @@ export class StatsScene extends Phaser.Scene {
     const dx = 175, dw = width - dx - 12;
 
     // Panel bg
+    const panH = height - 90;
+    const panelShadow = this.add.graphics();
+    panelShadow.fillStyle(0x000000, 0.3);
+    panelShadow.fillRoundedRect(dx + 2, 47, dw, panH, 8);
+    this.detailContainer.add(panelShadow);
     const panelGfx = this.add.graphics();
     panelGfx.fillStyle(0x0d0d20, 1);
-    panelGfx.fillRect(dx, 44, dw, height - 90);
-    panelGfx.lineStyle(1, 0x222244, 1);
-    panelGfx.strokeRect(dx, 44, dw, height - 90);
+    panelGfx.fillRoundedRect(dx, 44, dw, panH, 8);
+    panelGfx.lineStyle(1.5, 0x222244, 1);
+    panelGfx.strokeRoundedRect(dx, 44, dw, panH, 8);
     this.detailContainer.add(panelGfx);
 
     let y = 58;
@@ -269,14 +280,16 @@ export class StatsScene extends Phaser.Scene {
     }
   }
 
-  drawBackBtn(height) {
-    const btn = this.add.text(16, height - 24, '◀  WORLD MAP', {
-      fontSize: '13px', fontFamily: 'monospace', color: '#7777aa',
-      backgroundColor: '#0e0e20', padding: { x: 10, y: 5 },
-    }).setOrigin(0, 0.5).setInteractive({ useHandCursor: true });
-    btn.on('pointerover', () => btn.setStyle({ color: '#ffffff' }));
-    btn.on('pointerout',  () => btn.setStyle({ color: '#7777aa' }));
-    btn.on('pointerdown', () => this.scene.start('WorldMapScene'));
+  // Moved into the header (2026-07-11, "have the back button at top of
+  // menues") — was bottom-left, now top-left alongside the title.
+  drawBackBtn() {
+    drawButton(this, {
+      x: 76, y: 19, w: 128, h: 26, label: '◀  WORLD MAP',
+      fontSize: '13px', radius: 6,
+      bg: 0x0e0e20, bgHover: 0x181834, border: 0x334477, accent: 0xffffff,
+      textColor: '#7777aa',
+      onClick: () => this.scene.start('WorldMapScene'),
+    });
   }
 
   refreshAll() {

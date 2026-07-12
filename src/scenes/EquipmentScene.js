@@ -57,7 +57,7 @@ export class EquipmentScene extends Phaser.Scene {
     this.inventoryContainer = this.add.container(0, 0);
 
     this.renderAll();
-    this.drawBackBtn(height);
+    this.drawBackBtn();
   }
 
   _registerMaterialFrames() {
@@ -305,9 +305,11 @@ export class EquipmentScene extends Phaser.Scene {
     }
   }
 
-  drawBackBtn(height) {
+  // Moved into the header (2026-07-11, "have the back button at top of
+  // menues") — was bottom-left, now top-left alongside the title.
+  drawBackBtn() {
     drawButton(this, {
-      x: 76, y: height - 24, w: 128, h: 30, label: '◀  WORLD MAP',
+      x: 76, y: 19, w: 128, h: 26, label: '◀  WORLD MAP',
       fontSize: '13px', radius: 6,
       bg: 0x0e0e20, bgHover: 0x181834, border: 0x334477, accent: 0xffffff,
       textColor: '#7777aa',

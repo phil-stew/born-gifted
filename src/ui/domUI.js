@@ -80,6 +80,43 @@ export function spriteFrameDataURL(scene, textureKey, frameIndex) {
   return url;
 }
 
+// Same idea as spriteFrameDataURL, but for detailed (non-pixel-art-style)
+// icon art — gear/item icons — that gets shown much smaller than its source
+// resolution (e.g. a 220x205 sheet cell down to a 24px slot icon). Baking
+// the downscale into the canvas with smoothing on, at the exact display
+// size, avoids the noisy/"uncropped-looking" result of letting the browser
+// nearest-neighbor-downscale a big detailed image via CSS (which is what
+// `image-rendering: pixelated` does, great for blocky hero sprites scaled
+// UP, bad for busy icon art scaled DOWN).
+const iconCache = new Map();
+export function iconDataURL(scene, textureKey, frameName, size) {
+  const cacheKey = `${textureKey}:${frameName}:${size}`;
+  if (iconCache.has(cacheKey)) return iconCache.get(cacheKey);
+  if (!scene.textures.exists(textureKey)) return null;
+
+  const tex = scene.textures.get(textureKey);
+  const frame = tex.get(frameName);
+  if (!frame) return null;
+
+  const canvas = document.createElement('canvas');
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext('2d');
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = 'high';
+
+  const scale = Math.min(size / frame.cutWidth, size / frame.cutHeight);
+  const dw = frame.cutWidth * scale, dh = frame.cutHeight * scale;
+  ctx.drawImage(
+    frame.source.image,
+    frame.cutX, frame.cutY, frame.cutWidth, frame.cutHeight,
+    (size - dw) / 2, (size - dh) / 2, dw, dh,
+  );
+  const url = canvas.toDataURL('image/png');
+  iconCache.set(cacheKey, url);
+  return url;
+}
+
 // Basic HTML-escaping for any user-facing string interpolated into markup
 // (unit names are hardcoded data today, but this is cheap insurance).
 export function esc(str) {

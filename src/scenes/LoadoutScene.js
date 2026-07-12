@@ -1,8 +1,12 @@
 import Phaser from 'phaser';
 import {
-  state, classSkillSlotCount, equipPassive, CLASS_SKILL_SLOT_LEVELS, currentRoleId,
+  state, classSkillSlotCount, equipPassive, equipSpecialSlot, equipSkillSlot,
+  CLASS_SKILL_SLOT_LEVELS, currentRoleId,
 } from '../data/gameState.js';
-import { ATTACK, THROW, getUnitSpecials, getUnitSkills, getUnitPassivePool } from '../data/abilities.js';
+import {
+  ATTACK, THROW, getUnitSpecials, getUnitSkills, getUnitPassivePool,
+  getEquippedSpecialAbilities, getEquippedSkillAbilities,
+} from '../data/abilities.js';
 import { loadHeroSprites, stripHeroBackground, heroKey, firstFrame, spriteKeyForRole } from '../data/heroSprites.js';
 import { mount, unmount, onClick, spriteFrameDataURL, esc } from '../ui/domUI.js';
 
@@ -21,6 +25,7 @@ export class LoadoutScene extends Phaser.Scene {
   init(data) {
     this.unitId = data?.unitId ?? state.party[0]?.id ?? null;
     this.expandedAbility = null; // ability id whose details row is expanded, or null
+    this.picker = null; // { category: 'special'|'skill'|'classSkill', slotIndex } while a picker modal is open
   }
 
   create() {
@@ -71,6 +76,30 @@ export class LoadoutScene extends Phaser.Scene {
         </div>`;
     }).join('');
 
+    // Battle loadout (2026-07-07, picker follow-up same day) — a unit can
+    // know more Specials/Skills than fit in these slots; tap a slot to open
+    // a picker modal listing every learned ability in that category (not a
+    // one-at-a-time cycle — the first version of this feature cycled
+    // through options on repeated taps, which was tedious once a unit knew
+    // more than a couple; see pickerModalHTML below), same interaction now
+    // shared by the Class Skills slots above/below too.
+    const equippedSpecials = getEquippedSpecialAbilities(unit);
+    const equippedSkills = getEquippedSkillAbilities(unit);
+
+    const specialSlotsHTML = equippedSpecials.map((ab, i) => `
+      <div class="ui-skill-slot ${ab ? '' : 'empty'}" ${specials.length ? `data-special-slot="${i}"` : ''}>
+        <span class="ui-ability-name">${ab ? `${ab.icon} ${esc(ab.name)}` : '— empty (tap to add) —'}</span>
+        ${ab ? `<span class="ui-ability-cost">${ab.cost} SP</span>` : ''}
+        ${ab ? `<span class="ui-ability-desc">${esc(ab.desc)}</span>` : ''}
+      </div>`).join('');
+
+    const skillSlotsHTML = equippedSkills.map((ab, i) => `
+      <div class="ui-skill-slot ${ab ? '' : 'empty'}" ${skills.length ? `data-skillcd-slot="${i}"` : ''}>
+        <span class="ui-ability-name">${ab ? `${ab.icon} ${esc(ab.name)}` : '— empty (tap to add) —'}</span>
+        ${ab ? `<span class="ui-ability-cost">CD ${ab.cooldown}</span>` : ''}
+        ${ab ? `<span class="ui-ability-desc">${esc(ab.desc)}</span>` : ''}
+      </div>`).join('');
+
     mount(`
       <div class="ui-screen">
         <div class="ui-topbar">
@@ -94,13 +123,13 @@ export class LoadoutScene extends Phaser.Scene {
             </div>
 
             <div class="ui-section">
-              <div class="ui-section-label">Specials (SP)</div>
-              ${specials.length ? specials.map(a => abilityRow(a, `${a.cost} SP`)).join('') : '<div class="ui-empty-note">— none yet —</div>'}
+              <div class="ui-section-label">Specials (SP) — tap a slot to change &middot; ${specials.length} known</div>
+              ${specials.length ? specialSlotsHTML : '<div class="ui-empty-note">— none yet —</div>'}
             </div>
 
             <div class="ui-section">
-              <div class="ui-section-label">Skills (cooldown)</div>
-              ${skills.length ? skills.map(a => abilityRow(a, `CD ${a.cooldown}`)).join('') : '<div class="ui-empty-note">— none yet —</div>'}
+              <div class="ui-section-label">Skills (cooldown) — tap a slot to change &middot; ${skills.length} known</div>
+              ${skills.length ? skillSlotsHTML : '<div class="ui-empty-note">— none yet —</div>'}
             </div>
 
             <div class="ui-section">
@@ -110,9 +139,54 @@ export class LoadoutScene extends Phaser.Scene {
           </div>
         </div>
       </div>
+      ${this.picker ? this.pickerModalHTML(unit) : ''}
     `);
 
     this.wireEvents(unit);
+  }
+
+  // Category config for the picker modal — the one thing that differs
+  // between Specials/Skills/Class Skills is which pool to list from, which
+  // array on `unit` holds the current selection, and how to label each
+  // option's cost. Centralized here so pickerModalHTML/wireEvents' picker
+  // handlers don't each repeat their own if/else category branching.
+  pickerConfig(unit, category) {
+    if (category === 'special') {
+      return { pool: getUnitSpecials(unit), arr: unit.equippedSpecials ?? [], title: 'Choose a Special', sub: a => `${a.cost} SP` };
+    }
+    if (category === 'skill') {
+      return { pool: getUnitSkills(unit), arr: unit.equippedSkills ?? [], title: 'Choose a Skill', sub: a => `CD ${a.cooldown}` };
+    }
+    return { pool: getUnitPassivePool(unit), arr: unit.classSkills ?? [], title: 'Choose a Class Skill', sub: () => '' };
+  }
+
+  pickerModalHTML(unit) {
+    const { category, slotIndex } = this.picker;
+    const { pool, arr, title, sub } = this.pickerConfig(unit, category);
+    const usedElsewhere = new Set(arr.filter((id, idx) => idx !== slotIndex && id));
+    const currentId = arr[slotIndex] ?? null;
+    const options = pool.filter(a => !usedElsewhere.has(a.id));
+
+    const optionButtons = options.map(a => {
+      const subLabel = sub(a);
+      return `
+        <button class="ui-btn ${a.id === currentId ? 'ui-btn-primary' : ''}" data-picker-choose="${a.id}">
+          ${a.icon} ${esc(a.name)}
+          <span class="ui-btn-sub">${subLabel ? esc(subLabel) + ' &middot; ' : ''}${esc(a.desc)}</span>
+        </button>`;
+    }).join('');
+
+    return `
+      <div class="ui-modal-backdrop" data-modal-cancel="1">
+        <div class="ui-modal" data-modal-stop="1">
+          <div class="ui-modal-title">${esc(title)}</div>
+          <div class="ui-modal-actions">
+            <button class="ui-btn ui-btn-muted ${currentId === null ? 'ui-btn-primary' : ''}" data-picker-choose="__empty__">— empty —</button>
+            ${optionButtons}
+          </div>
+          <button class="ui-btn ui-btn-muted" style="margin-top:10px;width:100%;" data-picker-cancel="1">Cancel</button>
+        </div>
+      </div>`;
   }
 
   wireEvents(unit) {
@@ -125,14 +199,32 @@ export class LoadoutScene extends Phaser.Scene {
     });
 
     onClick('[data-skill-slot]', (e, node) => {
-      const slotIndex = Number(node.dataset.skillSlot);
-      const pool = getUnitPassivePool(unit);
-      const usedElsewhere = new Set(unit.classSkills.filter((id, idx) => idx !== slotIndex && id));
-      const options = [null, ...pool.map(a => a.id).filter(id => !usedElsewhere.has(id))];
-      const curIdx = options.indexOf(unit.classSkills[slotIndex] ?? null);
-      const nextId = options[(curIdx + 1) % options.length];
-      equipPassive(unit, slotIndex, nextId);
+      this.picker = { category: 'classSkill', slotIndex: Number(node.dataset.skillSlot) };
       this.render();
     });
+
+    onClick('[data-special-slot]', (e, node) => {
+      this.picker = { category: 'special', slotIndex: Number(node.dataset.specialSlot) };
+      this.render();
+    });
+
+    onClick('[data-skillcd-slot]', (e, node) => {
+      this.picker = { category: 'skill', slotIndex: Number(node.dataset.skillcdSlot) };
+      this.render();
+    });
+
+    onClick('[data-picker-choose]', (e, node) => {
+      const id = node.dataset.pickerChoose === '__empty__' ? null : node.dataset.pickerChoose;
+      const { category, slotIndex } = this.picker;
+      if (category === 'special') equipSpecialSlot(unit, slotIndex, id);
+      else if (category === 'skill') equipSkillSlot(unit, slotIndex, id);
+      else equipPassive(unit, slotIndex, id);
+      this.picker = null;
+      this.render();
+    });
+
+    onClick('[data-picker-cancel]', () => { this.picker = null; this.render(); });
+    onClick('[data-modal-cancel]', () => { this.picker = null; this.render(); });
+    onClick('[data-modal-stop]', (e) => e.stopPropagation());
   }
 }

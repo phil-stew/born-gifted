@@ -8,7 +8,8 @@ import { STARTING_SPORTS, sportById, TALENTS, ELEMENTS, createStarterUnit, newGa
 export class CharacterCreationScene extends Phaser.Scene {
   constructor() { super({ key: 'CharacterCreationScene' }); }
 
-  init() {
+  init(data) {
+    this.slot = data?.slot ?? 1;
     this.step = 'sport'; // 'sport' | 'role' | 'element' | 'talent1' | 'talent2' | 'confirm'
     this.chosenSport = null;
     this.chosenRole = null;
@@ -48,13 +49,19 @@ export class CharacterCreationScene extends Phaser.Scene {
   }
 
   makeButton(x, y, w, h, label, sub, onClick) {
+    const shadow = this.add.graphics();
+    shadow.fillStyle(0x000000, 0.3);
+    shadow.fillRoundedRect(x - w / 2 + 2, y - h / 2 + 3, w, h, 6);
+    this.con.add(shadow);
+
     const g = this.add.graphics();
     const draw = (hover) => {
       g.clear();
       g.fillStyle(hover ? 0x16203a : 0x0e1424, 1);
       g.fillRoundedRect(x - w / 2, y - h / 2, w, h, 6);
-      g.lineStyle(1, hover ? 0x4488ff : 0x223355, 1);
+      g.lineStyle(1.5, hover ? 0x4488ff : 0x223355, 1);
       g.strokeRoundedRect(x - w / 2, y - h / 2, w, h, 6);
+      if (hover) { g.fillStyle(0x4488ff, 0.9); g.fillRoundedRect(x - w / 2, y - h / 2, 3, h, 2); }
     };
     draw(false);
     this.con.add(g);
@@ -76,7 +83,7 @@ export class CharacterCreationScene extends Phaser.Scene {
   }
 
   renderSportStep() {
-    this.headerText.setText('CHOOSE YOUR STARTING SPORT');
+    this.headerText.setText('WHAT ROLE SHALL I TRAIN FOR?');
     this.subText.setText('This is who you are — your talent picks (next) only affect stat growth');
 
     const cols = 2, bw = 220, bh = 44, gapX = 20, gapY = 12;
@@ -116,7 +123,10 @@ export class CharacterCreationScene extends Phaser.Scene {
       });
     });
 
-    this.con.add(this.add.text(20, this.H - 24, '◀ back', {
+    // Back links moved into the header row (2026-07-11, "have the back
+    // button at top of menues") — all 4 in this file were bottom-left,
+    // now top-left alongside headerText/subText.
+    this.con.add(this.add.text(20, 16, '◀ back', {
       fontSize: '11px', fontFamily: 'monospace', color: '#556688',
     }).setInteractive({ useHandCursor: true }).on('pointerdown', () => {
       this.step = 'sport';
@@ -146,7 +156,7 @@ export class CharacterCreationScene extends Phaser.Scene {
 
     // Back button — skip the role step if this sport only had one role
     const sport = sportById(this.chosenSport);
-    this.con.add(this.add.text(20, this.H - 24, '◀ back', {
+    this.con.add(this.add.text(20, 16, '◀ back', {
       fontSize: '11px', fontFamily: 'monospace', color: '#556688',
     }).setInteractive({ useHandCursor: true }).on('pointerdown', () => {
       this.step = sport.roles.length >= 2 ? 'role' : 'sport';
@@ -178,7 +188,7 @@ export class CharacterCreationScene extends Phaser.Scene {
     });
 
     // Back button
-    this.con.add(this.add.text(20, this.H - 24, '◀ back', {
+    this.con.add(this.add.text(20, 16, '◀ back', {
       fontSize: '11px', fontFamily: 'monospace', color: '#556688',
     }).setInteractive({ useHandCursor: true }).on('pointerdown', () => {
       this.step = which === 1 ? 'element' : 'talent1';
@@ -213,12 +223,12 @@ export class CharacterCreationScene extends Phaser.Scene {
         t1Sport: this.chosenSport, t1Role: this.chosenRole,
         talents: this.chosenTalents, element: this.chosenElement,
       });
-      newGame(starter);
+      newGame(starter, this.slot);
       this.cameras.main.fadeOut(500, 0, 0, 0);
       this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start('WorldMapScene'));
     });
 
-    this.con.add(this.add.text(20, this.H - 24, '◀ back', {
+    this.con.add(this.add.text(20, 16, '◀ back', {
       fontSize: '11px', fontFamily: 'monospace', color: '#556688',
     }).setInteractive({ useHandCursor: true }).on('pointerdown', () => {
       this.step = 'talent2';

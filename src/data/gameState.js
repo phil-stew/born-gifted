@@ -40,10 +40,35 @@ export const CLASS_TIER_LEVELS = { t2: 10, t3: 20 };
 // Class skill slots: 3 total, unlocking one at a time at these levels.
 // NOTE: per the Class & Skill System Redesign (Part 5), these slots now hold
 // passive "Class Skills" (equipped permanent buffs) — not active abilities.
-// Active abilities (Skill/Special Attack) are slot-free, usable whenever known.
 export const CLASS_SKILL_SLOT_LEVELS = [5, 10, 20];
 export function classSkillSlotCount(level) {
   return CLASS_SKILL_SLOT_LEVELS.filter(l => level >= l).length;
+}
+
+// Battle loadout — a unit can KNOW far more Special Attacks/Skills than it
+// can bring into a single fight (2026-07-07 feedback: previously every known
+// Special/Skill was auto-usable in battle with no cap or selection; now
+// capped and player-selected via LoadoutScene, mirroring how Class Skills
+// already work). Not level-gated like CLASS_SKILL_SLOT_LEVELS — always this
+// many slots, some may just be empty if the unit doesn't know enough yet.
+export const MAX_EQUIPPED_SPECIALS = 4;
+export const MAX_EQUIPPED_SKILLS = 3;
+
+// Dumb bounds-checked setters — mirrors equipPassive below. The "which ids
+// are even valid to equip" / "default to the unit's first known abilities"
+// logic lives in abilities.js's getEquippedSpecialAbilities/
+// getEquippedSkillAbilities instead, since it needs getUnitSpecials/
+// getUnitSkills and abilities.js already imports FROM this module (a
+// reverse import here would be circular).
+export function equipSpecialSlot(unit, slotIndex, abilityId) {
+  if (slotIndex >= MAX_EQUIPPED_SPECIALS) return;
+  if (!unit.equippedSpecials) unit.equippedSpecials = [];
+  unit.equippedSpecials[slotIndex] = abilityId;
+}
+export function equipSkillSlot(unit, slotIndex, abilityId) {
+  if (slotIndex >= MAX_EQUIPPED_SKILLS) return;
+  if (!unit.equippedSkills) unit.equippedSkills = [];
+  unit.equippedSkills[slotIndex] = abilityId;
 }
 
 // ── Designations (combat triangle) ──────────────────────────────────────────
@@ -80,7 +105,7 @@ export const SPORTS = {
   ]},
   lacrosse:       { name:'Lacrosse',        tier:1, class:'Racquet',      roles:[
     { id:'ace_attacker_lax', name:'Ace Attacker', designations:['Rg'] },
-    { id:'goalkeeper_lax',   name:'Goalkeeper',    designations:['D'] },
+    { id:'goalkeeper_lax',   name:'Goalkeeper',    designations:['D','C'] },
   ]},
   darts:          { name:'Darts',           tier:1, class:'Target',       roles:[
     { id:'arrow_chucker', name:'Arrow Chucker', designations:['Rg'] },
@@ -111,7 +136,7 @@ export const SPORTS = {
   ]},
   volleyball:     { name:'Volleyball',      tier:2, class:'Ball',         roles:[
     { id:'spiker', name:'Spiker', designations:['C'] },
-    { id:'setter', name:'Setter', designations:['S'] },
+    { id:'setter', name:'Setter', designations:['S','C'] },
   ]},
   cricket:        { name:'Cricket',         tier:2, class:'Bat & Ball',   roles:[
     { id:'batter_cricket',  name:'Batter',  designations:['Rg'] },
@@ -119,7 +144,7 @@ export const SPORTS = {
   ]},
   paintball:      { name:'Paintball',       tier:2, class:'Target',       roles:[
     { id:'sniper',   name:'Sniper',   designations:['Rg'] },
-    { id:'frontman', name:'Frontman', designations:['C'] },
+    { id:'frontman', name:'Frontman', designations:['C','Rg'] },
   ]},
   tennis:         { name:'Tennis',          tier:2, class:'Racquet',      roles:[
     { id:'singles', name:'Singles', designations:['Rg'] },
@@ -206,9 +231,9 @@ export const CLASS_GEAR_LAYOUT = {
   'Ball':         { slots: ['weapon', 'headwear', 'footwear', 'chest', 'handwear'], classItemMultiplier: 1 },
   'Racquet':      { slots: ['weapon', 'headwear', 'footwear', 'chest', 'handwear'], classItemMultiplier: 1 },
   'Target':       { slots: ['weapon', 'headwear', 'footwear', 'chest', 'handwear'], classItemMultiplier: 1 },
-  'Athletics':    { slots: ['weapon', 'headwear', 'chest', 'handwear'], classItemMultiplier: 1 },
+  'Athletics':    { slots: ['weapon', 'headwear', 'chest', 'handwear'], classItemMultiplier: 2 },
   'Martial Arts': { slots: ['weapon', 'chest', 'footwear', 'headwear'], classItemMultiplier: 2 },
-  'Performance':  { slots: ['weapon', 'chest'], classItemMultiplier: 3 },
+  'Performance':  { slots: ['weapon', 'chest'], classItemMultiplier: 3, weaponItemMultiplier:3},
 };
 // Fallback for any class grouping that somehow doesn't match above — full
 // 5-slot layout, no bonus. Shouldn't be hit in practice (every SPORTS class
@@ -312,8 +337,14 @@ export function unlockedRoleIds(unit) {
 // Standalone-folded units (no chainId) never have a pending promotion.
 export function pendingPromotion(unit) {
   if (!unit.chainId) return null;
-  if (unit.level >= CLASS_TIER_LEVELS.t3 && !unit.t3Sport) return 't3';
+  // T2 must be checked (and offered) before T3 — a unit that jumps straight
+  // to level 20+ without ever promoting (e.g. a high-level recruit leveled
+  // up to match the party, or a big multi-level XP grant) has t2Sport still
+  // null, and checking T3 first used to surface a T3 prompt that let the
+  // player promote straight past T2, skipping its sport/role/abilities
+  // entirely (2026-07-08 bug report).
   if (unit.level >= CLASS_TIER_LEVELS.t2 && !unit.t2Sport) return 't2';
+  if (unit.level >= CLASS_TIER_LEVELS.t3 && !unit.t3Sport) return 't3';
   return null;
 }
 // Sport choices available for a unit's pending T3 promotion (branching chains
@@ -332,6 +363,9 @@ export function promoteUnit(unit, tier, roleId, sportId) {
     unit.t2Sport = chain.t2;
     unit.t2Role = roleId;
   } else if (tier === 't3') {
+    // Defense in depth against the same "T3 before T2" bug pendingPromotion
+    // used to have — refuse a T3 promotion for a unit that never chose T2.
+    if (!unit.t2Sport) return false;
     const sport = sportId ?? chain.t3[0];
     if (!chain.t3.includes(sport)) return false;
     unit.t3Sport = sport;
@@ -375,10 +409,288 @@ export const state = {
   inventory: [],          // array of item objects (from items.js)
   tytrate: 150,
   completedMissions: [],
-  unlockedMissions: ['M1'],
-  currentMission: 'M1',
+  unlockedMissions: ['M0'],
+  currentMission: 'M0',
+  // Unused since the M0-M4 redesign's Phase 3 replaced its one cutscene
+  // trigger with the real capitalQuest/capitalCraftCount gate — left in
+  // place harmlessly for save-shape compatibility.
   forgeVisited: false,
+  wildsEntryShown: false,
+  // Repurposed (Phase 4, M0-M4 redesign) as M4's one-time "never thought
+  // I'd fight our instructor" exam-intro flag — previously gated the old
+  // Hollow Caves reveal cutscene, which no longer exists.
+  caveEntryShown: false,
+  // Generic one-time-intro gate for the region cave/unique-area missions
+  // (M5-M12, July 2026) — an array of mission ids rather than one boolean
+  // per mission like wildsEntryShown/caveEntryShown above, since there are
+  // 8 of these.
+  missionIntroShown: [],
+  // M1 (wolf battle) doesn't unlock M2 on its own — the player must return
+  // to M0 (Hidden Village) to turn it in for the herb/Tytrate reward and the
+  // Academy-selection news, which is what actually unlocks M2 (M0-M4
+  // redesign, July 2026). This flag gates that one-time turn-in.
+  m1TurnedIn: false,
+  // The Capital (M3) questline stage machine (M0-M4 redesign, Phase 3) —
+  // see WorldMapScene's M3 click handler for the full stage flow:
+  // 'not_started' -> 'intro' -> 'test1_active' -> 'test2_active' ->
+  // 'craft_pending' -> 'recruit_pending' -> 'exam_ready' -> 'done'.
+  capitalQuest: 'not_started',
+  // Crafts completed at the Forge while capitalQuest === 'craft_pending' —
+  // the questline advances once this reaches 2 AND the player has left the
+  // Forge and returned to M3 (see ForgeScene.js).
+  capitalCraftCount: 0,
+  // M0a (Hidden Cave ore mission, Phase 5) mirrors M1's turn-in pattern —
+  // winning it doesn't hand out its 500T first-clear reward until the
+  // player returns to M0 and collects it (see WorldMapScene's M0 handler).
+  m0aTurnedIn: false,
+  // Replay counters, keyed by mission id — M0a and M0b use this (each
+  // repeat escalates enemies: level +2, endurance/stamina +25%,
+  // strength +10% per repeat, see BattleScene.js), kept as a generic
+  // map in case future repeatable missions need the same pattern.
+  repeatCounts: {},
+  // Academy task boards (Phase 7, M0-M4 redesign) — keyed by hub node id
+  // (A1/A2), each a fixed-length array of task-or-null slots. Null/expired
+  // slots get rerolled by refreshAcademyTasks() whenever that academy's
+  // task-list screen is opened. See generateAcademyTask() below for shape.
+  academyTasks: { A1: [null, null], A2: [null, null] },
+  // Academy quest lists (Phase 7) — keyed by hub node id, each an array of
+  // quest-def ids (see QUEST_DEFS below). Ester (A1) got its own 3
+  // (2026-07-11); Hilbert (A2) got its own 3 the same day. Artfall (AF)
+  // added later the same day, 'questList' service added to its
+  // HUB_CONFIGS entry to go with it — just the one Alpha King Dragon quest.
+  academyQuests: { A1: ['defeat_dragon_wyverns', 'rock_damage_race', 'grow_the_party'], A2: ['defeat_king_lion', 'goblin_king', 'clear_northern_cave'], M5: ['gale_monster_hunt', 'kill_alpha_king_dragon', 'gale_legendary_gear'] },
+  // Hidden Village quest-acceptance gate (2026-07-07 feedback) — M0a/M0b
+  // aren't enterable from the map just because they're in unlockedMissions
+  // (that only means "known/available") — the player must separately
+  // accept them from the Village's Quest Menu (VillageQuestListScene)
+  // before the map node will actually start a battle. Reset to false by
+  // VictoryScene after every completion (not just the first), so the
+  // player has to return and re-accept before each replay too. A2a/A2b/A2c
+  // (2026-07-11) reuse this exact gate, just accepted from
+  // AcademyQuestListScene instead of VillageQuestListScene.
+  questAccepted: { M0a: false, M0b: false, A1a: false, A1b: false, A2a: false, A2b: false, A2c: false },
+  // Which save slot (1/2/3) the current session reads/writes — set by
+  // loadGame(slot) or newGame(starter, slot), never persisted itself (it's
+  // a runtime pointer, not part of the save data).
+  activeSlot: null,
 };
+
+// Temporary battle-party-size cap (M0-M4 redesign, Phase 6) — the spec wants
+// only 2 units usable in battle for the window between recruiting a 2nd
+// party member at the Capital and winning the exam fight, so the player
+// can't just steamroll the exam with a full roster before it's "earned."
+// Once past that window, the real permanent cap is MAX_BATTLE_PARTY_SIZE
+// (2026-07-08 feedback: roster can grow past 20, but only 4 fight at once —
+// see getBattleParty/BattlePartySelectScene below for how a larger roster
+// picks which 4 go in).
+export const MAX_BATTLE_PARTY_SIZE = 4;
+export function maxBattlePartySize(state) {
+  if (['craft_pending', 'recruit_pending', 'exam_ready'].includes(state.capitalQuest)) {
+    return 2;
+  }
+  return Math.min(MAX_BATTLE_PARTY_SIZE, state.party.length);
+}
+
+// Which specific units (by id) fight this battle, when the roster is bigger
+// than the cap — set by BattlePartySelectScene, consumed once by BattleScene
+// then cleared (state.battlePartyIds below) so a later battle with a changed
+// roster (recruit/dismiss) always re-prompts instead of reusing a stale pick.
+// Not part of the persisted save shape (see saveGame) — purely a same-session
+// handoff between the picker and BattleScene.
+state.battlePartyIds = null;
+export function getBattleParty(state) {
+  const cap = maxBattlePartySize(state);
+  if (state.battlePartyIds?.length) {3
+    const chosen = state.battlePartyIds
+      .map(id => state.party.find(u => u.id === id))
+      .filter(Boolean)
+      .slice(0, cap);
+    if (chosen.length) return chosen;
+  }
+  return state.party.slice(0, cap);
+}
+
+// ── Academy task board (Phase 7, M0-M4 redesign) ─────────────────────────
+// Item ids kept as plain strings (not imported from items.js) to avoid a
+// circular import — items.js already imports from this module. The task
+// board's own scene resolves these ids to display names/icons via items.js.
+const TASK_ITEM_POOL = ['heal_herb', 'iron_scrap', 'leather_strip', 'skin', 'fur', 'bone', 'iron_ore', 'mint_sprig', 'lavender_bloom', 'wild_berries'];
+const TASK_NPC_POOL = ['Coach Renna', 'Old Tomas', 'Quartermaster Iyla', 'Groundskeeper Bell', 'Nurse Wen'];
+export const TASK_SLOT_COUNT = 2;
+export const TASK_REFRESH_MS = 20 * 60 * 1000;
+
+let taskIdCounter = 1;
+function generateAcademyTask() {
+  const itemId = TASK_ITEM_POOL[Math.floor(Math.random() * TASK_ITEM_POOL.length)];
+  const targetName = TASK_NPC_POOL[Math.floor(Math.random() * TASK_NPC_POOL.length)];
+  const qty = 2 + Math.floor(Math.random() * 4); // 2-5
+  const reward = qty * (10 + Math.floor(Math.random() * 15)); // roughly scales with qty
+  return {
+    id: `task_${taskIdCounter++}`,
+    itemId, qty, targetName, reward,
+    expiresAt: Date.now() + TASK_REFRESH_MS,
+  };
+}
+
+// Fills any empty/expired slot in the given academy's task board. Call this
+// whenever that academy's task-list screen is opened (not on a timer — the
+// game only needs to reroll when someone's looking).
+export function refreshAcademyTasks(nodeId) {
+  const board = state.academyTasks[nodeId];
+  if (!board) return;
+  const now = Date.now();
+  for (let i = 0; i < board.length; i++) {
+    if (!board[i] || board[i].expiresAt <= now) board[i] = generateAcademyTask();
+  }
+}
+
+// Turn in a completed task: removes the matching materials from inventory,
+// grants the reward, and clears the slot (so it rerolls next visit).
+// Returns true on success, false if the player doesn't have enough of the
+// item yet.
+export function turnInAcademyTask(nodeId, slotIndex) {
+  const board = state.academyTasks[nodeId];
+  const task = board?.[slotIndex];
+  if (!task) return false;
+  const have = state.inventory.filter(it => it.id === task.itemId);
+  if (have.length < task.qty) return false;
+  let removed = 0;
+  for (let i = state.inventory.length - 1; i >= 0 && removed < task.qty; i--) {
+    if (state.inventory[i].id === task.itemId) { state.inventory.splice(i, 1); removed++; }
+  }
+  state.tytrate += task.reward;
+  board[slotIndex] = null;
+  return true;
+}
+
+// ── Academy quest list (Phase 7, M0-M4 redesign) ─────────────────────────
+// Hand-authored story quests (as opposed to the randomly generated task
+// board above). `done` is a live check against state, never a stored flag,
+// so it can't go stale. Only one quest exists today per the user's spec —
+// they said the fuller list would be drafted later.
+// `available` gates whether the quest is listed at all — "Kill the King
+// Wolf" shouldn't appear here before the player has actually accepted the
+// Wolf's Den quest at the Hidden Village (2026-07-07 feedback); reuses
+// `unlockedMissions.includes('M0b')` since that flag now only flips once
+// the player accepts the Danger Incoming prompt at M0 (see WorldMapScene).
+// 2026-07-11 ("hilbert academy will have 3 quest") — Hilbert Academy (A2)
+// gets its own 3 hand-authored quests, each with a `missionId` (own new
+// map node, off A2 — user: "lets just add it own nodes", not a reuse of
+// the Capital-trial M3a/M3b fights). `available` gates on the node being
+// unlocked (pushed alongside A1/A2 itself, see WorldMapScene's
+// craft_pending stage) so these can't appear before Hilbert Academy does.
+export const QUEST_DEFS = {
+  kill_king_wolf: {
+    text: 'Kill the King Wolf',
+    available: (s) => s.unlockedMissions.includes('M0b'),
+    check: (s) => s.completedMissions.includes('M0b'),
+  },
+  // Gale's quest list (2026-07-11 — "gale gives out 3 quest[s]... kill
+  // the dragon [is] the 2[nd] quest, so make that repeatable"). Both
+  // quests are already replayable via the default isCompleted →
+  // showDifficultyPicker flow every NEW_AREA_INTRO-driven node gets (see
+  // onMissionClick) — no missionId on either (no separate "accept" step,
+  // same as kill_king_wolf above; the map node itself IS the quest here).
+  // kill_alpha_king_dragon moved here from Artfall's list (2026-07-11
+  // eighth follow-up added it there originally) — Artfall's questList
+  // service was removed since it'd be empty otherwise; DK's own node
+  // still connects from AF, only the quest-list HOME moved.
+  kill_alpha_king_dragon: {
+    text: 'Kill the Alpha King Dragon',
+    available: (s) => s.unlockedMissions.includes('DK'),
+    check: (s) => s.completedMissions.includes('DK'),
+  },
+  gale_monster_hunt: {
+    text: 'Monster Hunt',
+    available: (s) => s.unlockedMissions.includes('MH'),
+    check: (s) => s.completedMissions.includes('MH'),
+  },
+  // Gale's 3rd quest (2026-07-11, "third quest should equipment lendary
+  // gear on all slots... for one unit") — a pure passive state check, no
+  // battle, same shape as grow_the_party. "All slots" means all slots
+  // THAT UNIT actually has (per gearLayoutForUnit — Performance-class
+  // units only have 2, not the full 5), checked against a SINGLE unit
+  // rather than spread across the whole party ("one unit").
+  gale_legendary_gear: {
+    text: 'Full Legendary Loadout (1 Unit)',
+    available: (s) => s.unlockedMissions.includes('M5'),
+    check: (s) => s.party.some(u => gearLayoutForUnit(u).slots.every(slot => u.equip[slot]?.rarity === 'legendary')),
+  },
+  // Ester Academy's 3 quests (2026-07-11) — "3 quest at ester", same
+  // own-nodes-with-accept-step treatment as Hilbert Academy's A2a/A2b/A2c.
+  // Dropped kill_king_wolf from A1's list to keep the total at 3, matching
+  // how A2 dropped it too (see academyQuests below) — the def itself is
+  // left in place, just unreferenced, same as A2's treatment.
+  defeat_dragon_wyverns: {
+    text: 'Defeat the Dragon',
+    missionId: 'A1a',
+    available: (s) => s.unlockedMissions.includes('A1a'),
+    check: (s) => s.completedMissions.includes('A1a'),
+  },
+  rock_damage_race: {
+    text: 'The Great Boulder',
+    missionId: 'A1b',
+    available: (s) => s.unlockedMissions.includes('A1b'),
+    check: (s) => s.completedMissions.includes('A1b'),
+  },
+  // No missionId — a pure roster-size check, no battle attached (same
+  // no-missionId shape as kill_king_wolf above). MAX_BATTLE_PARTY_SIZE=4
+  // means "5 party members" can only mean roster size, not battle-party
+  // size (see getBattleParty/maxBattlePartySize elsewhere in this file).
+  grow_the_party: {
+    text: 'Grow the Party (5 Members)',
+    check: (s) => s.party.length >= 5,
+  },
+  defeat_king_lion: {
+    text: 'Defeat the King',
+    missionId: 'A2a',
+    available: (s) => s.unlockedMissions.includes('A2a'),
+    check: (s) => s.completedMissions.includes('A2a'),
+  },
+  goblin_king: {
+    text: 'Goblin King',
+    missionId: 'A2b',
+    available: (s) => s.unlockedMissions.includes('A2b'),
+    check: (s) => s.completedMissions.includes('A2b'),
+  },
+  clear_northern_cave: {
+    text: 'Clear the Northern Cave',
+    missionId: 'A2c',
+    available: (s) => s.unlockedMissions.includes('A2c'),
+    check: (s) => s.completedMissions.includes('A2c'),
+  },
+};
+
+// All 6 hand-authored academy quest ids (A1's 3 + A2's 3) — used to gate the
+// Altroes Trials (2026-07-11, "after all 6 questions are done player can
+// take the Altroes trials"). Checked directly against QUEST_DEFS rather than
+// through getAcademyQuests/state.academyQuests, since grow_the_party has no
+// missionId and so never fires a VictoryScene completion event — this gate
+// has to be a live, continuously-recomputed check (see WorldMapScene's
+// create(), same pattern as the M0b level-8 unlock), not something a single
+// mission-complete hook can trigger.
+const ACADEMY_QUEST_IDS_ALL = [
+  'defeat_dragon_wyverns', 'rock_damage_race', 'grow_the_party',
+  'defeat_king_lion', 'goblin_king', 'clear_northern_cave',
+];
+export function allAcademyQuestsDone(s) {
+  return ACADEMY_QUEST_IDS_ALL.every(id => QUEST_DEFS[id].check(s));
+}
+
+export function getAcademyQuests(nodeId) {
+  return (state.academyQuests[nodeId] ?? []).map(id => {
+    const def = QUEST_DEFS[id];
+    if (!def || (def.available && !def.available(state))) return null;
+    // `missionId` (2026-07-11, Hilbert Academy's 3 quests) marks a quest
+    // that needs an explicit accept step before its map node will start a
+    // battle — same state.questAccepted gate M0a/M0b already use, just
+    // triggered from here instead of VillageQuestListScene. kill_king_wolf
+    // has no missionId, so `accepted` stays undefined for it — the scene
+    // reads that as "no accept button needed" (pure passive tracker).
+    const accepted = def.missionId ? !!state.questAccepted[def.missionId] : undefined;
+    return { id, text: def.text, done: def.check(state), missionId: def.missionId, accepted };
+  }).filter(Boolean);
+}
 
 // XP required to go from `level` to `level+1`
 export function xpToNext(level) { return level * 100; }
@@ -485,11 +797,94 @@ export function unequipSlot(unit, slot) {
   state.inventory.push(item);
 }
 
-// Add a character from FULL_ROSTER to the active party (no-op if already present).
-export function recruitCharacter(id) {
-  if (state.party.find(u => u.id === id)) return;
+// Recruit a FULL_ROSTER character with a player-chosen class (same choice
+// shape as createStarterUnit: sport/role/talents/element) instead of their
+// preset FULL_ROSTER identity — only id/name/initials/color are kept from
+// the template, matching how the protagonist's own identity is fixed but
+// class is chosen. Levels the recruit up to match the party's current
+// level (mirrors createStarterUnit's STARTER_LEVEL loop) so a mid-game
+// recruit isn't crippled relative to whoever's already fighting.
+export function recruitWithChoice(id, { t1Sport, t1Role, talents, element }) {
+  if (state.party.find(u => u.id === id)) return null;
   const template = FULL_ROSTER.find(u => u.id === id);
-  if (template) state.party.push({ ...template, equip: mkEquip(), classSkills: [] });
+  if (!template) return null;
+
+  const chain = getChainForT1Sport(t1Sport);
+  const targetLevel = Math.max(1, ...state.party.map(u => u.level));
+  const unit = {
+    id: template.id, name: template.name, initials: template.initials, color: template.color,
+    element: element ?? template.element,
+    chainId: chain?.id ?? null,
+    t1Sport, t1Role, t2Sport: null, t2Role: null, t3Sport: null, t3Role: null,
+    level: 1, xp: 0,
+    speed: 8, strength: 8, stamina: 8, endurance: 8, moveSpeed: 4,
+    talents: [...talents], classSkills: [],
+    equip: mkEquip(), sp: 4, maxSp: 4,
+  };
+  while (unit.level < targetLevel) {
+    const gains = levelUpGains(unit);
+    unit.speed      += gains.speed;
+    unit.strength   += gains.strength;
+    unit.stamina    += gains.stamina;
+    unit.endurance  += gains.endurance;
+    unit.level++;
+  }
+  state.party.push(unit);
+  return unit;
+}
+
+// Total roster cap (2026-07-08 feedback) — separate from MAX_BATTLE_PARTY_SIZE
+// above: a player can recruit up to this many units total, but only
+// MAX_BATTLE_PARTY_SIZE of them fight in any one battle.
+export const MAX_ROSTER_SIZE = 20;
+
+let genericRecruitCounter = 1;
+// Recruit a brand-new, player-named unit (as opposed to recruitWithChoice,
+// which reactivates one of the 6 fixed FULL_ROSTER story characters) —
+// generated id/initials/color, everything else chosen the same way a
+// FULL_ROSTER recruit or the protagonist is (sport/role/talents/element).
+// Returns null (no-op) if the roster is already at MAX_ROSTER_SIZE.
+export function recruitNewUnit({ name, t1Sport, t1Role, talents, element }) {
+  if (state.party.length >= MAX_ROSTER_SIZE) return null;
+
+  const chain = getChainForT1Sport(t1Sport);
+  const targetLevel = Math.max(1, ...state.party.map(u => u.level));
+  const COLOR_POOL = [0x4488ff, 0x44cc44, 0x44cccc, 0xff8844, 0xaa44ff, 0xff44aa, 0xffdd44, 0x66ddaa];
+  const initials = (name.trim().slice(0, 2) || '??').toUpperCase();
+  const unit = {
+    id: `recruit_${genericRecruitCounter++}`,
+    name: name.trim() || 'Recruit',
+    initials,
+    color: COLOR_POOL[Math.floor(Math.random() * COLOR_POOL.length)],
+    element: element ?? 'Fire',
+    chainId: chain?.id ?? null,
+    t1Sport, t1Role, t2Sport: null, t2Role: null, t3Sport: null, t3Role: null,
+    level: 1, xp: 0,
+    speed: 8, strength: 8, stamina: 8, endurance: 8, moveSpeed: 4,
+    talents: [...talents], classSkills: [],
+    equip: mkEquip(), sp: 4, maxSp: 4,
+  };
+  while (unit.level < targetLevel) {
+    const gains = levelUpGains(unit);
+    unit.speed      += gains.speed;
+    unit.strength   += gains.strength;
+    unit.stamina    += gains.stamina;
+    unit.endurance  += gains.endurance;
+    unit.level++;
+  }
+  state.party.push(unit);
+  return unit;
+}
+
+// Remove a unit from the roster (PartyScene's Dismiss action). Refuses to
+// drop the last unit — the game has no path forward with an empty party.
+export function dismissUnit(id) {
+  if (state.party.length <= 1) return false;
+  const idx = state.party.findIndex(u => u.id === id);
+  if (idx === -1) return false;
+  state.party.splice(idx, 1);
+  if (state.battlePartyIds) state.battlePartyIds = state.battlePartyIds.filter(bid => bid !== id);
+  return true;
 }
 
 // Equip a known passive (Class Skill) id into one of a unit's unlocked slots
@@ -512,14 +907,55 @@ export function completeMission(missionId, nextMissionId) {
 }
 
 // ── Persistence ──────────────────────────────────────────────────────────────
+// Three independent save slots (1/2/3) instead of one shared save.
 
-const SAVE_KEY = 'born-gifted-save-v1';
+export const SAVE_SLOTS = [1, 2, 3];
+const SAVE_KEY_PREFIX = 'born-gifted-save-v1-slot';
+const slotKey = (slot) => `${SAVE_KEY_PREFIX}${slot}`;
 
-export function hasSave() {
-  return !!localStorage.getItem(SAVE_KEY);
+// One-time migration: a pre-slots save lived under this flat key. Move it
+// into slot 1 the first time this module loads after the update, so nobody
+// loses progress. Runs once per page load; a no-op once migrated (or if
+// there was never an old-format save).
+const LEGACY_SAVE_KEY = 'born-gifted-save-v1';
+(function migrateLegacySingleSlotSave() {
+  const old = localStorage.getItem(LEGACY_SAVE_KEY);
+  if (old && !localStorage.getItem(slotKey(1))) {
+    localStorage.setItem(slotKey(1), old);
+  }
+  if (old) localStorage.removeItem(LEGACY_SAVE_KEY);
+})();
+
+export function hasSave(slot) {
+  return !!localStorage.getItem(slotKey(slot));
 }
 
-export function saveGame() {
+// Light-weight peek at a slot for the title screen's slot picker — doesn't
+// touch `state`, just reads and summarizes the raw JSON.
+export function getSaveSummary(slot) {
+  try {
+    const raw = localStorage.getItem(slotKey(slot));
+    if (!raw) return null;
+    const data = JSON.parse(raw);
+    const lead = data.party?.[0];
+    if (!lead) return null;
+    return {
+      leadName: lead.name ?? '?',
+      level: lead.level ?? 1,
+      partySize: data.party?.length ?? 1,
+      missionsCompleted: data.completedMissions?.length ?? 0,
+      savedAt: data.savedAt ?? null,
+    };
+  } catch (e) {
+    return null;
+  }
+}
+
+export function deleteSave(slot) {
+  localStorage.removeItem(slotKey(slot));
+}
+
+export function saveGame(slot = state.activeSlot ?? 1) {
   try {
     const data = {
       version: 2,
@@ -538,12 +974,27 @@ export function saveGame() {
         speed: u.speed, strength: u.strength, stamina: u.stamina, endurance: u.endurance,
         moveSpeed: u.moveSpeed, sp: u.sp ?? 4, maxSp: u.maxSp ?? 4,
         talents: [...(u.talents ?? [])], classSkills: [...(u.classSkills ?? [])],
+        equippedSpecials: [...(u.equippedSpecials ?? [])], equippedSkills: [...(u.equippedSkills ?? [])],
         equip: JSON.parse(JSON.stringify(u.equip)),
       })),
       inventory: state.inventory.map(i => ({ ...i })),
       forgeVisited: state.forgeVisited,
+      wildsEntryShown: state.wildsEntryShown,
+      caveEntryShown: state.caveEntryShown,
+      missionIntroShown: [...state.missionIntroShown],
+      m1TurnedIn: state.m1TurnedIn,
+      capitalQuest: state.capitalQuest,
+      capitalCraftCount: state.capitalCraftCount,
+      m0aTurnedIn: state.m0aTurnedIn,
+      repeatCounts: { ...state.repeatCounts },
+      academyTasks: {
+        A1: state.academyTasks.A1.map(t => t ? { ...t } : null),
+        A2: state.academyTasks.A2.map(t => t ? { ...t } : null),
+      },
+      academyQuests: { A1: [...state.academyQuests.A1], A2: [...state.academyQuests.A2], M5: [...state.academyQuests.M5] },
+      questAccepted: { ...state.questAccepted },
     };
-    localStorage.setItem(SAVE_KEY, JSON.stringify(data));
+    localStorage.setItem(slotKey(slot), JSON.stringify(data));
     return true;
   } catch (e) {
     return false;
@@ -617,9 +1068,9 @@ function migrateLegacyUnit(u) {
   };
 }
 
-export function loadGame() {
+export function loadGame(slot) {
   try {
-    const raw = localStorage.getItem(SAVE_KEY);
+    const raw = localStorage.getItem(slotKey(slot));
     if (!raw) return false;
     const data = JSON.parse(raw);
     if (!data?.party) return false;
@@ -636,9 +1087,38 @@ export function loadGame() {
     state.inventory         = data.inventory         ?? [];
     state.tytrate           = data.tytrate           ?? 150;
     state.completedMissions = data.completedMissions ?? [];
-    state.unlockedMissions  = data.unlockedMissions  ?? ['M1'];
-    state.currentMission    = data.currentMission    ?? 'M1';
+    state.unlockedMissions  = data.unlockedMissions  ?? ['M0'];
+    // Backfill for saves made before Hilbert Academy's 3 quests existed
+    // (2026-07-11) — anyone who already unlocked A2 has already passed the
+    // one-time story beat that would normally unlock A2a/A2b/A2c alongside
+    // it (see WorldMapScene's craft_pending stage), so retroactively grant
+    // those too rather than leaving them permanently unreachable.
+    if (state.unlockedMissions.includes('A2')) {
+      for (const id of ['A2a', 'A2b', 'A2c']) {
+        if (!state.unlockedMissions.includes(id)) state.unlockedMissions.push(id);
+      }
+    }
+    state.currentMission    = data.currentMission    ?? 'M0';
     state.forgeVisited      = data.forgeVisited      ?? false;
+    state.wildsEntryShown   = data.wildsEntryShown   ?? false;
+    state.caveEntryShown    = data.caveEntryShown    ?? false;
+    state.missionIntroShown = data.missionIntroShown ?? [];
+    state.m1TurnedIn        = data.m1TurnedIn        ?? false;
+    state.capitalQuest      = data.capitalQuest      ?? 'not_started';
+    state.capitalCraftCount = data.capitalCraftCount ?? 0;
+    state.m0aTurnedIn       = data.m0aTurnedIn        ?? false;
+    state.repeatCounts      = { ...(data.repeatCounts ?? {}) };
+    state.academyTasks      = {
+      A1: data.academyTasks?.A1 ?? [null, null],
+      A2: data.academyTasks?.A2 ?? [null, null],
+    };
+    // Fixed content, not player-customizable — always set to the current
+    // roster rather than trusting a possibly-stale stored value, so an
+    // existing save picks up newly-added academy quests automatically
+    // (2026-07-11: Hilbert's 3 quests replacing its old single entry).
+    state.academyQuests     = { A1: ['defeat_dragon_wyverns', 'rock_damage_race', 'grow_the_party'], A2: ['defeat_king_lion', 'goblin_king', 'clear_northern_cave'], M5: ['gale_monster_hunt', 'kill_alpha_king_dragon', 'gale_legendary_gear'] };
+    state.questAccepted     = { M0a: false, M0b: false, A1a: false, A1b: false, A2a: false, A2b: false, A2c: false, ...(data.questAccepted ?? {}) };
+    state.activeSlot        = slot;
     return true;
   } catch (e) {
     return false;
@@ -679,15 +1159,28 @@ export function createStarterUnit({ t1Sport, t1Role, talents, element }) {
   return unit;
 }
 
-// Start a new game. Pass the unit built by the character-creation flow
-// (createStarterUnit); falls back to the default roster lead if omitted.
-export function newGame(starterUnit) {
+// Start a new game in the given slot. Pass the unit built by the
+// character-creation flow (createStarterUnit); falls back to the default
+// roster lead if omitted.
+export function newGame(starterUnit, slot) {
   state.party             = [ starterUnit ?? { ...FULL_ROSTER[0], equip: mkEquip(), sp: 4, maxSp: 4, classSkills: [] } ];
   state.inventory         = [];
   state.tytrate           = 150;
   state.completedMissions = [];
-  state.unlockedMissions  = ['M1'];
-  state.currentMission    = 'M1';
+  state.unlockedMissions  = ['M0'];
+  state.currentMission    = 'M0';
   state.forgeVisited      = false;
-  localStorage.removeItem(SAVE_KEY);
+  state.wildsEntryShown   = false;
+  state.caveEntryShown    = false;
+  state.missionIntroShown = [];
+  state.m1TurnedIn        = false;
+  state.capitalQuest      = 'not_started';
+  state.capitalCraftCount = 0;
+  state.m0aTurnedIn       = false;
+  state.repeatCounts      = {};
+  state.academyTasks      = { A1: [null, null], A2: [null, null] };
+  state.academyQuests     = { A1: ['defeat_dragon_wyverns', 'rock_damage_race', 'grow_the_party'], A2: ['defeat_king_lion', 'goblin_king', 'clear_northern_cave'], M5: ['gale_monster_hunt', 'kill_alpha_king_dragon', 'gale_legendary_gear'] };
+  state.questAccepted     = { M0a: false, M0b: false, A1a: false, A1b: false, A2a: false, A2b: false, A2c: false };
+  state.activeSlot        = slot;
+  localStorage.removeItem(slotKey(slot));
 }

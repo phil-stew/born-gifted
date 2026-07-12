@@ -71,7 +71,9 @@ export class InventoryScene extends Phaser.Scene {
       fontSize: '13px', fontFamily: 'monospace', fontStyle: 'bold', color: '#ffdd66',
     }).setOrigin(1, 0.5).setDepth(10);
 
-    const back = this.add.text(14, height - 22, '◀  WORLD MAP', {
+    // Moved into the header (2026-07-11, "have the back button at top of
+    // menues") — was bottom-left, now top-left, same row as the title.
+    const back = this.add.text(14, 12, '◀  WORLD MAP', {
       fontSize: '12px', fontFamily: 'monospace', color: '#7777aa',
       backgroundColor: '#0e0e20', padding: { x: 10, y: 5 },
     }).setOrigin(0, 0.5).setInteractive({ useHandCursor: true });

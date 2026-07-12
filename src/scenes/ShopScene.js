@@ -162,10 +162,12 @@ export class ShopScene extends Phaser.Scene {
       fontSize: '15px', fontFamily: 'monospace', fontStyle: 'bold', color: GOLD_DARK,
     }).setOrigin(1, 0.5).setDepth(10);
 
-    const back = this.add.text(14, height - 24, '◀  BACK', {
+    // Moved into the header (2026-07-11, "have the back button at top of
+    // menues") — was bottom-left, now top-left, same row as the title.
+    const back = this.add.text(14, 14, '◀  BACK', {
       fontSize: '14px', fontFamily: 'monospace', color: TEXT_MED,
       backgroundColor: '#00000055', padding: { x: 10, y: 5 },
-    }).setOrigin(0, 0.5).setInteractive({ useHandCursor: true });
+    }).setOrigin(0, 0.5).setInteractive({ useHandCursor: true }).setDepth(10);
     back.on('pointerover', () => back.setStyle({ color: TEXT_DARK }));
     back.on('pointerout',  () => back.setStyle({ color: TEXT_MED }));
     back.on('pointerdown', () => {

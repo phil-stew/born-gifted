@@ -65,6 +65,10 @@ const SPRITE_INFO = {
   // Lion: faster moveSpeed to match its higher speed stat vs Wolf.
   Goblin: { spriteKey: 'goblin-idle', animKey: 'goblin-idle', file: 'monster/goblin.png', fw: 249, fh: 175, spriteScale: 0.35, moveSpeed: 2 },
   Lion:   { spriteKey: 'lion-idle',   animKey: 'lion-idle',   file: 'monster/lion.png',   fw: 249, fh: 175, spriteScale: 0.35, moveSpeed: 3 },
+  // Wired for Ester Academy's "Defeat 1 dragon and two wyverns" quest
+  // (2026-07-11). Same 1536x1024 canvas as Boar, so the same fw/fh (256x170).
+  Dragon: { spriteKey: 'dragon-idle', animKey: 'dragon-idle', file: 'monster/dragon.png', fw: 256, fh: 170, spriteScale: 0.4,  moveSpeed: 2 },
+  Wyvern: { spriteKey: 'wyven-idle',  animKey: 'wyven-idle',  file: 'monster/wyven.png',  fw: 256, fh: 170, spriteScale: 0.35, moveSpeed: 3 },
 };
 export function spriteInfoForBase(base) {
   return SPRITE_INFO[base] ?? null;
@@ -159,6 +163,9 @@ export function spriteInfoForBase(base) {
 // animation King Wolf ever needs.
 const UNIQUE_SPRITE_INFO = {
   'King Lion': { spriteKey: 'kinglion-idle', animKey: 'kinglion-idle', file: 'monster/kinglion.png', fw: 249, fh: 175, spriteScale: 0.35, moveSpeed: 3 },
+  // Goblin King (A2b) — dedicated art, same 1495x1052/6x6 canvas as King
+  // Lion, single-tile (no size:2 override, unlike King Wolf).
+  'Goblin King': { spriteKey: 'goblinking-idle', animKey: 'goblinking-idle', file: 'monster/goblinking.png', fw: 249, fh: 175, spriteScale: 0.35, moveSpeed: 2 },
   'King Wolf': {
     spriteKey: 'kingwolf-idle', animKey: 'kingwolf-idle', file: 'monster/kingwolf.png',
     fw: 249, fh: 176, spriteScale: 0.65, moveSpeed: 2,
@@ -230,6 +237,32 @@ const MONSTER_ABILITY_POOL = {
   D:  ['shield', 'stopper'],
 };
 
+// 2026-07-09 ("give all monster enemies one attack skill and one passive
+// based on their class") — MONSTER_ABILITY_POOL above mixes active
+// (category 'special'/'skill') and passive abilities in one list per
+// designation, so a random draw from it could hand a monster two actives
+// and zero passives (or vice versa). Split it by each ability's real
+// `category` (read from ABILITIES, not hand-copied) so kit-building can
+// guarantee at least one of each, per designation.
+function splitPoolByCategory(pool) {
+  const skills = [], passives = [];
+  for (const id of pool) (ABILITIES[id]?.category === 'passive' ? passives : skills).push(id);
+  return { skills, passives };
+}
+const MONSTER_SKILL_POOL = {};
+const MONSTER_PASSIVE_POOL = {};
+for (const [designation, pool] of Object.entries(MONSTER_ABILITY_POOL)) {
+  const { skills, passives } = splitPoolByCategory(pool);
+  MONSTER_SKILL_POOL[designation] = skills;
+  MONSTER_PASSIVE_POOL[designation] = passives;
+}
+// KNOWN GAP: Defender (D) has no damage-dealing ability in the pool —
+// Shield is an ally-support skill, so a D monster's "attack skill" slot
+// stays empty and it falls back to a plain basic attack (BattleScene's
+// tryEnemySkill only casts targetType:'enemy' abilities). Not fixed here
+// since no D-designation monster (Bear/Golem) is spawnable yet (see
+// [[project_monster_list_redesign]]) — revisit once one is.
+
 // Species-specific flavor renames — hand-picked (a lookup table, not a
 // generator: the sheet's own resolved examples for skill naming are
 // hand-picked renames, e.g. Tri-Throw -> "Talon Barrage" on Hawk). Falls
@@ -261,9 +294,30 @@ export function monsterSkillName(base, abilityId) {
 
 // ASSUMPTION: "1-3 skills, presumably scaling with tier (T1=1, T3-T4=2-3)"
 // — no exact mapping given, this is a clean monotonic reading of that
-// hedge (T3's 2 and T4's 3 both fall in the stated 2-3 range).
+// hedge (T3's 2 and T4's 3 both fall in the stated 2-3 range). Superseded
+// for regular monsters by the level-based curve below (2026-07-09), kept
+// only in case some other caller still wants a tier-based count.
 export function skillCountForTier(tier) {
   return [1, 2, 2, 3][Math.max(0, Math.min(3, tier - 1))];
+}
+
+// 2026-07-09 ("increased number of skills as the monsters level increases
+// so level 30 will have 2 passives and 4 skills") — the two anchor points
+// given are the baseline (every monster: >=1 skill, >=1 passive) and
+// level 30 (4 skills, 2 passives). Brackets below interpolate linearly in
+// 10-level steps for skills; passives double up at the same boundary
+// where skills hit 3 (level 20) so "2 passives" is already true by 30,
+// matching the given anchor exactly. Counts are clamped to each
+// designation's actual pool size in buildMonsterKit, so this never asks
+// for more abilities than exist.
+export function skillCountForLevel(level) {
+  if (level >= 30) return 4;
+  if (level >= 20) return 3;
+  if (level >= 10) return 2;
+  return 1;
+}
+export function passiveCountForLevel(level) {
+  return level >= 20 ? 2 : 1;
 }
 
 function shuffled(arr) {
@@ -302,18 +356,27 @@ function rollGeneratedSkill(designation) {
   };
 }
 
-// Builds the skill kit for one monster instance.
+// Builds the skill+passive kit for one monster instance.
 //   kind: 'regular' | 'boss' | 'unique'
-//   tier: 1-4, only meaningful for 'regular' (bosses/uniques get the FULL
-//         designation pool regardless — "fuller kits" per the sheet).
-export function buildMonsterKit(base, { kind = 'regular', tier = 1 } = {}) {
+//   level: the monster's actual battle-time level (not tier) — only
+//          meaningful for 'regular' (bosses/uniques keep getting the FULL
+//          designation pool regardless of level, "fuller kits" per the
+//          sheet, same as before this pass).
+function pickFromPool(pool, count) {
+  return count >= pool.length ? [...pool] : shuffled(pool).slice(0, count);
+}
+export function buildMonsterKit(base, { kind = 'regular', level = 1 } = {}) {
   const designation = MONSTER_DESIGNATION[base];
-  const pool = MONSTER_ABILITY_POOL[designation] ?? [];
-  const count = kind === 'regular' ? skillCountForTier(tier) : pool.length;
-  const ids = count >= pool.length ? [...pool] : shuffled(pool).slice(0, count);
-  const skills = ids.map(id => abilityEntry(base, id));
+  const skillPool = MONSTER_SKILL_POOL[designation] ?? [];
+  const passivePool = MONSTER_PASSIVE_POOL[designation] ?? [];
+  const skillCount = kind === 'regular' ? skillCountForLevel(level) : skillPool.length;
+  const passiveCount = kind === 'regular' ? passiveCountForLevel(level) : passivePool.length;
+  const skillIds = pickFromPool(skillPool, skillCount);
+  const passiveIds = pickFromPool(passivePool, passiveCount);
+  const skills = skillIds.map(id => abilityEntry(base, id));
+  const passives = passiveIds.map(id => abilityEntry(base, id));
   if (kind === 'unique') skills.push(rollGeneratedSkill(designation));
-  return { designation, skills };
+  return { designation, skills, passives };
 }
 
 // ── Full monster instance builder ────────────────────────────────────────
@@ -360,8 +423,21 @@ export function buildMonster({ base, tier = 1, kind = 'regular', element = null,
     else name = tierInfo.prefix ? `${tierInfo.prefix} ${base}` : base;
   }
 
-  const { skills } = buildMonsterKit(base, { kind, tier });
+  // NOTE: `level` here is just the pre-battle tier placeholder (1-4, or 5
+  // for boss/unique) — MISSION_CONFIGS entries are built by calling
+  // buildMonster() at module-load time, long before BattleScene computes
+  // the real scaled/repeat-boosted level a spawned enemy actually gets
+  // (see BattleScene.js's `lv`, capped by REPEAT_LEVEL_CAP). So the kit
+  // built here is only a placeholder for reference display; BattleScene
+  // rebuilds skills/passives with `lv` right after spawning enemies.
+  const { skills, passives } = buildMonsterKit(base, { kind, level });
   const sprite = UNIQUE_SPRITE_INFO[name] ?? spriteInfoForBase(base);
+
+  // Baseline SP so monsters can pay for their skills (2026-07-09) — flat
+  // 4, matching the player-side unmodified default (gameState.js's
+  // `sp: 4, maxSp: 4`). No monster-side talent/gear system exists to vary
+  // this, so there's nothing to scale it by yet.
+  const MONSTER_MAX_SP = 4;
 
   return {
     name, base, kind,
@@ -372,6 +448,11 @@ export function buildMonster({ base, tier = 1, kind = 'regular', element = null,
     level,
     ...stats,
     abilities: skills,
+    passives,
+    sp: MONSTER_MAX_SP,
+    maxSp: MONSTER_MAX_SP,
+    skillCooldowns: {},
+    skillUses: {},
     ...(sprite ?? { spriteKey: null, animKey: null, spriteScale: 1.0, moveSpeed: 2 }),
   };
 }

@@ -174,6 +174,15 @@ export function rarityColor(rarity) { return RARITY_COLORS[rarity] ?? 0xffffff; 
 // template, not part of this progression — see rollGodTierClassItem).
 export const RARITY_ORDER = ['common', 'uncommon', 'rare', 'epic', 'legendary'];
 
+// T (Tytrate) value by rarity for procedurally-rolled gear — rare/epic/
+// legendary match ShopScene's existing SHOP_RARITY_UNLOCKS purchase prices
+// (400/900/2000) so a crafted or shop-bought item of the same rarity is
+// worth the same; common/uncommon fill in the same curve below that.
+// Feeds both the Equipment screen's "NNNT" label and InventoryScene's
+// sell price (half of `cost`) via item.cost — 2026-07-09 fix for crafted
+// gear, which previously hardcoded cost:0 (see ForgeScene.craftItem).
+export const RARITY_GEAR_VALUE = { common: 100, uncommon: 200, rare: 400, epic: 900, legendary: 2000 };
+
 // Cave-ore tier → the rarity a Forge recipe crafts when that ore is used
 // (Gear & Forge: "Ore tier drives result rarity — e.g. Bone(T3) + Gold =
 // Epic Chest").
@@ -277,8 +286,10 @@ export function materialFrameName(id) {
 // Guaranteed material drops per mission clear
 // Ore-drop economy (July 2026): silver from region 1 (Altroes) caves, gold
 // from region 2 (Gale) caves, ALL ore tiers from region 3 (Lametus) caves —
-// only the actual cave missions (M4/M5, M7/M8, M10/M11) drop ore; the
-// elemental "unique areas" (M6/M9/M12) don't.
+// only the actual cave missions drop ore; the elemental "unique areas"
+// don't. M5/M7/M8/M10/M11 (caves) and M6/M9 (unique areas) + their M13/M14
+// side battles were all removed 2026-07-11 ("going to rewrite") — only M4
+// (Altroes) and M12 (Lametus's unique area, no ore) are left of this list.
 export const MISSION_MATERIALS = {
   M1: ['heal_herb'],
   // Wolf's Den (M0b, King Wolf) — unlike every other completable mission
@@ -292,16 +303,6 @@ export const MISSION_MATERIALS = {
   M0b: ['fur', 'bone', 'iron_ore', 'silver_ore', 'gold_ore', 'mystic_ore'],
   M3:  ['iron_ore', 'leather_strip'],
   M4:  ['cave_crystal', 'shadow_ore', 'silver_ore'],
-  M5:  ['silver_ore'],
-  M7:  ['gold_ore'],
-  M8:  ['gold_ore'],
-  M10: ['iron_ore', 'silver_ore', 'gold_ore', 'mystic_ore'],
-  M11: ['iron_ore', 'silver_ore', 'gold_ore', 'mystic_ore'],
-  // Side battles (optional) — a small guaranteed bonus tied to their
-  // region's own ore tier, on top of whatever the region's caves already give.
-  M13: ['silver_ore'],
-  M14: ['gold_ore'],
-  M15: ['mystic_ore'],
 };
 
 // Generic monster-drop pool (Gear & Forge, July 2026 — replaces the old
@@ -391,7 +392,7 @@ export function rollBracketedDrop(level, talents = [], classItemMultiplier = 1, 
       return ore ? [{ ...ore }, { ...ore }] : null;
     }
     const slot = BRACKET_GEAR_SLOTS[Math.floor(Math.random() * BRACKET_GEAR_SLOTS.length)];
-    return [rollGearItem({ slot, rarity: outcome.rarity, talents, classItemMultiplier, forClass })];
+    return [rollGearItem({ slot, rarity: outcome.rarity, talents, classItemMultiplier, forClass, cost: RARITY_GEAR_VALUE[outcome.rarity] ?? 0 })];
   }
   return null;
 }

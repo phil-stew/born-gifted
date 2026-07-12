@@ -1,14 +1,17 @@
 import Phaser from 'phaser';
 import { stripHeroBackground } from '../data/heroSprites.js';
 
-// Generic dialogue scene. Receives { lines, nextScene, nextSceneData } via init().
+// Generic dialogue scene. Receives { lines, nextScene, nextSceneData, backdrop } via init().
 // Each line: { speaker, text, color? }
+// backdrop: optional texture key + path, e.g. { key: 'bd-village', path: 'world/Altroesartscene/village.png' }
 
 export class StoryScene extends Phaser.Scene {
   constructor() { super({ key: 'StoryScene' }); }
 
   preload() {
-    // sprites loaded in BattleScene — StoryScene needs no hero assets
+    if (this.backdrop && !this.textures.exists(this.backdrop.key)) {
+      this.load.image(this.backdrop.key, this.backdrop.path);
+    }
   }
 
   init(data) {
@@ -16,11 +19,13 @@ export class StoryScene extends Phaser.Scene {
     this.nextScene     = data.nextScene     ?? 'WorldMapScene';
     this.nextSceneData = data.nextSceneData ?? {};
     this.location      = data.location      ?? 'SIRBLANC  ·  Reno\'s Home';
+    this.backdrop      = data.backdrop      ?? null;
     this.lineIndex     = 0;
   }
 
   create() {
     const { width, height } = this.scale;
+    const artH = height * 0.6;
 
     // Background
     const bg = this.add.graphics();
@@ -29,15 +34,25 @@ export class StoryScene extends Phaser.Scene {
 
     // Faint scene illustration area (top 60%)
     bg.fillStyle(0x0d1020, 1);
-    bg.fillRect(0, 0, width, height * 0.6);
+    bg.fillRect(0, 0, width, artH);
+
+    if (this.backdrop && this.textures.exists(this.backdrop.key)) {
+      const img = this.add.image(width / 2, artH / 2, this.backdrop.key);
+      const scale = Math.max(width / img.width, artH / img.height);
+      img.setScale(scale);
+      const mask = this.add.graphics();
+      mask.fillRect(0, 0, width, artH);
+      img.setMask(mask.createGeometryMask());
+      this.add.rectangle(width / 2, artH / 2, width, artH, 0x05050a, 0.28);
+    } else {
+      // Simple house silhouette (fallback when no backdrop supplied)
+      this.drawScene(bg, width, height);
+    }
 
     // Location label
     this.add.text(width / 2, 18, this.location, {
       fontSize: '11px', fontFamily: 'monospace', color: '#ffcc66',
-    }).setOrigin(0.5);
-
-    // Simple house silhouette
-    this.drawScene(bg, width, height);
+    }).setOrigin(0.5).setDepth(10);
 
     // Dialogue box
     const boxY = height * 0.62;
@@ -48,16 +63,16 @@ export class StoryScene extends Phaser.Scene {
     boxGfx.lineStyle(1, 0x333355, 1);
     boxGfx.strokeRect(10, boxY, width - 20, boxH);
 
-    // Speaker name
-    this.speakerText = this.add.text(28, boxY + 12, '', {
-      fontSize: '13px', fontFamily: 'monospace', fontStyle: 'bold', color: '#ffffff',
-    });
-
-    // Dialogue text
-    this.dialogueText = this.add.text(28, boxY + 34, '', {
-      fontSize: '13px', fontFamily: 'Georgia, serif', color: '#ccccdd',
-      wordWrap: { width: width - 60 },
-    });
+    // Dialogue log — each line stays on screen with the next added below it
+    // (rather than replacing the previous line). Once the box fills, the
+    // oldest entry is dropped and the rest reflow upward — a Container mask
+    // was tried first but Phaser 4 doesn't clip a GeometryMask correctly on a
+    // container that's also being tweened, so this avoids masking entirely.
+    this.logBottomPad = 22; // leaves room for the ▶ hint at the box's bottom-right
+    this.logWidth   = width - 56;
+    this.logVisibleH = boxH - 12 - this.logBottomPad;
+    this.logCon = this.add.container(28, boxY + 12);
+    this.logEntries = []; // { speakerT, bodyT, h }
 
     // Advance hint
     this.hintText = this.add.text(width - 24, height - 18, '▶', {
@@ -115,9 +130,34 @@ export class StoryScene extends Phaser.Scene {
       return;
     }
     const { speaker, text, color } = this.lines[this.lineIndex];
-    this.speakerText.setText(speaker).setColor(color ?? '#ffffff');
-    this.dialogueText.setText(text).setAlpha(0);
-    this.tweens.add({ targets: this.dialogueText, alpha: 1, duration: 180 });
+
+    const speakerT = this.add.text(0, 0, speaker, {
+      fontSize: '13px', fontFamily: 'monospace', fontStyle: 'bold', color: color ?? '#ffffff',
+    }).setAlpha(0);
+    const bodyT = this.add.text(0, 16, text, {
+      fontSize: '13px', fontFamily: 'Georgia, serif', color: '#ccccdd',
+      wordWrap: { width: this.logWidth },
+    }).setAlpha(0);
+    this.logCon.add([speakerT, bodyT]);
+    this.tweens.add({ targets: [speakerT, bodyT], alpha: 1, duration: 180 });
+
+    const h = 16 + bodyT.height + 14;
+    this.logEntries.push({ speakerT, bodyT, h });
+
+    // Drop the oldest entries once they no longer fit, then reflow the rest
+    let total = this.logEntries.reduce((sum, e) => sum + e.h, 0);
+    while (total > this.logVisibleH && this.logEntries.length > 1) {
+      const old = this.logEntries.shift();
+      old.speakerT.destroy();
+      old.bodyT.destroy();
+      total -= old.h;
+    }
+    let y = 0;
+    for (const e of this.logEntries) {
+      this.tweens.add({ targets: e.speakerT, y, duration: 220, ease: 'Power1' });
+      this.tweens.add({ targets: e.bodyT, y: y + 16, duration: 220, ease: 'Power1' });
+      y += e.h;
+    }
 
     if (this.renoPortrait) {
       const targetAlpha = speaker === 'Reno' ? 1 : 0.25;
