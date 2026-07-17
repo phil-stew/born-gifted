@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { state, saveGame, allAcademyQuestsDone } from '../data/gameState.js';
+import { state, saveGame, allAcademyQuestsDone, allGaleQuestsDone } from '../data/gameState.js';
 import { stripBackgroundByKey } from '../data/heroSprites.js';
 import { BACKDROPS } from '../data/storyBackdrops.js';
 import { drawButton } from '../ui/canvasButton.js';
@@ -26,7 +26,13 @@ import { getItem } from '../data/items.js';
 // (Gale), reached via onCapitalClick's Tournament option once M4's exam
 // and all 6 academy quests are done. See the note on Trice's dropped
 // auto-join in VictoryScene.js (same treatment as Kael's, tied to the
-// removed M5/M6 — unrelated to the CURRENT M5, which reuses that id).
+// removed M5/M6 — unrelated to the CURRENT M5, which reuses that id). The
+// main chain has since grown past Gale again: M6 (2026-07-17, "The
+// Corrupted One") reuses that same freed-up id for a brand-new required
+// battle south-east of Gale, unlocked once the Gale Tournament (GT) is
+// cleared — see the id's own comment further down and the live check in
+// create(). Unrelated to the M6 described in this paragraph, which no
+// longer exists.
 const NODES = [
   { id:'M0',  x:100, y:180, arc:'Home',    name:'Hidden Village' },
   { id:'M0a', x:40,  y:120, arc:'Home',    name:'Hidden Cave',    connectsFrom:'M0', side:true },
@@ -112,6 +118,60 @@ const NODES = [
   // "gale gives out 3 quest[s]... kill as many monster as you can in 6
   // turn[s]." Unlocks alongside AF/ZE/DK/M5 (same live check).
   { id:'MH',  x:750, y:130, arc:'Tournament', name:'Monster Hunt',       connectsFrom:'ZE', side:true },
+  // Gale Tournament (2026-07-12, "after clearing the 3 quest[s] the
+  // tournament opens North west of Artfall facing other units with epic
+  // gears") — capstone battle, unlocked only once ALL 3 of Gale's own
+  // quests are done (separate live check from the AF/ZE/DK/M5/MH one,
+  // which only needs AT1+AT2 — see allGaleQuestsDone in gameState.js).
+  { id:'GT',  x:590, y:20,  arc:'Tournament', name:'Gale Tournament',    connectsFrom:'AF', side:true },
+  // M6 — The Corrupted One's monsters (2026-07-17, "south east of m5...
+  // moving towards new area... it will branch down"). Required main-chain
+  // step (not side:true) so it draws a solid connector rather than dashed,
+  // reusing Gale as the visual parent even though the unlock GATE is GT's
+  // completion (see the live check in create()) — same "connectsFrom is
+  // just the line, the real gate is a separate check" pattern M5/AT1/AT2
+  // already use. Placed in the empty space south-east of Gale/Zester with
+  // room below it for whatever the new area turns into.
+  { id:'M6',  x:680, y:290, arc:'Blight', name:'Blightreach',        connectsFrom:'M5' },
+  // M7 — the villain's reveal (2026-07-17, "M7 south of m6 the villian
+  // will show himself... taking there spot in the tournemnt... the hero
+  // should lose them fight no matter what"). Required main-chain step,
+  // south of M6, unlocked the normal way (MISSION_NEXT.M6:'M7' in
+  // VictoryScene.js) since M6 IS a normal winnable battle. M7 itself is a
+  // scripted, unwinnable loss (see MISSION_CONFIGS.M7's `scriptedDefeat`
+  // in BattleScene.js) — the defeat itself is what chains into M7a/the
+  // Noble Deity, not a WorldMapScene unlock check.
+  { id:'M7',  x:680, y:370, arc:'Blight', name:'The Grand Arena',    connectsFrom:'M6' },
+  // M7a — the Noble Deity's rescue (2026-07-17, "after the defeat the
+  // hero will wake up to the east of M7... encounter the Noble Daity").
+  // Not a battle or a real multi-service hub — a landmark for where the
+  // scripted-defeat cutscene chain (in BattleScene's checkEndConditions)
+  // lands the party, and the visual `connectsFrom` parent for the 7
+  // trial nodes below. completedMissions/unlockedMissions gain 'M7a' and
+  // 'T1'-'T7' all at once as part of THAT cutscene chain, not through any
+  // click-time or live-check logic here — see onMissionClick's plain
+  // toast-only handling for it (there's nothing to "enter"). Deliberately
+  // has no HUB_CONFIGS entry, so [[feedback_forge_every_hub]]'s "every hub
+  // gets forge" rule doesn't apply to it — it was never made a real hub.
+  { id:'M7a', x:755, y:370, arc:'Trial', name:"The Noble Deity",     connectsFrom:'M7' },
+  // The 7 Trials (2026-07-17, "7 trail... 1 trial for each weapon class")
+  // — one per CLASS_GEAR_LAYOUT/classGrouping key (gameState.js), the same
+  // 7 groupings GEAR_CLASS_COL/items.js already treats as authoritative.
+  // Laid out in a row along the bottom of the map (empty space, per
+  // drawScenery's own margin comment) — side:true (diamond marker) since
+  // clearing all 7 isn't gated behind each other or required to keep
+  // playing, just to fully gear up before whatever the eventual Corrupted
+  // One rematch turns out to be. TRIAL_CLASS in BattleScene.js maps each
+  // id to its classGrouping string for both the battle's enemy flavor and
+  // VictoryScene's reward wiring (rollGodTierClassItem per matching-class
+  // party member).
+  { id:'T1',  x:90,  y:510, arc:'Trial', name:'Trial of Athletics',     connectsFrom:'M7a', side:true },
+  { id:'T2',  x:193, y:510, arc:'Trial', name:'Trial of Martial Arts',  connectsFrom:'M7a', side:true },
+  { id:'T3',  x:297, y:510, arc:'Trial', name:'Trial of Performance',   connectsFrom:'M7a', side:true },
+  { id:'T4',  x:400, y:510, arc:'Trial', name:'Trial of Target',        connectsFrom:'M7a', side:true },
+  { id:'T5',  x:503, y:510, arc:'Trial', name:'Trial of Ball',          connectsFrom:'M7a', side:true },
+  { id:'T6',  x:607, y:510, arc:'Trial', name:'Trial of Bat & Ball',    connectsFrom:'M7a', side:true },
+  { id:'T7',  x:710, y:510, arc:'Trial', name:'Trial of Racquet',       connectsFrom:'M7a', side:true },
 ];
 
 const ARC_COLORS = {
@@ -121,6 +181,14 @@ const ARC_COLORS = {
   Academy:    0x4488ff,
   Selection:  0xffaa44,
   Tournament: 0xff4444,
+  // The Corrupted One's arc (2026-07-17) — dark purple instead of
+  // Tournament's red so the map reads a new, more ominous story beat
+  // starting here, distinct from Gale's tournament-and-trials content.
+  Blight:     0x8822cc,
+  // The Noble Deity's arc (2026-07-17) — warm gold, deliberately the
+  // opposite end of the palette from Blight's corruption-purple so the
+  // "ally/hope" beat reads as visually distinct from the "villain" one.
+  Trial:      0xffcc33,
 };
 
 // One-time story beat shown the first time each region cave/unique-area
@@ -170,6 +238,109 @@ const NEW_AREA_INTRO = {
       { speaker: 'Reno',     color: '#4488ff', text: '...Six turns, as many as we can. Let\'s go.' },
     ],
   },
+  // Gale Tournament (2026-07-12) — capstone battle NW of Artfall.
+  GT: {
+    location: 'GALE  ·  The Tournament',
+    backdrop: BACKDROPS.school,
+    lines: [
+      { speaker: 'Narrator', color: '#888899', text: 'Word gets around fast in Gale. Having proven yourself three times over, the region\'s best team wants a real match — full gear, no excuses.' },
+      { speaker: 'Reno',     color: '#4488ff', text: '...Let\'s show them what we\'ve learned.' },
+    ],
+  },
+  // M6 — Lametus's trial, ambushed by The Corrupted One's monsters
+  // (2026-07-17, "when they encounter the monster they sense something is
+  // not right with these monster as they discuss the monsters attack") —
+  // the party's mid-conversation when the fight actually starts, matching
+  // MISSION_CONFIGS.M6's enemyFirst flag (the monsters get the opening
+  // move, not the player).
+  M6: {
+    location: 'LAMETUS  ·  The Trial Grounds',
+    // Was BACKDROPS.galeWilds (placeholder — no dedicated Lametus art was
+    // registered yet when M6 first shipped). Swapped to the real thing
+    // once lametusWilds got added (2026-07-17, same pass as M7/M7a).
+    backdrop: BACKDROPS.lametusWilds,
+    lines: [
+      { speaker: 'Narrator', color: '#888899', text: 'Lametus\'s trial grounds sit past a stretch of wilds gone strangely quiet — no birds, no wind through the grass, just a sour taste in the air.' },
+      { speaker: 'Drace',    color: '#88cc66', text: '...This is where we\'re supposed to prove ourselves?' },
+      { speaker: 'Reno',     color: '#4488ff', text: 'Something\'s not right with those monsters up ahead. Look how still they\'re standing. That glow around them isn\'t natural.' },
+      { speaker: 'Kael',     color: '#ffaa44', text: 'You think someone\'s controll—' },
+      { speaker: 'Narrator', color: '#888899', text: 'Before he can finish, the monsters move as one — and the trial begins without them.' },
+    ],
+  },
+  // M7 — the villain's reveal (2026-07-17, "the villian will show himself
+  // and the the heroes he is taking there spot in the tournemnt"). First
+  // time The Corrupted One gets dialogue lines of his own rather than
+  // being talked about secondhand. Ends on the same "battle starts
+  // without further input" beat M6 used, since MISSION_CONFIGS.M7 is a
+  // scripted, unwinnable loss (see BattleScene.js) — no "let's go"
+  // closing line from Reno here on purpose, there's no brave send-off to
+  // give before getting curb-stomped.
+  M7: {
+    location: 'LAMETUS  ·  The Grand Arena',
+    backdrop: BACKDROPS.lametusArena,
+    lines: [
+      { speaker: 'Narrator',          color: '#888899', text: 'The Grand Arena should be packed for the trial match. Instead it\'s dead silent — torn banners, empty seats, not a soul in sight.' },
+      { speaker: 'The Corrupted One', color: '#aa44ff', text: 'Looking for someone? Your little tournament has been... cancelled. I\'m taking your spot.' },
+      { speaker: 'Reno',              color: '#4488ff', text: '...So you finally show yourself.' },
+      { speaker: 'The Corrupted One', color: '#aa44ff', text: 'You\'ve survived my monsters twice now. Let\'s see how you fare against my strongest.' },
+      { speaker: 'Narrator',          color: '#888899', text: 'This is unlike anything they\'ve faced before.' },
+    ],
+  },
+  // The Noble Deity's 7 Trials (2026-07-17) — brief, mostly-interchangeable
+  // intro beats (same shared backdrop, same "prove yourself" framing) since
+  // nothing about their individual challenge was specified beyond the
+  // class each one tests — see TRIAL_CLASS in gameState.js. Only the
+  // opening line varies per class to avoid all 7 reading as copy-paste.
+  T1: {
+    location: 'LAMETUS  ·  Trial of Athletics',
+    backdrop: BACKDROPS.lametusTrainingField,
+    lines: [
+      { speaker: 'Narrator', color: '#888899', text: 'The Deity\'s first trial tests raw speed and endurance — no shortcuts, no tricks, just outlasting whoever she sends.' },
+      { speaker: 'Reno',     color: '#4488ff', text: '...One down, six to go. Let\'s move.' },
+    ],
+  },
+  T2: {
+    location: 'LAMETUS  ·  Trial of Martial Arts',
+    backdrop: BACKDROPS.lametusTrainingField,
+    lines: [
+      { speaker: 'Narrator', color: '#888899', text: 'This trial wants discipline as much as strength — a fighter who\'s trained for this far longer than you have.' },
+    ],
+  },
+  T3: {
+    location: 'LAMETUS  ·  Trial of Performance',
+    backdrop: BACKDROPS.lametusTrainingField,
+    lines: [
+      { speaker: 'Narrator', color: '#888899', text: 'Grace under pressure — the Deity\'s performers make it look effortless. It isn\'t.' },
+    ],
+  },
+  T4: {
+    location: 'LAMETUS  ·  Trial of Target',
+    backdrop: BACKDROPS.lametusTrainingField,
+    lines: [
+      { speaker: 'Narrator', color: '#888899', text: 'One shot, one chance — this trial doesn\'t forgive a shaky aim.' },
+    ],
+  },
+  T5: {
+    location: 'LAMETUS  ·  Trial of Ball',
+    backdrop: BACKDROPS.lametusTrainingField,
+    lines: [
+      { speaker: 'Narrator', color: '#888899', text: 'Fast hands, faster feet — the Deity\'s ball players don\'t give you a second to think.' },
+    ],
+  },
+  T6: {
+    location: 'LAMETUS  ·  Trial of Bat & Ball',
+    backdrop: BACKDROPS.lametusTrainingField,
+    lines: [
+      { speaker: 'Narrator', color: '#888899', text: 'Timing over power — swing early or late here and you\'ll pay for it.' },
+    ],
+  },
+  T7: {
+    location: 'LAMETUS  ·  Trial of Racquet',
+    backdrop: BACKDROPS.lametusTrainingField,
+    lines: [
+      { speaker: 'Narrator', color: '#888899', text: 'The last of the seven — reflexes sharp enough to return anything thrown back at you.' },
+    ],
+  },
 };
 
 const ARC_LABEL_POS = {
@@ -179,6 +350,11 @@ const ARC_LABEL_POS = {
   Academy:    { x: 365, y: 305 },
   Selection:  { x: 690, y: 130 },
   Tournament: { x: 600, y: 518 },
+  Blight:     { x: 680, y: 335 },
+  // Placed off to the side (not centered over the 7-node row) to dodge
+  // both the LAMETUS kingdom label (x:330-480, y:416-458) and the trial
+  // nodes' own side:true diamond markers (25px radius around each).
+  Trial:      { x: 150, y: 400 },
 };
 
 // tiles/mapasset/treesrock.png — 7 cols × 4 rows of decorative scenery icons
@@ -244,6 +420,22 @@ export class WorldMapScene extends Phaser.Scene {
     if (!state.unlockedMissions.includes('M5')
       && state.completedMissions.includes('AT1') && state.completedMissions.includes('AT2')) {
       state.unlockedMissions.push('M5', 'AF', 'ZE', 'DK', 'MH');
+    }
+
+    // Gale Tournament (2026-07-12, "after clearing the 3 quest[s] the
+    // tournament opens") — separate live check, needs all 3 of Gale's OWN
+    // quests done (not just AT1/AT2), same "live check, not a completion
+    // hook" reasoning as every other quest-gated unlock this arc.
+    if (!state.unlockedMissions.includes('GT') && allGaleQuestsDone(state)) {
+      state.unlockedMissions.push('GT');
+    }
+
+    // M6 — The Corrupted One's monsters (2026-07-17, "M6 will be moving the
+    // story forward after GT") — live check off GT's OWN completion, not a
+    // MISSION_NEXT hook, since GT (like DK/MH) is fought straight from
+    // Gale's node rather than through a chained VictoryScene "next mission."
+    if (!state.unlockedMissions.includes('M6') && state.completedMissions.includes('GT')) {
+      state.unlockedMissions.push('M6');
     }
 
     saveGame();
@@ -775,6 +967,16 @@ export class WorldMapScene extends Phaser.Scene {
     // attached to any of them — all three are pure city/recruit stops.
     if (node.id === 'M5' || node.id === 'AF' || node.id === 'ZE') {
       this.scene.start('HubScene', { nodeId: node.id });
+      return;
+    }
+
+    // M7a (2026-07-17) — a landmark, not a battle or a real hub. By the
+    // time this node is even clickable, the Noble Deity reveal already
+    // played out as part of M7's scripted-defeat cutscene chain (see
+    // BattleScene.js's checkEndConditions) — there's nothing left to
+    // "enter" here, just a short idle line.
+    if (node.id === 'M7a') {
+      this.showToast(`${node.id} — ${node.name}\n"Seek out the seven trials when you're ready."`);
       return;
     }
 

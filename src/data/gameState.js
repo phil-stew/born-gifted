@@ -245,6 +245,18 @@ const DEFAULT_GEAR_LAYOUT = { slots: ['weapon', 'headwear', 'footwear', 'chest',
 // Keyed by sportId (not roleId — figure_skating has a single role anyway).
 const GEAR_LAYOUT_SPORT_OVERRIDE = { figure_skating: 'Athletics' };
 
+// The Noble Deity's 7 Trials (2026-07-17, "7 trail... 1 trial for each
+// weapon class") — one per classGrouping key above, same 7 strings
+// CLASS_GEAR_LAYOUT already treats as the authoritative list. Read by
+// BattleScene.js (mission flavor/roster) and VictoryScene.js (which
+// party members get a rollGodTierClassItem() reward on a trial's first
+// clear — see items.js's rollGodTierClassItem, whose own comment already
+// flagged "drop source... TBD" before this).
+export const TRIAL_CLASS = {
+  T1: 'Athletics', T2: 'Martial Arts', T3: 'Performance', T4: 'Target',
+  T5: 'Ball', T6: 'Bat & Ball', T7: 'Racquet',
+};
+
 // The gear slot layout that applies to a unit right now, based on its
 // CURRENT class grouping (same current-tier-only philosophy as
 // currentDesignations — see that function's comment).
@@ -677,6 +689,15 @@ export function allAcademyQuestsDone(s) {
   return ACADEMY_QUEST_IDS_ALL.every(id => QUEST_DEFS[id].check(s));
 }
 
+// Gale Tournament (2026-07-12, "after clearing the 3 quest[s] the
+// tournament opens") — same "live check, not a completion hook" reasoning
+// as allAcademyQuestsDone above (gale_legendary_gear also has no
+// missionId/battle to hook a VictoryScene trigger onto).
+const GALE_QUEST_IDS_ALL = ['gale_monster_hunt', 'kill_alpha_king_dragon', 'gale_legendary_gear'];
+export function allGaleQuestsDone(s) {
+  return GALE_QUEST_IDS_ALL.every(id => QUEST_DEFS[id].check(s));
+}
+
 export function getAcademyQuests(nodeId) {
   return (state.academyQuests[nodeId] ?? []).map(id => {
     const def = QUEST_DEFS[id];
@@ -950,6 +971,7 @@ export function getSaveSummary(slot) {
     return null;
   }
 }
+
 
 export function deleteSave(slot) {
   localStorage.removeItem(slotKey(slot));

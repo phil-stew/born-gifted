@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
-import { state, addXP, xpToNext, completeMission, gearLayoutForUnit, roleDisplayLabel } from '../data/gameState.js';
-import { getMissionMaterials, getKillDrops, rollHealHerbDrop, rollBracketedDrop } from '../data/items.js';
+import { state, addXP, xpToNext, completeMission, gearLayoutForUnit, roleDisplayLabel, TRIAL_CLASS, sportById, currentSport } from '../data/gameState.js';
+import { getMissionMaterials, getKillDrops, rollHealHerbDrop, rollBracketedDrop, rollGodTierClassItem } from '../data/items.js';
 import { BACKDROPS } from '../data/storyBackdrops.js';
 import { drawButton } from '../ui/canvasButton.js';
 
@@ -31,6 +31,22 @@ const CUTSCENE_AFTER = {
       { speaker:'Instructor', color:'#ddcc88', text:'Welcome to the Academy. Meet me back at the Capital.' },
     ],
   },
+  // Gale Tournament (2026-07-17, "after GT there are given instructions to
+  // go to lametus can complete there trail") — bridges the arc's ending
+  // straight into M6 ("Lametus's trial"), same "instructions handed down,
+  // then the next area's node unlocks" beat M0/M1's news-turn-in already
+  // uses. Plays once, on GT's first clear.
+  GT: {
+    location: 'GALE  ·  The Tournament',
+    backdrop: BACKDROPS.school,
+    lines: [
+      { speaker:'Official',  color:'#ddcc88', text:'...That\'s the most decisive final this arena has seen in years. Well fought.' },
+      { speaker:'Reno',      color:'#4488ff', text:'...Thanks. So what now?' },
+      { speaker:'Narrator',  color:'#888899', text:'A rider arrives from the Capital before anyone can answer, out of breath, carrying a sealed letter.' },
+      { speaker:'Messenger', color:'#cc9955', text:'By the King\'s word — Lametus, east of here, has agreed to test you. Complete their trial and every kingdom will know your names.' },
+      { speaker:'Reno',      color:'#4488ff', text:'...Lametus. Guess our work in Gale is done. Let\'s go.' },
+    ],
+  },
 };
 
 const MISSION_NAMES = {
@@ -40,19 +56,31 @@ const MISSION_NAMES = {
   // AT1's enemies are a real tournament team in epic gear now (2026-07-11
   // third follow-up) — its own M5a battle slot was removed and folded in.
   AT1:'Altroes Trials I', AT2:'Altroes Trials II',
-  DK: 'The Frozen Peaks', MH: 'Monster Hunt',
+  DK: 'The Frozen Peaks', MH: 'Monster Hunt', GT: 'Gale Tournament',
+  M6: 'Blightreach',
+  // M7 never reaches VictoryScene (see MISSION_CONFIGS.M7's scriptedDefeat
+  // in BattleScene.js — it always ends in triggerScriptedDefeat, never
+  // isVictory()), so it gets no entry here on purpose.
+  T1: 'Trial of Athletics', T2: 'Trial of Martial Arts', T3: 'Trial of Performance',
+  T4: 'Trial of Target',    T5: 'Trial of Ball',          T6: 'Trial of Bat & Ball',
+  T7: 'Trial of Racquet',
 };
 
 // Tytrate rewards on mission clear (2026-07-11, "all the mission should
 // give you some tytrate i keep forget[ting] to code it in") — no mission
 // has ever paid Tytrate through VictoryScene before this (only the
-// separate capitalQuest/RewardPopupScene stages at M3 do). Scoped to
-// just the 2 Gale missions actually in front of us this session, not a
-// retroactive pass over every existing mission — that's a bigger ask than
-// what was on the table here. DK (300) matches the "Ready For The Exam"
-// tier, the biggest one-off reward already in the game; MH (150) is lower
-// since it's meant to be run repeatedly (avoids runaway currency farming).
-const MISSION_TYTRATE = { DK: 300, MH: 150 };
+// separate capitalQuest/RewardPopupScene stages at M3 do). Scoped to the
+// Gale missions actually in front of us, not a retroactive pass over
+// every existing mission — that's a bigger ask than what was on the
+// table here. DK (300) matches the "Ready For The Exam" tier, the biggest
+// one-off reward already in the game; MH (150) is lower since it's meant
+// to be run repeatedly (avoids runaway currency farming); GT (400,
+// 2026-07-12) tops DK slightly as the actual capstone of the arc. M6 (500,
+// 2026-07-17) tops GT again now that the story's moved past it. T1-T7 (250
+// each, same day) sit between MH and DK — their real reward is the God
+// Tier weapon (see the TRIAL_CLASS drop wiring above), Tytrate is just the
+// standard per-mission stipend every Gale/Lametus battle already gets.
+const MISSION_TYTRATE = { DK: 300, MH: 150, GT: 400, M6: 500, T1: 250, T2: 250, T3: 250, T4: 250, T5: 250, T6: 250, T7: 250 };
 
 // M12/M15 removed 2026-07-11 ("remove m12", fifth follow-up — M15 went
 // with it, see WorldMapScene.js's NODES comment) — the main chain now ends
@@ -72,8 +100,15 @@ const MISSION_TYTRATE = { DK: 300, MH: 150 };
 // now a HUB (Gale, the next kingdom city — see HUB_CONFIGS) with no battle
 // attached to it at all, reached via the same live "AT1 AND AT2 both
 // completed" check (see WorldMapScene's create()), not through this table.
+// M6 (2026-07-17) unlocks M7 the normal way, straight through this table —
+// unlike M5/GT/DK/MH, M6 IS a real winnable battle with a normal
+// VictoryScene flow, so it doesn't need a live-check/HubScene-style
+// mechanism. M7 itself has no entry here — it never unlocks anything
+// through this table since it never reaches VictoryScene at all (see
+// MISSION_NAMES.M7's comment above).
 const MISSION_NEXT = {
   M2:'M3',
+  M6:'M7',
 };
 
 // Side battles unlock alongside their region's final mission, independent
@@ -158,6 +193,19 @@ export class VictoryScene extends Phaser.Scene {
       for (const [id, count] of counts) bracketDropSummary.push({ item: bracketDrops.find(i => i.id === id), count });
     }
 
+    // The Noble Deity's 7 Trials (2026-07-17) — clearing a trial grants
+    // every CURRENT party member of that trial's classGrouping their own
+    // God Tier Class Item (rollGodTierClassItem() — items.js already had
+    // this function, just flagged "drop source... TBD" until now). Gated
+    // on isFirstClear so replaying a trial doesn't farm duplicates for the
+    // same hero — matches "must do to obtain" reading as a one-time
+    // reward, same gate the cutscene/recruit hooks elsewhere use.
+    const trialClass = TRIAL_CLASS[this.missionId];
+    const godTierDrops = (trialClass && this.isFirstClear)
+      ? state.party.filter(u => sportById(currentSport(u))?.class === trialClass).map(u => rollGodTierClassItem(u))
+      : [];
+    for (const item of godTierDrops) state.inventory.push(item);
+
     // Group kill drops by item id for display (e.g. Bone × 3) — kills no
     // longer map to a fixed material per enemy name (see getKillDrops:
     // every kill rolls randomly from the generic Skin/Fur/Bone pool), so
@@ -172,6 +220,7 @@ export class VictoryScene extends Phaser.Scene {
       ...materials.map(item => ({ item, count: 1 })),
       ...(herbDrop ? [{ item: herbDrop, count: 1 }] : []),
       ...bracketDropSummary,
+      ...godTierDrops.map(item => ({ item, count: 1 })),
     ];
 
     // Complete mission and unlock next (main chain + any side-battle branch)

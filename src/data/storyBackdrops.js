@@ -28,4 +28,13 @@ export const BACKDROPS = {
   galeWilds:       { key: 'bd-snowwilds',     path: GALE + 'opensnowwilds.png' },
 
   lametusWilds:    { key: 'bd-lametuswilds',  path: LAMETUS + 'wilds.png' },
+  // The Corrupted One arc (2026-07-17) — grandarena.png for the "villain
+  // steals the tournament" reveal (M7), waterwilds.png for the post-defeat
+  // rescue beat (M7a), trainingfield.png for the Noble Deity's 7 trials.
+  // town/townwell/townshop/schooltrainning.png also exist on disk but have
+  // no current caller — left unregistered until something actually needs
+  // a Lametus town/hub shot.
+  lametusArena:        { key: 'bd-lametusarena',   path: LAMETUS + 'grandarena.png' },
+  lametusWaterWilds:   { key: 'bd-lametuswater',    path: LAMETUS + 'waterwilds.png' },
+  lametusTrainingField:{ key: 'bd-lametustrain',    path: LAMETUS + 'trainingfield.png' },
 };

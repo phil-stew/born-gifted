@@ -1,13 +1,14 @@
 import Phaser from 'phaser';
 import {
   state, effectiveStats, maxHp as gsMaxHp, elementIcon, currentRoleId, currentDesignations,
-  currentSport, sportById, maxBattlePartySize, getBattleParty,
+  currentSport, sportById, maxBattlePartySize, getBattleParty, TRIAL_CLASS,
   DESIGNATION_BEATS, designationIcon, DESIGNATION_CYCLE, ELEMENT_CYCLE, ELEMENT_BEATS,
 } from '../data/gameState.js';
 import { ATTACK, THROW, getEquippedSpecialAbilities, getEquippedSkillAbilities, getEquippedPassives } from '../data/abilities.js';
 import { loadHeroSprites, createHeroAnims, stripHeroBackground, stripBackgroundByKey, trimmedSheetConfig, heroKey, getSpriteInfo, firstFrame, spriteKeyForRole, HERO_SPRITES } from '../data/heroSprites.js';
 import { buildMonster, buildMonsterKit, spriteInfoForBase } from '../data/monsters.js';
 import { isUsableItem, rollGearItem } from '../data/items.js';
+import { BACKDROPS } from '../data/storyBackdrops.js';
 
 const COLS = 10, ROWS = 10;
 // Bigger isometric tiles (2026-07-07 feedback) — was 64×32 at .setScale(2)
@@ -68,6 +69,19 @@ function rollRegionArchetype(region) {
 
 // Deterministic hash: same col/row always → same tile, but looks natural
 const th = (col, row) => (((col * 374761393) ^ (row * 668265263)) >>> 0) % 100;
+
+// Shared sandy-arena layout (same shape as AT1/AT2/GT/M4's inline versions)
+// factored out for the Noble Deity's 7 Trials (2026-07-17) — 7 near-
+// identical STAGE_CONFIGS entries would otherwise repeat this verbatim.
+function trialLayout(col, row) {
+  const p = th(col, row);
+  const edge = col === 0 || row === 0 || col === 9 || row === 9;
+  if (edge) return p < 50 ? '061' : '062';
+  const ring = col === 1 || row === 1 || col === 8 || row === 8;
+  if (ring) return p < 40 ? '057' : (p < 70 ? '055' : '056');
+  const v = (col * 3 + row * 7) % 4;
+  return ['000','001','002','003'][v];
+}
 
 // Stage configs: list of tile image numbers to preload + layout function
 // Tile image key convention: 't022' → tiles/isometric tileset/separated images/tile_022.png
@@ -338,6 +352,8 @@ const STAGE_CONFIGS = {
   // rewrite"). M12 (Lametus's unique area) and its M15 side battle briefly
   // replaced them, then were removed the same day too ("remove m12") —
   // nothing is left of this section; the main chain ends at M5 (Gale) now.
+  // (M6 reappears further down as a brand-new mission, 2026-07-17 — reuses
+  // the freed-up id, unrelated to the M6 described in this paragraph.)
 
   // ── Altroes Trials + the next school's tournament (2026-07-11) ───────────
   // Same sandy-arena family as M4 Arena Atlros — fitting for hero-vs-hero
@@ -402,6 +418,69 @@ const STAGE_CONFIGS = {
       return ['004','010','015','020'][v];
     },
   },
+  // Gale Tournament (2026-07-12) — capstone quest-gated battle NW of
+  // Artfall. Same sandy-arena family as AT1/AT2/M4, matching the "real
+  // tournament" flavor rather than DK/MH's rocky-peaks family.
+  'GT': {
+    tiles: ['000','001','002','003','055','056','057','061','062'],
+    label: 'GALE TOURNAMENT',
+    bgColor: 0x1c1608,
+    layout(col, row) {
+      const p = th(col, row);
+      const edge = col === 0 || row === 0 || col === 9 || row === 9;
+      if (edge) return p < 50 ? '061' : '062';
+      const ring = col === 1 || row === 1 || col === 8 || row === 8;
+      if (ring) return p < 40 ? '057' : (p < 70 ? '055' : '056');
+      const v = (col * 3 + row * 7) % 4;
+      return ['000','001','002','003'][v];
+    },
+  },
+  // M6 — Blightreach, The Corrupted One's monsters (2026-07-17). Same
+  // rugged/rocky tile family as DK/MH (right next door, south-east of
+  // Zester) but a sickly dark-purple bgColor instead of their icy-blue tint
+  // — reads as the same terrain gone wrong, matching the enemies' aura.
+  'M6': {
+    tiles: ['004','010','015','020','033','034','061','062'],
+    label: 'BLIGHTREACH',
+    bgColor: 0x140a1c,
+    layout(col, row) {
+      const p = th(col, row);
+      const edge = col === 0 || row === 0 || col === 9 || row === 9;
+      if (edge) return p < 45 ? '033' : '034';
+      if (p < 12) return p < 6 ? '061' : '062';
+      const v = (col * 5 + row * 3) % 4;
+      return ['004','010','015','020'][v];
+    },
+  },
+  // M7 — The Grand Arena, south of Blightreach (2026-07-17). Same
+  // sandy-arena family as AT1/AT2/GT/M4 (a real tournament venue, even
+  // though the tournament itself never happens) — dark-purple bgColor tint
+  // like M6, since it's still the Corrupted One's fight.
+  'M7': {
+    tiles: ['000','001','002','003','055','056','057','061','062'],
+    label: 'THE GRAND ARENA',
+    bgColor: 0x1c0a1c,
+    layout(col, row) {
+      const p = th(col, row);
+      const edge = col === 0 || row === 0 || col === 9 || row === 9;
+      if (edge) return p < 50 ? '061' : '062';
+      const ring = col === 1 || row === 1 || col === 8 || row === 8;
+      if (ring) return p < 40 ? '057' : (p < 70 ? '055' : '056');
+      const v = (col * 3 + row * 7) % 4;
+      return ['000','001','002','003'][v];
+    },
+  },
+  // The Noble Deity's 7 Trials (2026-07-17) — all share one "training
+  // grounds" tile family (same sandy-arena tiles as M7/GT, matching
+  // lametusTrainingField's backdrop), distinguished only by a per-trial
+  // bgColor tint so each still reads as its own place on replay.
+  'T1': { tiles: ['000','001','002','003','055','056','057','061','062'], label: 'TRIAL OF ATHLETICS',    bgColor: 0x141c0a, layout: trialLayout },
+  'T2': { tiles: ['000','001','002','003','055','056','057','061','062'], label: 'TRIAL OF MARTIAL ARTS', bgColor: 0x1c0a0a, layout: trialLayout },
+  'T3': { tiles: ['000','001','002','003','055','056','057','061','062'], label: 'TRIAL OF PERFORMANCE',  bgColor: 0x1c0a14, layout: trialLayout },
+  'T4': { tiles: ['000','001','002','003','055','056','057','061','062'], label: 'TRIAL OF TARGET',       bgColor: 0x0a1414, layout: trialLayout },
+  'T5': { tiles: ['000','001','002','003','055','056','057','061','062'], label: 'TRIAL OF BALL',         bgColor: 0x0a141c, layout: trialLayout },
+  'T6': { tiles: ['000','001','002','003','055','056','057','061','062'], label: 'TRIAL OF BAT & BALL',   bgColor: 0x14140a, layout: trialLayout },
+  'T7': { tiles: ['000','001','002','003','055','056','057','061','062'], label: 'TRIAL OF RACQUET',      bgColor: 0x1c1c0a, layout: trialLayout },
 };
 
 // Per-mission configuration: player start positions + enemy definitions.
@@ -760,10 +839,106 @@ const MISSION_CONFIGS = {
     reinforce: { every: 3, tier: 3, pool: () => pickRandomSpecies(5), maxTotal: 10 },
   },
 
+  // Gale Tournament (2026-07-12, "after clearing the 3 quest[s] the
+  // tournament opens... facing other units with epic gears") — capstone
+  // battle NW of Artfall, unlocked once all 3 of Gale's quests
+  // (gale_monster_hunt/kill_alpha_king_dragon/gale_legendary_gear) are
+  // done. Same real-epic-gear tournament-team treatment as AT1, just a
+  // level higher (17, above DK's 16) and slightly bumped stats to read as
+  // the actual endgame-so-far fight.
+  'GT': {
+    region: 'Gale',
+    playerPos: { reno:[1,3], drace:[1,4], sela:[1,2], kael:[1,5], trice:[1,1], zora:[1,0] },
+    enemyHeroClasses: TOURNAMENT_HERO_CLASSES,
+    enemies: () => {
+      const classes = pickRandomHeroClasses(4);
+      const pos = [[7,2],[8,4],[7,6],[8,8]];
+      const stats = { speed:15, strength:24, stamina:17, endurance:16 };
+      return classes.map((c, i) => tournamentEnemyDef(pos[i][0], pos[i][1], c, 17, stats, true));
+    },
+  },
+
+  // M6 — The Corrupted One's monsters (2026-07-17), south-east of Gale.
+  // Required main-chain step now that GT is cleared (see the live check in
+  // WorldMapScene's create()) — reframed the same day as "Lametus's trial"
+  // (see CUTSCENE_AFTER.GT in VictoryScene.js and NEW_AREA_INTRO.M6 in
+  // WorldMapScene.js), so region is 'Lametus' (its own REGION_ARCHETYPES
+  // entry already existed, just never had a mission using it) rather than
+  // 'Gale'. Every enemy carries `corrupted:true`: it's what flags them for
+  // the shared-target focus-fire AI (getCorruptedTarget()) and the pulsing
+  // purple aura (spawnEnemyVisual) — both read as "something is
+  // controlling/empowering them" without inventing a whole new stat system.
+  // "Very strong" is just the existing kind:'boss'/tier:3 ladder stacked
+  // with that coordinated targeting, rather than a new multiplier — a
+  // boss-tier lieutenant plus 3 tier-3 regulars, one level above MH's
+  // tier-3 mobs (level:16, matching DK). `enemyFirst` (2026-07-17, "the
+  // monsters attack so in the M6 battle the enemy will go first") — the
+  // party gets ambushed mid-conversation (see NEW_AREA_INTRO.M6's last
+  // line), so the corrupted monsters open with the first move instead of
+  // the player (see the enemyFirst branch at the end of create()).
+  'M6': {
+    region: 'Lametus',
+    enemyFirst: true,
+    playerPos: { reno:[1,3], drace:[1,4], sela:[1,2], kael:[1,5], trice:[1,1], zora:[1,0] },
+    enemies: [
+      { col:5, row:5, ...buildMonster({ base: 'Dragon', kind: 'boss', name: 'Ashveil, the Corrupted' }), level: 16, corrupted: true },
+      { col:7, row:2, ...buildMonster({ base: 'Wyvern', tier: 3 }), corrupted: true },
+      { col:7, row:8, ...buildMonster({ base: 'Wyvern', tier: 3 }), corrupted: true },
+      { col:8, row:5, ...buildMonster({ base: 'Lion', tier: 3 }), corrupted: true },
+    ],
+  },
+
+  // M7 — the villain's reveal, south of M6 (2026-07-17, "the corrupt one
+  // will attack with armor of monster who are 10000X stronger... the hero
+  // should lose them fight no matter what"). "10000x" is read as flavor
+  // for "unwinnable," NOT a literal stat multiplier to compute (that would
+  // just produce absurd on-screen damage numbers for a fight whose outcome
+  // is scripted either way) — `oneShotKill` makes any hit that connects
+  // lethal regardless of real combat math, and `fixedMaxHp` (the same
+  // primitive Ester Academy's "Rock" quest uses) makes the enemies read as
+  // unkillable in the time the player gets. `corrupted:true` is kept too
+  // (still the same coordinated focus-fire + aura, still his monsters) —
+  // this fight is NOT enemyFirst like M6 was; the party sees this one
+  // coming (see NEW_AREA_INTRO.M7), so they still get to act, they just
+  // can't win. `scriptedDefeat:true` routes the inevitable wipe through
+  // triggerScriptedDefeat() instead of the normal DEFEAT path — see
+  // checkEndConditions().
+  'M7': {
+    region: 'Lametus',
+    scriptedDefeat: true,
+    playerPos: { reno:[1,3], drace:[1,4], sela:[1,2], kael:[1,5], trice:[1,1], zora:[1,0] },
+    enemies: [
+      { col:5, row:4, ...buildMonster({ base: 'Dragon', kind: 'boss', name: "The Corrupted One's Champion" }), level: 20, corrupted: true, oneShotKill: true, fixedMaxHp: 999999 },
+      { col:5, row:6, ...buildMonster({ base: 'Wyvern', kind: 'boss', name: "The Corrupted One's Herald" }), level: 20, corrupted: true, oneShotKill: true, fixedMaxHp: 999999 },
+      { col:8, row:4, ...buildMonster({ base: 'Dragon', kind: 'boss' }), level: 20, corrupted: true, oneShotKill: true, fixedMaxHp: 999999 },
+      { col:8, row:6, ...buildMonster({ base: 'Wyvern', kind: 'boss' }), level: 20, corrupted: true, oneShotKill: true, fixedMaxHp: 999999 },
+    ],
+  },
+
+  // The Noble Deity's 7 Trials (2026-07-17) — one single strong rival duel
+  // per classGrouping (TRIAL_CLASS in gameState.js), same
+  // tournamentEnemyDef() shape AT1/AT2/GT already use for a "real
+  // hero-shaped opponent," just ONE fixed-class opponent instead of 4
+  // random ones — reads as "a trial," not "a tournament." Level 19/stats
+  // sit a notch above GT's 17 (the hardest content that existed before
+  // this arc) since these are meant to be the last real gear-check before
+  // whatever the Corrupted One rematch turns out to be. No epic gear on
+  // these — the point of the trial is the fight itself, the reward is the
+  // God Tier weapon (see VictoryScene.js's TRIAL_CLASS reward wiring), not
+  // another gear check layered on top of it.
+  'T1': { region: 'Lametus', playerPos: { reno:[1,3], drace:[1,4], sela:[1,2], kael:[1,5], trice:[1,1], zora:[1,0] }, enemyHeroClasses: [TRIAL_CLASS.T1], enemies: () => [tournamentEnemyDef(7, 5, TRIAL_CLASS.T1, 19, { speed:17, strength:26, stamina:19, endurance:18 })] },
+  'T2': { region: 'Lametus', playerPos: { reno:[1,3], drace:[1,4], sela:[1,2], kael:[1,5], trice:[1,1], zora:[1,0] }, enemyHeroClasses: [TRIAL_CLASS.T2], enemies: () => [tournamentEnemyDef(7, 5, TRIAL_CLASS.T2, 19, { speed:17, strength:26, stamina:19, endurance:18 })] },
+  'T3': { region: 'Lametus', playerPos: { reno:[1,3], drace:[1,4], sela:[1,2], kael:[1,5], trice:[1,1], zora:[1,0] }, enemyHeroClasses: [TRIAL_CLASS.T3], enemies: () => [tournamentEnemyDef(7, 5, TRIAL_CLASS.T3, 19, { speed:17, strength:26, stamina:19, endurance:18 })] },
+  'T4': { region: 'Lametus', playerPos: { reno:[1,3], drace:[1,4], sela:[1,2], kael:[1,5], trice:[1,1], zora:[1,0] }, enemyHeroClasses: [TRIAL_CLASS.T4], enemies: () => [tournamentEnemyDef(7, 5, TRIAL_CLASS.T4, 19, { speed:17, strength:26, stamina:19, endurance:18 })] },
+  'T5': { region: 'Lametus', playerPos: { reno:[1,3], drace:[1,4], sela:[1,2], kael:[1,5], trice:[1,1], zora:[1,0] }, enemyHeroClasses: [TRIAL_CLASS.T5], enemies: () => [tournamentEnemyDef(7, 5, TRIAL_CLASS.T5, 19, { speed:17, strength:26, stamina:19, endurance:18 })] },
+  'T6': { region: 'Lametus', playerPos: { reno:[1,3], drace:[1,4], sela:[1,2], kael:[1,5], trice:[1,1], zora:[1,0] }, enemyHeroClasses: [TRIAL_CLASS.T6], enemies: () => [tournamentEnemyDef(7, 5, TRIAL_CLASS.T6, 19, { speed:17, strength:26, stamina:19, endurance:18 })] },
+  'T7': { region: 'Lametus', playerPos: { reno:[1,3], drace:[1,4], sela:[1,2], kael:[1,5], trice:[1,1], zora:[1,0] }, enemyHeroClasses: [TRIAL_CLASS.T7], enemies: () => [tournamentEnemyDef(7, 5, TRIAL_CLASS.T7, 19, { speed:17, strength:26, stamina:19, endurance:18 })] },
+
   // ── Side battles (optional, July 2026) ────────────────────────────────────
   // M13/M14 (off M6/M9) removed 2026-07-11 along with M6/M9 themselves;
   // M15 (off M12) removed the same day too, alongside M12 ("remove m12") —
-  // nothing left here either.
+  // nothing left here either. (M6 itself was reused for a brand-new mission
+  // above, 2026-07-17 — unrelated to the one removed here.)
 };
 
 const enemyMaxHp = u => (u.endurance + u.stamina) * (2 + (u.level ?? 1));
@@ -1013,6 +1188,10 @@ export class BattleScene extends Phaser.Scene {
     this.actionMenu     = null;
     this.statusPopup    = null;
     this.activeAbility  = null;
+    // The Corrupted One's monsters (M6, 2026-07-17) all share ONE locked
+    // target instead of each picking their own nearest hero — see
+    // getCorruptedTarget()/enemyAct below.
+    this.corruptedTarget = null;
 
     // ── Player units — read live stats from gameState ─────────────────────
 
@@ -1200,8 +1379,20 @@ export class BattleScene extends Phaser.Scene {
       this.handleClick(ptr.x, ptr.y);
     });
 
-    this.showPhaseBanner('PLAYER TURN');
-    this.redraw();
+    // enemyFirst (M6, 2026-07-17, "the monsters attack so in the M6 battle
+    // the enemy will go first") — an ambush: the corrupted monsters get the
+    // opening move instead of the player. Reuses startEnemyTurn() as-is
+    // (already guards phase/redraws/paces itself with delayedCall, and
+    // chains into startPlayerTurn() when done) rather than duplicating its
+    // body — the only visible side effect is Turn 1's player phase reads as
+    // "Turn 2" once the ambush round finishes (startPlayerTurn always
+    // increments turnCount), which is fine here since Turn 1 IS the ambush.
+    if (missionCfg.enemyFirst) {
+      this.startEnemyTurn();
+    } else {
+      this.showPhaseBanner('PLAYER TURN');
+      this.redraw();
+    }
   }
 
   // Builds one scaled enemy unit object from a mission-config enemy def (a
@@ -1284,6 +1475,23 @@ export class BattleScene extends Phaser.Scene {
     g.destroy();
   }
 
+  // The Corrupted One's monsters (M6, 2026-07-17) get a dark-purple glow
+  // baked under their feet — same "bake a Graphics blob into a real texture"
+  // trick ensureRockTexture() above uses, since there's no radial-gradient
+  // primitive on Phaser.Graphics. Concentric circles drawn largest-to-
+  // smallest with rising alpha fake the gradient (later/smaller circles
+  // paint over earlier/bigger ones, so the center ends up brightest).
+  ensureAuraTexture() {
+    if (this.textures.exists('aura-proc')) return;
+    const g = this.add.graphics();
+    for (let r = 70; r >= 10; r -= 6) {
+      g.fillStyle(0x8822cc, 0.05 + (1 - r / 70) * 0.35);
+      g.fillCircle(80, 80, r);
+    }
+    g.generateTexture('aura-proc', 160, 160);
+    g.destroy();
+  }
+
   spawnEnemyVisual(e) {
     const ENEMY_TINT = 0x4a5566;
     if (e.spriteKey === 'rock-proc') this.ensureRockTexture();
@@ -1354,6 +1562,18 @@ export class BattleScene extends Phaser.Scene {
     e.lvLabel = this.add.text(x, y + TH2 - 58, `${elementIcon(e.element)} Lv.${e.level}`, {
       fontSize: '9px', fontFamily: 'monospace', color: lvColor,
     }).setOrigin(0.5, 1).setDepth(660);
+
+    // Corrupted aura (M6) — sits just behind the sprite's feet, pulsing so
+    // it reads as an active effect rather than a flat decal.
+    if (e.corrupted) {
+      this.ensureAuraTexture();
+      e.auraGfx = this.add.sprite(x, y + TH2, 'aura-proc')
+        .setScale(0.9).setAlpha(0.8).setBlendMode(Phaser.BlendModes.ADD).setDepth(Math.max(0, depth - 1));
+      this.tweens.add({
+        targets: e.auraGfx, scale: 1.15, alpha: 0.45,
+        duration: 900, yoyo: true, repeat: -1, ease: 'Sine.easeInOut',
+      });
+    }
     this.registerUnit(e);
   }
 
@@ -1853,6 +2073,11 @@ export class BattleScene extends Phaser.Scene {
     if (defender.damageReduction) {
       dmg = Math.max(0, dmg - defender.damageReduction.amount);
     }
+    // oneShotKill (M7, 2026-07-17, "the hero should lose them fight no
+    // matter what") — a guaranteed-lethal hit, independent of real combat
+    // math (the advisor's flag on NOT literally computing a "10000x"
+    // damage number). Only ever set on MISSION_CONFIGS.M7's enemies.
+    if (attacker.oneShotKill) dmg = defender.hp;
 
     const { x, y } = this.gridToScreen(defender.col, defender.row);
     const color = attacker.team === 'player' ? '#ffee44' : '#ff5555';
@@ -1898,6 +2123,7 @@ export class BattleScene extends Phaser.Scene {
     if (unit.label)   { unit.label.setVisible(false); }
     if (unit.portrait){ unit.portrait.setVisible(false); }
     if (unit.lvLabel) { unit.lvLabel.setVisible(false); }
+    if (unit.auraGfx) { unit.auraGfx.destroy(); unit.auraGfx = null; }
     if (unit.sprite)  { unit.sprite.destroy(); unit.sprite = null; }
     this.redraw();
     this.checkEndConditions();
@@ -1907,12 +2133,63 @@ export class BattleScene extends Phaser.Scene {
     if (this.isVictory()) {
       this.triggerVictory();
     } else if (this.playerUnits.every(p => p.isDead)) {
-      this.time.delayedCall(500, () => {
-        this.phase = 'defeat';
-        this.showEndBanner('DEFEAT', '#ff4444');
-        this.time.delayedCall(2500, () => this.scene.start('WorldMapScene'));
-      });
+      if (this.missionCfg.scriptedDefeat) {
+        this.triggerScriptedDefeat();
+      } else {
+        this.time.delayedCall(500, () => {
+          this.phase = 'defeat';
+          this.showEndBanner('DEFEAT', '#ff4444');
+          this.time.delayedCall(2500, () => this.scene.start('WorldMapScene'));
+        });
+      }
     }
+  }
+
+  // scriptedDefeat (M7, 2026-07-17) — a loss that ADVANCES the story
+  // instead of the normal DEFEAT-then-retry path above. No banner, no
+  // "back to WorldMapScene with nothing gained" — straight into a 2-part
+  // StoryScene chain (blacking out at the arena, then waking up rescued
+  // by the Noble Deity) that unlocks M7a + all 7 trials before landing
+  // back on the map. M7/M7a are marked completed (nothing left to "win"
+  // at either); T1-T7 are only unlocked, not completed — those are real,
+  // winnable battles. Guarded pushes since a replay of M7 (it stays
+  // clickable afterward, same as any other completed mission) would hit
+  // this same path again.
+  triggerScriptedDefeat() {
+    this.phase = 'defeat';
+    for (const id of ['M7', 'M7a']) {
+      if (!state.completedMissions.includes(id)) state.completedMissions.push(id);
+    }
+    for (const id of ['M7a', 'T1', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7']) {
+      if (!state.unlockedMissions.includes(id)) state.unlockedMissions.push(id);
+    }
+    this.time.delayedCall(500, () => {
+      this.scene.start('StoryScene', {
+        location: 'LAMETUS  ·  The Grand Arena',
+        backdrop: BACKDROPS.lametusArena,
+        lines: [
+          { speaker: 'Narrator',          color: '#888899', text: 'The Corrupted One\'s monsters close in, faster and stronger than anything the party has faced. There\'s no opening, no way through.' },
+          { speaker: 'The Corrupted One', color: '#aa44ff', text: 'Rest now. You were never going to win this one.' },
+          { speaker: 'Narrator',          color: '#888899', text: 'Everything goes dark.' },
+        ],
+        nextScene: 'StoryScene',
+        nextSceneData: {
+          location: 'LAMETUS  ·  ???',
+          backdrop: BACKDROPS.lametusWaterWilds,
+          lines: [
+            { speaker: 'Narrator',      color: '#888899', text: 'Reno wakes beside a quiet stream, far from the arena. The others are already stirring nearby — all breathing, all alive.' },
+            { speaker: 'Reno',          color: '#4488ff', text: '...We\'re alive? How—' },
+            { speaker: 'Noble Deity',   color: '#ffdd66', text: 'I pulled you out before he could finish what he started. You\'re safe here, for now.' },
+            { speaker: 'Reno',          color: '#4488ff', text: '...Who are you?' },
+            { speaker: 'Noble Deity',   color: '#ffdd66', text: 'Someone who\'s watched The Corrupted One take far more than a tournament from this world. I can help you beat him — but not as you are now.' },
+            { speaker: 'Noble Deity',   color: '#ffdd66', text: 'There are seven trials, one for every fighting style. Clear them, and each will earn you a God Tier weapon — the only thing that can stand against what he\'s become.' },
+            { speaker: 'Reno',          color: '#4488ff', text: '...Then let\'s get started.' },
+          ],
+          nextScene: 'WorldMapScene',
+          nextSceneData: {},
+        },
+      });
+    });
   }
 
   // Factored out of checkEndConditions() (2026-07-11, Gale's "kill as many
@@ -3180,7 +3457,7 @@ export class BattleScene extends Phaser.Scene {
     // noAttack (Ester Academy's "Rock" quest, 2026-07-11) — a stationary
     // punching-bag target that never moves or fights back.
     if (wolf.noAttack) return;
-    const target = this.nearestPlayer(wolf);
+    const target = wolf.corrupted ? this.getCorruptedTarget() : this.nearestPlayer(wolf);
     if (!target) return;
 
     // Find path to target
@@ -3279,6 +3556,7 @@ export class BattleScene extends Phaser.Scene {
     let dmg = 0;
     for (let h = 0; h < hits; h++) dmg += Math.round(calcAtk(attacker) * mult * desigMult * elemMult * partnerAtkMult);
     dmg = Math.round(dmg * this.partnerDefenseMultiplier(target));
+    if (attacker.oneShotKill) dmg = target.hp; // see doAttack's oneShotKill comment
     target.hp = Math.max(0, target.hp - dmg);
 
     const { x, y } = this.gridToScreen(target.col, target.row);
@@ -3321,6 +3599,25 @@ export class BattleScene extends Phaser.Scene {
       const d = Math.abs(p.col - wolf.col) + Math.abs(p.row - wolf.row);
       if (d < bestDist) { best = p; bestDist = d; }
     }
+    return best;
+  }
+
+  // The Corrupted One's monsters (M6) read as "something is guiding them" by
+  // sharing a single locked target for the WHOLE battle instead of each
+  // picking their own nearest hero — every corrupted enemy paths toward and
+  // piles onto whoever this returns. Locks onto the lowest-current-HP alive
+  // hero the first time it's called, then keeps returning that same unit
+  // every subsequent turn (cheapest kill, and reads as focused/deliberate
+  // rather than random) until it dies, at which point the next call re-locks
+  // onto the new lowest-HP survivor.
+  getCorruptedTarget() {
+    if (this.corruptedTarget && !this.corruptedTarget.isDead) return this.corruptedTarget;
+    let best = null;
+    for (const p of this.playerUnits) {
+      if (p.isDead) continue;
+      if (!best || p.hp < best.hp) best = p;
+    }
+    this.corruptedTarget = best;
     return best;
   }
 
@@ -3724,6 +4021,7 @@ export class BattleScene extends Phaser.Scene {
       this.wolfHpGfx.fillStyle(0xdd3333, 1);
       this.wolfHpGfx.fillRect(bx, by, bw * (e.hp / e.maxHp), bh);
       if (e.lvLabel) e.lvLabel.setPosition(x, by - 12);
+      if (e.auraGfx) e.auraGfx.setPosition(x, y + TH2).setDepth(Math.max(0, (e.col + e.row) * 10 + 4));
     }
 
     // Info text
