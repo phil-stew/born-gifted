@@ -2151,8 +2151,12 @@ export class BattleScene extends Phaser.Scene {
   // StoryScene chain (blacking out at the arena, then waking up rescued
   // by the Noble Deity) that unlocks M7a + all 7 trials before landing
   // back on the map. M7/M7a are marked completed (nothing left to "win"
-  // at either); T1-T7 are only unlocked, not completed — those are real,
-  // winnable battles. Guarded pushes since a replay of M7 (it stays
+  // at either); T1-T7/M8/A3/A4 are only unlocked, not completed — T1-T7
+  // are real winnable battles, M8/A3/A4 are plain hubs (same
+  // unlocked-only treatment M5/AF/ZE get, see HUB_CONFIGS.M8/A3/A4).
+  // M8 ("after m7a is completed the m8 apears") lands at the same moment
+  // as M7a itself, since that's the instant M7a's own completedMissions
+  // push above happens. Guarded pushes since a replay of M7 (it stays
   // clickable afterward, same as any other completed mission) would hit
   // this same path again.
   triggerScriptedDefeat() {
@@ -2160,7 +2164,7 @@ export class BattleScene extends Phaser.Scene {
     for (const id of ['M7', 'M7a']) {
       if (!state.completedMissions.includes(id)) state.completedMissions.push(id);
     }
-    for (const id of ['M7a', 'T1', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7']) {
+    for (const id of ['M7a', 'T1', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'M8', 'A3', 'A4']) {
       if (!state.unlockedMissions.includes(id)) state.unlockedMissions.push(id);
     }
     this.time.delayedCall(500, () => {

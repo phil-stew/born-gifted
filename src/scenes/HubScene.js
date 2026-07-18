@@ -9,7 +9,8 @@ import { drawButton } from '../ui/canvasButton.js';
 // vector illustration. Every academy hub uses the school backdrop; only the
 // home village has town art so far.
 const TOWN_BACKDROP = {
-  'Hidden Village': BACKDROPS.villageRevisit,
+  'Hidden Village':   BACKDROPS.villageRevisit,
+  'Lametus Capital':  BACKDROPS.lametusTown,
 };
 
 export class HubScene extends Phaser.Scene {

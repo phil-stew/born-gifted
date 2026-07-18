@@ -172,6 +172,17 @@ const NODES = [
   { id:'T5',  x:503, y:510, arc:'Trial', name:'Trial of Ball',          connectsFrom:'M7a', side:true },
   { id:'T6',  x:607, y:510, arc:'Trial', name:'Trial of Bat & Ball',    connectsFrom:'M7a', side:true },
   { id:'T7',  x:710, y:510, arc:'Trial', name:'Trial of Racquet',       connectsFrom:'M7a', side:true },
+  // Lametus Capital + its 2 academies (2026-07-17, "after m7a is
+  // completed the m8 apears which becomes the lametus capital... one
+  // school in the east of M8 and the other west"). Unlocked all at once
+  // alongside M7a/T1-T7 in BattleScene.js's triggerScriptedDefeat (not a
+  // live check here) — plain hubs (see HUB_CONFIGS.M8/A3/A4), so only
+  // ever added to unlockedMissions, never completedMissions, same as
+  // M5/AF/ZE. Sits between M7 and the trial row — checked clearance
+  // against T6/T7's diamond markers below it.
+  { id:'M8',  x:680, y:450, arc:'Lametus', name:'Lametus Capital',  connectsFrom:'M7' },
+  { id:'A3',  x:610, y:450, arc:'Lametus', name:'Wrenfield Academy', connectsFrom:'M8' },
+  { id:'A4',  x:750, y:450, arc:'Lametus', name:'Calder Academy',    connectsFrom:'M8' },
 ];
 
 const ARC_COLORS = {
@@ -189,6 +200,11 @@ const ARC_COLORS = {
   // opposite end of the palette from Blight's corruption-purple so the
   // "ally/hope" beat reads as visually distinct from the "villain" one.
   Trial:      0xffcc33,
+  // Lametus Capital + its 2 academies (2026-07-17) — soft green, matching
+  // the LAMETUS kingdom label's own color (#aaffbb) rather than either of
+  // the story-beat colors above (Blight/Trial) since this is just "the
+  // kingdom itself," not tied to the villain or the Deity specifically.
+  Lametus:    0x66dd88,
 };
 
 // One-time story beat shown the first time each region cave/unique-area
@@ -355,6 +371,7 @@ const ARC_LABEL_POS = {
   // both the LAMETUS kingdom label (x:330-480, y:416-458) and the trial
   // nodes' own side:true diamond markers (25px radius around each).
   Trial:      { x: 150, y: 400 },
+  Lametus:    { x: 610, y: 400 },
 };
 
 // tiles/mapasset/treesrock.png — 7 cols × 4 rows of decorative scenery icons
@@ -961,11 +978,12 @@ export class WorldMapScene extends Phaser.Scene {
       return;
     }
 
-    // Gale + Artfall Academy + Zester (2026-07-11 follow-ups) — plain hub
+    // Gale + Artfall Academy + Zester (2026-07-11 follow-ups), plus
+    // Lametus Capital + its 2 academies (2026-07-17) — all plain hub
     // entries, same treatment as A1/A2 above minus the one-time story
-    // recruit special-case (none of these three have one). No battle
-    // attached to any of them — all three are pure city/recruit stops.
-    if (node.id === 'M5' || node.id === 'AF' || node.id === 'ZE') {
+    // recruit special-case (none of these have one). No battle attached
+    // to any of them — all pure city/recruit stops.
+    if (['M5', 'AF', 'ZE', 'M8', 'A3', 'A4'].includes(node.id)) {
       this.scene.start('HubScene', { nodeId: node.id });
       return;
     }

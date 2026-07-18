@@ -85,4 +85,32 @@ export const HUB_CONFIGS = {
     recruitPool: 'Performance',
     services: ['shop', 'forge', 'recruit'],
   },
+  // Lametus Capital (2026-07-17, "after m7a is completed the m8 apears
+  // which becomes the lametus capital") — same minimum-viable "kingdom
+  // city" treatment M5 (Gale) got: bare shop+forge, no quest board (none
+  // asked for here), unlocked alongside M7a/A3/A4/T1-T7 as part of M7's
+  // scriptedDefeat chain (see BattleScene.js's triggerScriptedDefeat).
+  M8: {
+    type: 'kingdom', name: 'Lametus Capital', shopId: 'generic',
+    services: ['shop', 'forge'],
+  },
+  // The two schools flanking the Capital (2026-07-17, "one school in the
+  // east of M8 and the other west") — recruitPool picks up the only 2
+  // classGroupings none of the other 4 academies/cities cover yet
+  // (Athletics: A1, Bat & Ball/Ball: A2, Martial Arts: AF, Performance: ZE
+  // — see the rest of this table), so every classGrouping now has exactly
+  // one recruit source. Same minimal academy treatment as AF/ZE (no
+  // taskList/questList — none asked for here either). Names invented
+  // (not specified) — same "pick something, document it" call as M6's
+  // Blightreach/M7's Grand Arena naming.
+  A3: {
+    type: 'academy', name: 'Wrenfield Academy', shopId: 'generic',
+    recruitPool: 'Target',
+    services: ['shop', 'forge', 'recruit'],
+  },
+  A4: {
+    type: 'academy', name: 'Calder Academy', shopId: 'generic',
+    recruitPool: 'Racquet',
+    services: ['shop', 'forge', 'recruit'],
+  },
 };
