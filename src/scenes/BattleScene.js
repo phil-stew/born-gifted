@@ -481,6 +481,26 @@ const STAGE_CONFIGS = {
   'T5': { tiles: ['000','001','002','003','055','056','057','061','062'], label: 'TRIAL OF BALL',         bgColor: 0x0a141c, layout: trialLayout },
   'T6': { tiles: ['000','001','002','003','055','056','057','061','062'], label: 'TRIAL OF BAT & BALL',   bgColor: 0x14140a, layout: trialLayout },
   'T7': { tiles: ['000','001','002','003','055','056','057','061','062'], label: 'TRIAL OF RACQUET',      bgColor: 0x1c1c0a, layout: trialLayout },
+  // The Golem Trial (2026-07-18, "North of A3 they will fight the Golems
+  // as there last trial") — the entry-requirement fight for the Final
+  // Tournament, separate from the 7 class trials above (it isn't tied to
+  // any classGrouping/God Tier reward, just "proof of clearing a trial").
+  // Same rugged/rocky family as DK/A1a's "Dragon's Roost" — a
+  // "boulder-strewn pass" reads better here than the sandy-arena tiles
+  // the 7 class trials use.
+  'TG': {
+    tiles: ['004','010','015','020','033','034','061','062'],
+    label: 'STONEWAKE PASS',
+    bgColor: 0x2c2822,
+    layout(col, row) {
+      const p = th(col, row);
+      const edge = col === 0 || row === 0 || col === 9 || row === 9;
+      if (edge) return p < 45 ? '033' : '034';
+      if (p < 12) return p < 6 ? '061' : '062';
+      const v = (col * 5 + row * 3) % 4;
+      return ['004','010','015','020'][v];
+    },
+  },
 };
 
 // Per-mission configuration: player start positions + enemy definitions.
@@ -933,6 +953,26 @@ const MISSION_CONFIGS = {
   'T5': { region: 'Lametus', playerPos: { reno:[1,3], drace:[1,4], sela:[1,2], kael:[1,5], trice:[1,1], zora:[1,0] }, enemyHeroClasses: [TRIAL_CLASS.T5], enemies: () => [tournamentEnemyDef(7, 5, TRIAL_CLASS.T5, 19, { speed:17, strength:26, stamina:19, endurance:18 })] },
   'T6': { region: 'Lametus', playerPos: { reno:[1,3], drace:[1,4], sela:[1,2], kael:[1,5], trice:[1,1], zora:[1,0] }, enemyHeroClasses: [TRIAL_CLASS.T6], enemies: () => [tournamentEnemyDef(7, 5, TRIAL_CLASS.T6, 19, { speed:17, strength:26, stamina:19, endurance:18 })] },
   'T7': { region: 'Lametus', playerPos: { reno:[1,3], drace:[1,4], sela:[1,2], kael:[1,5], trice:[1,1], zora:[1,0] }, enemyHeroClasses: [TRIAL_CLASS.T7], enemies: () => [tournamentEnemyDef(7, 5, TRIAL_CLASS.T7, 19, { speed:17, strength:26, stamina:19, endurance:18 })] },
+
+  // The Golem Trial (2026-07-18, "North of A3 they will fight the Golems
+  // as there last trial") — a real, winnable fight (unlike M7), north of
+  // Wrenfield Academy. Not tied to any classGrouping/God Tier reward (see
+  // TRIAL_CLASS in gameState.js, which has no 'TG' entry on purpose) —
+  // this is just the tournament's entry requirement, "proof of clearing
+  // ONE trial." Level 21, a notch above T1-T7's 19 and on par with M7's
+  // villain-tier 20, since the story frames it as the last thing standing
+  // between the party and the Final Tournament. Golem has no sprite art
+  // (see monsters.js's SPRITE_INFO.Golem) — ensureGolemTexture() in this
+  // file generates a placeholder.
+  'TG': {
+    region: 'Lametus',
+    playerPos: { reno:[1,3], drace:[1,4], sela:[1,2], kael:[1,5], trice:[1,1], zora:[1,0] },
+    enemies: [
+      { col:5, row:5, ...buildMonster({ base: 'Golem', kind: 'boss' }), level: 21 },
+      { col:7, row:3, ...buildMonster({ base: 'Golem', tier: 3 }) },
+      { col:7, row:7, ...buildMonster({ base: 'Golem', tier: 3 }) },
+    ],
+  },
 
   // ── Side battles (optional, July 2026) ────────────────────────────────────
   // M13/M14 (off M6/M9) removed 2026-07-11 along with M6/M9 themselves;
@@ -1492,9 +1532,32 @@ export class BattleScene extends Phaser.Scene {
     g.destroy();
   }
 
+  // Golem (2026-07-18) — no dedicated art (see the SPRITE_INFO.Golem
+  // comment in monsters.js), so a blocky humanoid rock silhouette gets
+  // baked into a real texture the same way ensureRockTexture() above does.
+  ensureGolemTexture() {
+    if (this.textures.exists('golem-proc')) return;
+    const g = this.add.graphics();
+    g.fillStyle(0x6a6660, 1);
+    g.fillRect(75, 10, 50, 40);   // head
+    g.fillStyle(0x5a5650, 1);
+    g.fillRect(60, 40, 80, 90);   // torso
+    g.fillStyle(0x4a4640, 1);
+    g.fillRect(30, 50, 30, 70);   // left arm
+    g.fillRect(140, 50, 30, 70);  // right arm
+    g.fillRect(65, 130, 30, 60);  // left leg
+    g.fillRect(105, 130, 30, 60); // right leg
+    g.lineStyle(3, 0x2a2620, 1);
+    g.strokeRect(75, 10, 50, 40);
+    g.strokeRect(60, 40, 80, 90);
+    g.generateTexture('golem-proc', 200, 200);
+    g.destroy();
+  }
+
   spawnEnemyVisual(e) {
     const ENEMY_TINT = 0x4a5566;
     if (e.spriteKey === 'rock-proc') this.ensureRockTexture();
+    if (e.spriteKey === 'golem-proc') this.ensureGolemTexture();
     // footprintScreenPos centers a multi-tile unit (King Wolf, size:2)
     // over its whole block instead of just its anchor tile's own cell.
     const { x, y } = this.footprintScreenPos(e);

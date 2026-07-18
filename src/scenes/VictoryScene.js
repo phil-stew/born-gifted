@@ -64,6 +64,7 @@ const MISSION_NAMES = {
   T1: 'Trial of Athletics', T2: 'Trial of Martial Arts', T3: 'Trial of Performance',
   T4: 'Trial of Target',    T5: 'Trial of Ball',          T6: 'Trial of Bat & Ball',
   T7: 'Trial of Racquet',
+  TG: 'Stonewake Pass',
 };
 
 // Tytrate rewards on mission clear (2026-07-11, "all the mission should
@@ -80,7 +81,10 @@ const MISSION_NAMES = {
 // each, same day) sit between MH and DK — their real reward is the God
 // Tier weapon (see the TRIAL_CLASS drop wiring above), Tytrate is just the
 // standard per-mission stipend every Gale/Lametus battle already gets.
-const MISSION_TYTRATE = { DK: 300, MH: 150, GT: 400, M6: 500, T1: 250, T2: 250, T3: 250, T4: 250, T5: 250, T6: 250, T7: 250 };
+// TG (350, 2026-07-18) — no God Tier reward riding on this one (see
+// TRIAL_CLASS, which has no 'TG' key), so its Tytrate sits a bit above
+// T1-T7's 250 to compensate, just under M6's 500.
+const MISSION_TYTRATE = { DK: 300, MH: 150, GT: 400, M6: 500, T1: 250, T2: 250, T3: 250, T4: 250, T5: 250, T6: 250, T7: 250, TG: 350 };
 
 // M12/M15 removed 2026-07-11 ("remove m12", fifth follow-up — M15 went
 // with it, see WorldMapScene.js's NODES comment) — the main chain now ends

@@ -69,6 +69,16 @@ const SPRITE_INFO = {
   // (2026-07-11). Same 1536x1024 canvas as Boar, so the same fw/fh (256x170).
   Dragon: { spriteKey: 'dragon-idle', animKey: 'dragon-idle', file: 'monster/dragon.png', fw: 256, fh: 170, spriteScale: 0.4,  moveSpeed: 2 },
   Wyvern: { spriteKey: 'wyven-idle',  animKey: 'wyven-idle',  file: 'monster/wyven.png',  fw: 256, fh: 170, spriteScale: 0.35, moveSpeed: 3 },
+  // Golem (2026-07-18, "North of A3 they will fight the Golems as their
+  // last trial") — no Golem art exists on disk (still one of the 7
+  // "data first" species from the original monster redesign). No `file`
+  // key on purpose: BattleScene.js's monsterSpriteInfos() only preloads
+  // entries that have one, so this is deliberately skipped there and
+  // instead generated at spawn time as a procedural texture (same trick
+  // Ester Academy's "Rock" quest uses for rock-proc) — see
+  // ensureGolemTexture()/spawnEnemyVisual in BattleScene.js. No animKey
+  // (nothing to play), slow moveSpeed matching Golem's low `speed` stat.
+  Golem:  { spriteKey: 'golem-proc',  animKey: null, spriteScale: 0.55, moveSpeed: 1 },
 };
 export function spriteInfoForBase(base) {
   return SPRITE_INFO[base] ?? null;

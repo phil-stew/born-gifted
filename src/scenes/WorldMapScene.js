@@ -183,6 +183,12 @@ const NODES = [
   { id:'M8',  x:680, y:450, arc:'Lametus', name:'Lametus Capital',  connectsFrom:'M7' },
   { id:'A3',  x:610, y:450, arc:'Lametus', name:'Wrenfield Academy', connectsFrom:'M8' },
   { id:'A4',  x:750, y:450, arc:'Lametus', name:'Calder Academy',    connectsFrom:'M8' },
+  // The Golem Trial (2026-07-18, "North of A3 they will fight the
+  // Golems as there last trial") — required (not side:true): it's the
+  // Final Tournament's entry requirement, not an optional God Tier grind
+  // like T1-T7. Unlocked the moment M8's first-visit story plays (see
+  // onMissionClick's M8 handler), not a live check.
+  { id:'TG',  x:610, y:385, arc:'Lametus', name:'Stonewake Pass',    connectsFrom:'A3' },
 ];
 
 const ARC_COLORS = {
@@ -357,6 +363,16 @@ const NEW_AREA_INTRO = {
       { speaker: 'Narrator', color: '#888899', text: 'The last of the seven — reflexes sharp enough to return anything thrown back at you.' },
     ],
   },
+  // The Golem Trial (2026-07-18) — north of Wrenfield, the party's
+  // entry-requirement fight for the Final Tournament.
+  TG: {
+    location: 'LAMETUS  ·  Stonewake Pass',
+    backdrop: BACKDROPS.lametusTrainingField,
+    lines: [
+      { speaker: 'Narrator', color: '#888899', text: 'North of Wrenfield, the road narrows into a boulder-strewn pass — and the boulders are moving.' },
+      { speaker: 'Reno',     color: '#4488ff', text: '...Golems. Guess this is our proof.' },
+    ],
+  },
 };
 
 const ARC_LABEL_POS = {
@@ -371,7 +387,8 @@ const ARC_LABEL_POS = {
   // both the LAMETUS kingdom label (x:330-480, y:416-458) and the trial
   // nodes' own side:true diamond markers (25px radius around each).
   Trial:      { x: 150, y: 400 },
-  Lametus:    { x: 610, y: 400 },
+  // Shifted from (610,400) to dodge TG's new node at (610,385) — see NODES.
+  Lametus:    { x: 545, y: 465 },
 };
 
 // tiles/mapasset/treesrock.png — 7 cols × 4 rows of decorative scenery icons
@@ -979,11 +996,43 @@ export class WorldMapScene extends Phaser.Scene {
     }
 
     // Gale + Artfall Academy + Zester (2026-07-11 follow-ups), plus
-    // Lametus Capital + its 2 academies (2026-07-17) — all plain hub
-    // entries, same treatment as A1/A2 above minus the one-time story
-    // recruit special-case (none of these have one). No battle attached
-    // to any of them — all pure city/recruit stops.
-    if (['M5', 'AF', 'ZE', 'M8', 'A3', 'A4'].includes(node.id)) {
+    // Lametus's 2 academies (2026-07-17) — all plain hub entries, same
+    // treatment as A1/A2 above minus the one-time story recruit
+    // special-case (none of these have one). No battle attached to any
+    // of them — all pure city/recruit stops. M8 (Lametus Capital) gets
+    // its OWN branch below since it has a one-time story beat first.
+    if (['M5', 'AF', 'ZE', 'A3', 'A4'].includes(node.id)) {
+      this.scene.start('HubScene', { nodeId: node.id });
+      return;
+    }
+
+    // Lametus Capital's first-visit story (2026-07-18, "after entering
+    // the Lametus city our heroes realized that they have missing for a
+    // few weeks and it['s] the day of the Final tournament... they juse
+    // need proof of finishing One trail... quickly go and do the
+    // trial"). Plays once (reuses missionIntroShown as the guard even
+    // though M8 isn't a battle/NEW_AREA_INTRO entry — same "shown once"
+    // array, different kind of content), unlocks TG (Stonewake Pass, the
+    // tournament's entry-requirement Golem fight) at the end, then always
+    // opens the hub normally on every later visit.
+    if (node.id === 'M8') {
+      if (!state.missionIntroShown.includes('M8')) {
+        state.missionIntroShown.push('M8');
+        if (!state.unlockedMissions.includes('TG')) state.unlockedMissions.push('TG');
+        this.scene.start('StoryScene', {
+          location: 'LAMETUS CAPITAL',
+          backdrop: BACKDROPS.lametusTown,
+          lines: [
+            { speaker: 'Narrator', color: '#888899', text: 'The capital gates open onto a city buzzing with banners and crowds — something big is happening today.' },
+            { speaker: 'Drace',    color: '#88cc66', text: '...Reno, what\'s the date?' },
+            { speaker: 'Reno',     color: '#4488ff', text: '...I don\'t— wait.' },
+            { speaker: 'Narrator', color: '#888899', text: 'It\'s been almost three weeks since the arena. A passing official confirms it: today is the day of the Final Tournament — entry requires proof of clearing at least one trial.' },
+            { speaker: 'Kael',     color: '#ffaa44', text: '...Then we don\'t have time to waste. There\'s one just north of here. Let\'s go.' },
+          ],
+          nextScene: 'WorldMapScene', nextSceneData: {},
+        });
+        return;
+      }
       this.scene.start('HubScene', { nodeId: node.id });
       return;
     }
