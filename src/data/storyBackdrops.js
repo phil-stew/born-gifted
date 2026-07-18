@@ -22,10 +22,30 @@ export const BACKDROPS = {
   capital:         { key: 'bd-castle2',       path: ALTROES + 'castle2.png' },
   cave:            { key: 'bd-cave1',         path: ALTROES + 'cave1.png' },
   wilds:           { key: 'bd-wilds',         path: ALTROES + 'wilds.png' },
+  // 2026-07-18 audit ("use these in the Altroes region") — grandarena.png
+  // and volcano.png existed on disk but had no caller. altroesArena
+  // replaces M4/AT1/AT2's previous BACKDROPS.school/wilds reuse (an
+  // actual arena shot fits "Arena Atlros" and the Trials far better than
+  // a generic castle or open wilds); altroesVolcano is new — Ester's
+  // "Dragon's Roost" quest (A1a) never had an intro cutscene at all.
+  altroesArena:    { key: 'bd-altroesarena',  path: ALTROES + 'grandarena.png' },
+  altroesVolcano:  { key: 'bd-altroesvolcano',path: ALTROES + 'volcano.png' },
 
   galeCaveA:       { key: 'bd-snowcave1',     path: GALE + 'snowcave.png' },
   galeCaveB:       { key: 'bd-snowcave2',     path: GALE + 'snowcave2.png' },
   galeWilds:       { key: 'bd-snowwilds',     path: GALE + 'opensnowwilds.png' },
+  // 2026-07-18 audit ("these for Gale region") — castle.png/Snowarena.png/
+  // snowbuilds.png existed on disk with no caller. galeCastle fixes the
+  // exact gap Lametus Capital already got fixed for (M5's hub was falling
+  // back to the generic vector illustration); galeTown does the same for
+  // Zester; galeArena replaces GT's previous cross-region reuse of
+  // Altroes' castle1.png with Gale's own snow-tournament shot. Gale's OWN
+  // grandarena.png and snowarena2.png are near-duplicates of galeArena —
+  // left unregistered on purpose (same "don't register 3 near-identical
+  // arenas" call as Lametus's leftover town/well/shop shots below).
+  galeCastle:      { key: 'bd-galecastle',    path: GALE + 'castle.png' },
+  galeTown:        { key: 'bd-galetown',      path: GALE + 'snowbuilds.png' },
+  galeArena:       { key: 'bd-galearena',     path: GALE + 'Snowarena.png' },
 
   lametusWilds:    { key: 'bd-lametuswilds',  path: LAMETUS + 'wilds.png' },
   // The Corrupted One arc (2026-07-17) — grandarena.png for the "villain

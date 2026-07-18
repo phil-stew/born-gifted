@@ -220,6 +220,21 @@ const ARC_COLORS = {
 // removed 2026-07-11 ("going to rewrite"); M12/M15 (Lametus) were removed
 // the same day too ("remove m12") — the main chain now ends at M5 (Gale).
 const NEW_AREA_INTRO = {
+  // Dragon's Roost (Ester Academy's "defeat 1 dragon and two wyverns"
+  // quest, A1a) — never had an intro cutscene at all until this pass
+  // (2026-07-18, "use these in the Altroes region" — volcano.png existed
+  // on disk with no caller). A1a/A1b's own onMissionClick branch skips
+  // this table entirely by default (straight to BattleScene) — updated
+  // that branch to check NEW_AREA_INTRO first, same first-visit-only gate
+  // every other mission's intro uses, so A1b (no entry here) is unaffected.
+  A1a: {
+    location: "ALTROES  ·  Dragon's Roost",
+    backdrop: BACKDROPS.altroesVolcano,
+    lines: [
+      { speaker: 'Narrator', color: '#888899', text: 'The roost sits high on a volcanic ridge overlooking Ester Academy — the air shimmers with heat, and something large is circling above.' },
+      { speaker: 'Reno',     color: '#4488ff', text: '...A dragon. And it brought company.' },
+    ],
+  },
   // Altroes Trials + the next school's tournament (2026-07-11) — same
   // intro-then-battle flow, gated by the live "all 6 quests done" check
   // instead of a MISSION_NEXT completion hook (see WorldMapScene's
@@ -227,9 +242,12 @@ const NEW_AREA_INTRO = {
   // AT1's opponents are now a real tournament team in epic gear (2026-07-11
   // third follow-up, "the m5a should be one of the At1 battles" — folded
   // M5a's content into AT1, see BattleScene.js) — text updated to match.
+  // 2026-07-18 — swapped from BACKDROPS.wilds to altroesArena (grandarena.png,
+  // previously unused) since these are real tournament trials, not a wilds
+  // encounter.
   AT1: {
     location: 'ALTROES  ·  The Trials',
-    backdrop: BACKDROPS.wilds,
+    backdrop: BACKDROPS.altroesArena,
     lines: [
       { speaker: 'Narrator', color: '#888899', text: 'Word reaches the Capital: both academies have vouched for you. Altroes itself wants to see what you\'ve learned — and they\'re sending a real tournament team, decked out in gear far better than anything you\'ve faced yet.' },
       { speaker: 'Reno',     color: '#4488ff', text: '...The Trials. Let\'s show them.' },
@@ -237,7 +255,7 @@ const NEW_AREA_INTRO = {
   },
   AT2: {
     location: 'ALTROES  ·  The Trials',
-    backdrop: BACKDROPS.wilds,
+    backdrop: BACKDROPS.altroesArena,
     lines: [
       { speaker: 'Narrator', color: '#888899', text: 'One trial down. The second is harder — Altroes doesn\'t make this easy.' },
     ],
@@ -261,9 +279,11 @@ const NEW_AREA_INTRO = {
     ],
   },
   // Gale Tournament (2026-07-12) — capstone battle NW of Artfall.
+  // Backdrop swapped 2026-07-18 from BACKDROPS.school (a cross-region reuse
+  // of Altroes' castle1.png) to Gale's own galeArena (Snowarena.png).
   GT: {
     location: 'GALE  ·  The Tournament',
-    backdrop: BACKDROPS.school,
+    backdrop: BACKDROPS.galeArena,
     lines: [
       { speaker: 'Narrator', color: '#888899', text: 'Word gets around fast in Gale. Having proven yourself three times over, the region\'s best team wants a real match — full gear, no excuses.' },
       { speaker: 'Reno',     color: '#4488ff', text: '...Let\'s show them what we\'ve learned.' },
@@ -935,6 +955,20 @@ export class WorldMapScene extends Phaser.Scene {
       }
       if (isCompleted) {
         this.showDifficultyPicker(node);
+        return;
+      }
+      // A1a's Dragon's Roost intro (2026-07-18) — same first-visit-only
+      // gate the generic NEW_AREA_INTRO branch further down uses. A1b has
+      // no entry in that table, so it falls straight to the `else` below
+      // unchanged, exactly as before this branch was touched.
+      const intro = NEW_AREA_INTRO[node.id];
+      if (intro && !state.missionIntroShown.includes(node.id)) {
+        state.missionIntroShown.push(node.id);
+        state.currentMission = node.id;
+        this.scene.start('StoryScene', {
+          location: intro.location, backdrop: intro.backdrop, lines: intro.lines,
+          nextScene: 'BattleScene', nextSceneData: {},
+        });
       } else {
         state.currentMission = node.id;
         this.scene.start('BattleScene');
@@ -966,7 +1000,10 @@ export class WorldMapScene extends Phaser.Scene {
         state.currentMission = 'M4';
         this.scene.start('StoryScene', {
           location: 'ARENA ATLROS',
-          backdrop: BACKDROPS.school,
+          // Swapped 2026-07-18 from BACKDROPS.school (Ester's shared castle
+          // shot) to altroesArena (grandarena.png) — a real arena backdrop
+          // for a mission literally named "Arena Atlros."
+          backdrop: BACKDROPS.altroesArena,
           lines: [
             { speaker: 'Reno', color: '#4488ff', text: '...Never thought I\'d have to fight our own instructor.' },
           ],

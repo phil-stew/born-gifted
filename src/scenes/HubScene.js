@@ -6,11 +6,16 @@ import { drawButton } from '../ui/canvasButton.js';
 
 // Sirblanc/Hidden Village is Reno's home town — once the player has left it
 // (M1 cleared), revisiting the hub uses a photo backdrop instead of the
-// vector illustration. Every academy hub uses the school backdrop; only the
-// home village has town art so far.
+// vector illustration. Every academy hub uses the school backdrop.
+// Gale/Zester (2026-07-18 audit, "these for Gale region") — castle.png/
+// snowbuilds.png existed on disk with no caller; Gale's hub was falling
+// back to the generic vector illustration exactly the way Lametus
+// Capital did before it got fixed the same way.
 const TOWN_BACKDROP = {
   'Hidden Village':   BACKDROPS.villageRevisit,
   'Lametus Capital':  BACKDROPS.lametusTown,
+  'Gale':             BACKDROPS.galeCastle,
+  'Zester':           BACKDROPS.galeTown,
 };
 
 export class HubScene extends Phaser.Scene {
