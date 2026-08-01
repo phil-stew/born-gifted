@@ -561,13 +561,16 @@ export class WorldMapScene extends Phaser.Scene {
       if (!b.connectsFrom) continue;
       const a = NODES.find(n => n.id === b.connectsFrom);
       if (!a) continue;
+      // Matches drawNodes()' skip: a line into a still-locked node would
+      // point at empty space and hint a future node is there, so it's
+      // withheld until that node actually unlocks.
       const isUnlocked = state.unlockedMissions.includes(b.id) || state.completedMissions.includes(b.id);
-      const alpha = isUnlocked ? 0.55 : 0.14;
+      if (!isUnlocked) continue;
       const color = ARC_COLORS[a.arc];
       if (b.side) {
-        this.drawDashedLine(gfx, a.x, a.y, b.x, b.y, color, alpha);
+        this.drawDashedLine(gfx, a.x, a.y, b.x, b.y, color, 0.55);
       } else {
-        gfx.lineStyle(2, color, alpha);
+        gfx.lineStyle(2, color, 0.55);
         gfx.lineBetween(a.x, a.y, b.x, b.y);
       }
     }
@@ -606,6 +609,12 @@ export class WorldMapScene extends Phaser.Scene {
       const isCompleted = state.completedMissions.includes(id);
       const isUnlocked  = state.unlockedMissions.includes(id);
 
+      // Future levels stay fully unrendered until unlocked — no circle, no
+      // label, no diamond outline, nothing at (x, y) to spoil what's ahead
+      // or even that a node exists there. drawConnections() has its own
+      // matching skip for the line leading into it.
+      if (!isUnlocked && !isCompleted) continue;
+
       const gfx = this.add.graphics();
 
       if (isCompleted) {
@@ -618,7 +627,7 @@ export class WorldMapScene extends Phaser.Scene {
           fontSize: '14px', fontFamily: 'monospace', color: '#ffffff',
         }).setOrigin(0.5).setAlpha(0.7);
 
-      } else if (isUnlocked) {
+      } else {
         // Active: bright fill + pulse ring
         gfx.fillStyle(color, 1);
         gfx.fillCircle(x, y, 18);
@@ -632,21 +641,13 @@ export class WorldMapScene extends Phaser.Scene {
           targets: pulse, scaleX: 1.8, scaleY: 1.8, alpha: 0,
           duration: 1500, ease: 'Sine.easeOut', repeat: -1, delay: i * 80,
         });
-
-      } else {
-        // Locked: dark
-        gfx.fillStyle(0x333344, 0.5);
-        gfx.fillCircle(x, y, 16);
-        gfx.lineStyle(1, 0x444455, 0.6);
-        gfx.strokeCircle(x, y, 16);
       }
 
       // Side battles get a diamond outline so they read as optional/bonus
       // at a glance, distinct from the required main-chain circles.
       if (node.side) {
-        const active = isUnlocked || isCompleted;
         const r = 25;
-        gfx.lineStyle(1.5, 0xffffff, active ? 0.5 : 0.2);
+        gfx.lineStyle(1.5, 0xffffff, 0.5);
         gfx.strokePoints(
           [{ x, y: y - r }, { x: x + r, y }, { x, y: y + r }, { x: x - r, y }],
           true,
@@ -654,19 +655,37 @@ export class WorldMapScene extends Phaser.Scene {
       }
 
       // Mission label
-      const active = isUnlocked || isCompleted;
       this.add.text(x, y, id, {
         fontSize: '9px', fontFamily: 'monospace', fontStyle: 'bold',
-        color: active ? '#ffffff' : '#555566',
-      }).setOrigin(0.5).setAlpha(active ? 1 : 0.5);
+        color: '#ffffff',
+      }).setOrigin(0.5);
+
+      // Shop/Forge badges — same 🛒/⚒ glyphs HubScene's own service tiles
+      // use, so a hub's map marker previews what's inside it, for nodes
+      // HUB_CONFIGS actually lists as having that service (every hub does
+      // today, but this stays correct if a future hub doesn't).
+      const services = HUB_CONFIGS[id]?.services ?? [];
+      const hasShop  = services.includes('shop');
+      const hasForge = services.includes('forge');
+      if (hasShop || hasForge) {
+        const by = y + 26;
+        const bx0 = hasShop && hasForge ? x - 8 : x;
+        if (hasShop) {
+          this.add.circle(bx0, by, 7, 0x0d0d20, 0.85).setStrokeStyle(1, color, 0.7);
+          this.add.text(bx0, by, '🛒', { fontSize: '8px' }).setOrigin(0.5);
+        }
+        if (hasForge) {
+          const bx1 = hasShop ? x + 8 : x;
+          this.add.circle(bx1, by, 7, 0x0d0d20, 0.85).setStrokeStyle(1, color, 0.7);
+          this.add.text(bx1, by, '⚒', { fontSize: '8px' }).setOrigin(0.5);
+        }
+      }
 
       // Hit zone — use Zone (Phaser's invisible interactive object)
-      if (isUnlocked || isCompleted) {
-        const hit = this.add.zone(x, y, 52, 52).setInteractive({ useHandCursor: true });
-        hit.on('pointerover', () => this.showTooltip(node, x, y));
-        hit.on('pointerout',  () => this.hideTooltip());
-        hit.on('pointerdown', () => this.onMissionClick(node));
-      }
+      const hit = this.add.zone(x, y, 52, 52).setInteractive({ useHandCursor: true });
+      hit.on('pointerover', () => this.showTooltip(node, x, y));
+      hit.on('pointerout',  () => this.hideTooltip());
+      hit.on('pointerdown', () => this.onMissionClick(node));
     }
   }
 
