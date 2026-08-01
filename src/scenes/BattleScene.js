@@ -61,6 +61,14 @@ const PRIMARY_STAT_BOOST = 1.3;
 // forever (2026-07-09 feedback: "when king wolf hit lvl 40 lvl increase
 // should stop").
 const REPEAT_LEVEL_CAP = 40;
+// Flat per-level stat growth for monsters (2026-08-01, "game is too easy if
+// monster don't get increased stats via leveling") — level previously only
+// fed HP/XP/kit-size (see buildEnemyUnit), leaving raw speed/strength/
+// stamina/endurance untouched by level itself, only by tier/difficulty/
+// repeat multipliers. Matches gameState.js's BASE_GROWTH (players gain +1
+// per stat per level, doubled/quadrupled per talent pick) — added flat,
+// after the existing multipliers, so it doesn't compound with difficulty.
+const MONSTER_LEVEL_GROWTH = 1;
 function rollRegionArchetype(region) {
   const cfg = REGION_ARCHETYPES[region] ?? REGION_ARCHETYPES.Altroes;
   const primaryStat = Math.random() < 0.9
@@ -1495,13 +1503,14 @@ export class BattleScene extends Phaser.Scene {
     const { diff, repeatLevelBonus, repeatHpMult, repeatAtkMult, region, scaledLevel } = this._enemyCtx;
     const lv = Math.min(REPEAT_LEVEL_CAP, scaledLevel(d.level) + repeatLevelBonus);
     const { primaryStat, element } = rollRegionArchetype(region);
+    const levelGrowth = MONSTER_LEVEL_GROWTH * (lv - 1);
     const scaled = {
       ...d, team: 'enemy',
       level:     lv,
-      speed:     Math.round(d.speed     * diff),
-      strength:  Math.round(d.strength  * diff * repeatAtkMult),
-      stamina:   Math.round(d.stamina   * diff * repeatHpMult),
-      endurance: Math.round(d.endurance * diff * repeatHpMult),
+      speed:     Math.round(d.speed     * diff) + levelGrowth,
+      strength:  Math.round(d.strength  * diff * repeatAtkMult) + levelGrowth,
+      stamina:   Math.round(d.stamina   * diff * repeatHpMult) + levelGrowth,
+      endurance: Math.round(d.endurance * diff * repeatHpMult) + levelGrowth,
       xpValue:   40 * lv,
       primaryStat, element,
     };
