@@ -11,6 +11,7 @@ import { isUsableItem, rollGearItem } from '../data/items.js';
 import { BACKDROPS } from '../data/storyBackdrops.js';
 import { preloadSfx, playSfx, playStinger, SFX } from '../audio/sound.js';
 import { preloadMusic, playMusic } from '../audio/music.js';
+import { getDifficultyMult } from '../data/difficulty.js';
 
 const COLS = 10, ROWS = 10;
 // Bigger isometric tiles (2026-07-07 feedback) — was 64×32 at .setScale(2)
@@ -1086,7 +1087,7 @@ export class BattleScene extends Phaser.Scene {
   constructor() { super({ key: 'BattleScene' }); }
 
   init(data) {
-    this.difficulty = data?.difficulty ?? 1.0;
+    this.difficulty = data?.difficulty ?? getDifficultyMult();
     this._initData = data ?? {};
   }
 

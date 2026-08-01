@@ -4,6 +4,7 @@ import { drawSlider } from '../ui/canvasSlider.js';
 import { playSfx, SFX } from '../audio/sound.js';
 import { getSfxVolume, setSfxVolume, getMusicVolume } from '../audio/settings.js';
 import { setMusicVolume } from '../audio/music.js';
+import { DIFFICULTIES, getDifficultyKey, setDifficultyKey } from '../data/difficulty.js';
 
 // Reachable from the title screen only (for now) — see GameScene's
 // SETTINGS button. Both sliders write straight through to
@@ -35,12 +36,46 @@ export class SettingsScene extends Phaser.Scene {
       fontSize: '18px', fontFamily: 'Georgia, serif', fontStyle: 'bold', color: '#ffffff',
     }).setOrigin(0.5);
 
-    this.buildVolumeRow('MUSIC VOLUME', height / 2 - 50, getMusicVolume(), (v) => setMusicVolume(v));
-    this.buildVolumeRow('SOUND EFFECTS VOLUME', height / 2 + 30, getSfxVolume(), (v) => setSfxVolume(v), {
+    this.buildVolumeRow('MUSIC VOLUME', height / 2 - 90, getMusicVolume(), (v) => setMusicVolume(v));
+    this.buildVolumeRow('SOUND EFFECTS VOLUME', height / 2 - 10, getSfxVolume(), (v) => setSfxVolume(v), {
       onRelease: () => playSfx(this, SFX.click),
     });
+    this.buildDifficultyRow(height / 2 + 90);
 
     this.cameras.main.fadeIn(250, 0, 0, 0);
+  }
+
+  // Sets the default difficulty new/first-time battles start on — see
+  // BattleScene's `data?.difficulty ?? getDifficultyMult()` fallback.
+  // Doesn't touch or replace WorldMapScene's per-replay Normal/Hard/Elite
+  // picker, which still layers its own explicit choice on top.
+  buildDifficultyRow(y) {
+    const { width } = this.scale;
+    const cx = width / 2;
+
+    this.add.text(cx, y - 30, 'DEFAULT DIFFICULTY', {
+      fontSize: '13px', fontFamily: 'monospace', fontStyle: 'bold', color: '#ccccee',
+    }).setOrigin(0.5);
+
+    const activeKey = getDifficultyKey();
+    const bw = 88, bh = 40, gap = 12;
+    const startX = cx - (DIFFICULTIES.length * (bw + gap) - gap) / 2 + bw / 2;
+
+    const buttons = [];
+    DIFFICULTIES.forEach((d, i) => {
+      const btn = drawButton(this, {
+        x: startX + i * (bw + gap), y, w: bw, h: bh,
+        label: d.label, fontSize: '13px',
+        bg: d.bg0, bgHover: d.bg0 + 0x080808, border: d.bdr, accent: d.bdr,
+        textColor: d.color, textHoverColor: d.color,
+        active: d.key === activeKey,
+        onClick: () => {
+          setDifficultyKey(d.key);
+          buttons.forEach((b, bi) => b.setActive(DIFFICULTIES[bi].key === d.key));
+        },
+      });
+      buttons.push(btn);
+    });
   }
 
   buildVolumeRow(label, y, initial, onChange, { onRelease } = {}) {
