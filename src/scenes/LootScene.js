@@ -56,14 +56,28 @@ export class LootScene extends Phaser.Scene {
 
     this.allDrops.forEach(({ item, count }, i) => {
       const isMat = item.type === 'material';
-      const col = isMat ? '#aacc88' : '#' + rarityColor(item.rarity).toString(16).padStart(6, '0');
+      const rarityHex = isMat ? 0xaacc88 : rarityColor(item.rarity);
+      const col = '#' + rarityHex.toString(16).padStart(6, '0');
       const tag  = isMat ? 'Material' : item.rarity.charAt(0).toUpperCase() + item.rarity.slice(1);
       const label = count > 1 ? `${item.name}  ×${count}` : item.name;
       const gx = gridLeft + (i % cols) * colW;
       const gy = startY + Math.floor(i / cols) * rowH;
+
+      // Rarity-bordered card behind each drop, same rounded-card language
+      // (dark translucent fill + colored stroke) used for menu cards
+      // elsewhere — previously this was bare text with no boundary between
+      // adjacent drops.
+      const cardW = colW - 14, cardH = rowH - 10;
+      const cardX = gx - cardW / 2, cardY = gy - cardH / 2 + 6;
+      const card = this.add.graphics();
+      card.fillStyle(0x14142a, 0.55);
+      card.fillRoundedRect(cardX, cardY, cardW, cardH, 8);
+      card.lineStyle(1.5, rarityHex, 0.85);
+      card.strokeRoundedRect(cardX, cardY, cardW, cardH, 8);
+
       this.add.text(gx, gy, label, {
         fontSize: '18px', fontFamily: 'monospace', fontStyle: 'bold', color: col,
-        wordWrap: { width: colW - 16 }, align: 'center',
+        wordWrap: { width: colW - 24 }, align: 'center',
       }).setOrigin(0.5);
       this.add.text(gx, gy + 22, tag, {
         fontSize: '10px', fontFamily: 'monospace', color: '#556677',
