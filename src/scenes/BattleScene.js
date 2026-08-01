@@ -1000,6 +1000,12 @@ const hasActiveBuff = u =>
   (u.overdriveTurns ?? 0) > 0 ||
   !!u.damageReduction;
 
+// Slow/statDown debuffs (see ability.debuff handling in resolveHit and
+// enemySkillAttack) — tracked on u.debuffs for both teams, though today
+// only player abilities actually inflict one (no shipped monster skill
+// carries a `debuff` field yet).
+const hasActiveDebuff = u => (u.debuffs?.length ?? 0) > 0;
+
 // ── Designation combat triangle ─────────────────────────────────────────────
 // C beats Rg, Rg beats D, D beats C (Support sits outside the triangle).
 // Which of the attacker's designations is "live" for this hit follows the
@@ -1307,7 +1313,7 @@ export class BattleScene extends Phaser.Scene {
         classGrouping, equippedPassives: getEquippedPassives({ ...gs, designations: currentDesignations(gs) }),
         moveSpeed: gs.moveSpeed, baseMoveSpeed: gs.moveSpeed, col, row, team: 'player',
         speed: eff.speed, strength: eff.strength, stamina: eff.stamina, endurance: eff.endurance,
-        hp, maxHp: hp, isDone: false, isDead: false, hitFlash: false,
+        hp, maxHp: hp, isDone: false, isDead: false, hitFlash: false, debuffs: [],
         sp: maxSp, maxSp, hasActed: false, hasMoved: false, facing: 'right', level: gs.level ?? 1,
         talents: [...(gs.talents ?? [])],
         classSkills: [...(gs.classSkills ?? [])], skillCooldowns: {}, skillUses: {},
@@ -1325,6 +1331,12 @@ export class BattleScene extends Phaser.Scene {
       // damage-reduction ticking down); hidden by default, toggled in redraw().
       u.buffIcon = this.add.text(0, 0, '⬆', {
         fontSize: '14px', fontFamily: 'monospace', fontStyle: 'bold', color: '#ffdd44',
+        stroke: '#000000', strokeThickness: 3,
+      }).setOrigin(0.5).setDepth(1001).setVisible(false);
+      // Debuff icon — same idea, shown whenever u.debuffs has anything
+      // active. Offset to the buff icon's side so both can show at once.
+      u.debuffIcon = this.add.text(0, 0, '⬇', {
+        fontSize: '14px', fontFamily: 'monospace', fontStyle: 'bold', color: '#ff6688',
         stroke: '#000000', strokeThickness: 3,
       }).setOrigin(0.5).setDepth(1001).setVisible(false);
       const className = spriteKeyForRole(u.roleId);
@@ -1654,6 +1666,15 @@ export class BattleScene extends Phaser.Scene {
     e.lvLabel = this.add.text(x, y + TH2 - 58, `${elementIcon(e.element)} Lv.${e.level}`, {
       fontSize: '9px', fontFamily: 'monospace', color: lvColor,
     }).setOrigin(0.5, 1).setDepth(660);
+
+    // Debuff icon — mirrors playerUnits' buffIcon; shown whenever
+    // e.debuffs has anything active (slow/statDown, applied by player
+    // abilities like Tackle Kick/Cross-Check — see debuff.type handling
+    // in resolveHit/enemySkillAttack).
+    e.debuffIcon = this.add.text(x, y + TH2 - 74, '⬇', {
+      fontSize: '14px', fontFamily: 'monospace', fontStyle: 'bold', color: '#ff6688',
+      stroke: '#000000', strokeThickness: 3,
+    }).setOrigin(0.5).setDepth(661).setVisible(false);
 
     // Corrupted aura (M6) — sits just behind the sprite's feet, pulsing so
     // it reads as an active effect rather than a flat decal.
@@ -2214,7 +2235,8 @@ export class BattleScene extends Phaser.Scene {
     this.unregisterUnit(unit);
     if (unit.gfx)     { unit.gfx.clear(); }
     if (unit.label)   { unit.label.setVisible(false); }
-    if (unit.buffIcon){ unit.buffIcon.setVisible(false); }
+    if (unit.buffIcon)  { unit.buffIcon.setVisible(false); }
+    if (unit.debuffIcon){ unit.debuffIcon.setVisible(false); }
     if (unit.portrait){ unit.portrait.setVisible(false); }
     if (unit.lvLabel) { unit.lvLabel.setVisible(false); }
     if (unit.auraGfx) { unit.auraGfx.destroy(); unit.auraGfx = null; }
@@ -4112,12 +4134,18 @@ export class BattleScene extends Phaser.Scene {
 
       u.label.setPosition(cx, cy).setAlpha(u.isDone ? 0.5 : 1);
 
-      // Buff icon — above the head, clear of the portrait/circle and the
-      // HP/SP bars (which sit below center).
+      // Buff/debuff icons — above the head, clear of the portrait/circle
+      // and the HP/SP bars (which sit below center). Fixed side-by-side
+      // slots (buff left, debuff right) so nothing jumps when one toggles.
       if (hasActiveBuff(u)) {
-        u.buffIcon.setPosition(cx, cy - 34).setAlpha(alpha).setVisible(true);
+        u.buffIcon.setPosition(cx - 9, cy - 34).setAlpha(alpha).setVisible(true);
       } else {
         u.buffIcon.setVisible(false);
+      }
+      if (hasActiveDebuff(u)) {
+        u.debuffIcon.setPosition(cx + 9, cy - 34).setAlpha(alpha).setVisible(true);
+      } else {
+        u.debuffIcon.setVisible(false);
       }
     }
 
@@ -4133,6 +4161,7 @@ export class BattleScene extends Phaser.Scene {
       this.wolfHpGfx.fillStyle(0xdd3333, 1);
       this.wolfHpGfx.fillRect(bx, by, bw * (e.hp / e.maxHp), bh);
       if (e.lvLabel) e.lvLabel.setPosition(x, by - 12);
+      if (e.debuffIcon) e.debuffIcon.setPosition(x, by - 26).setVisible(hasActiveDebuff(e));
       if (e.auraGfx) e.auraGfx.setPosition(x, y + TH2).setDepth(Math.max(0, (e.col + e.row) * 10 + 4));
     }
 
