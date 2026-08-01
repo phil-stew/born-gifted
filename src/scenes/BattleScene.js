@@ -986,6 +986,20 @@ const MISSION_CONFIGS = {
 const enemyMaxHp = u => (u.endurance + u.stamina) * (2 + (u.level ?? 1));
 const calcAtk    = u => Math.round((u.strength + Math.round(u.speed * 0.5) + rand(0, 3)) * (u.atkBuff ?? 1.0));
 
+// Any temporary, turn-scoped boost — atk/move buffs (reset every player
+// turn, see startPlayerTurn), dodge/endure armed-but-unconsumed, or a
+// multi-turn effect still ticking (overdrive, damage reduction). Doesn't
+// include permanentBuffsApplied stat boosts (statBuffPermanent/costReduction/
+// maxHpBuff) — those are baked into the unit for the whole battle rather
+// than a status worth flagging turn to turn.
+const hasActiveBuff = u =>
+  (u.atkBuff ?? 1) > 1 ||
+  u.moveSpeed > u.baseMoveSpeed ||
+  !!u.dodgeReady ||
+  !!u.endureReady ||
+  (u.overdriveTurns ?? 0) > 0 ||
+  !!u.damageReduction;
+
 // ── Designation combat triangle ─────────────────────────────────────────────
 // C beats Rg, Rg beats D, D beats C (Support sits outside the triangle).
 // Which of the attacker's designations is "live" for this hit follows the
@@ -1306,6 +1320,13 @@ export class BattleScene extends Phaser.Scene {
       u.label = this.add.text(0, 0, u.initials, {
         fontSize: '11px', fontFamily: 'monospace', fontStyle: 'bold', color: '#ffffff',
       }).setOrigin(0.5).setDepth(1000);
+      // Buff icon — shown above the head whenever hasActiveBuff() is true
+      // (atkBuff/moveBuff this turn, dodge/endure armed, overdrive or
+      // damage-reduction ticking down); hidden by default, toggled in redraw().
+      u.buffIcon = this.add.text(0, 0, '⬆', {
+        fontSize: '14px', fontFamily: 'monospace', fontStyle: 'bold', color: '#ffdd44',
+        stroke: '#000000', strokeThickness: 3,
+      }).setOrigin(0.5).setDepth(1001).setVisible(false);
       const className = spriteKeyForRole(u.roleId);
       const hKey = heroKey(className);
       const idleAnim = `${hKey}-idle`;
@@ -2193,6 +2214,7 @@ export class BattleScene extends Phaser.Scene {
     this.unregisterUnit(unit);
     if (unit.gfx)     { unit.gfx.clear(); }
     if (unit.label)   { unit.label.setVisible(false); }
+    if (unit.buffIcon){ unit.buffIcon.setVisible(false); }
     if (unit.portrait){ unit.portrait.setVisible(false); }
     if (unit.lvLabel) { unit.lvLabel.setVisible(false); }
     if (unit.auraGfx) { unit.auraGfx.destroy(); unit.auraGfx = null; }
@@ -4089,6 +4111,14 @@ export class BattleScene extends Phaser.Scene {
       u.gfx.fillRect(bx, by + bh + 3, bw * (u.sp / u.maxSp), bh);
 
       u.label.setPosition(cx, cy).setAlpha(u.isDone ? 0.5 : 1);
+
+      // Buff icon — above the head, clear of the portrait/circle and the
+      // HP/SP bars (which sit below center).
+      if (hasActiveBuff(u)) {
+        u.buffIcon.setPosition(cx, cy - 34).setAlpha(alpha).setVisible(true);
+      } else {
+        u.buffIcon.setVisible(false);
+      }
     }
 
     // Wolf HP bars + level labels
