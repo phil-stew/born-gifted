@@ -614,17 +614,17 @@ const MISSION_CONFIGS = {
     region: 'Altroes',
     playerPos: { reno:[1,2], drace:[1,3], sela:[1,4], kael:[1,5], trice:[1,6] },
     enemies: [
-      { col:8, row:2, name:'Wolf', spriteKey:'wolf-idle', animKey:'wolf-idle', spriteScale:0.35, moveSpeed:2, speed:5, strength:8,  stamina:6, endurance:5, level:1 },
-      { col:8, row:5, name:'Wolf', spriteKey:'wolf-idle', animKey:'wolf-idle', spriteScale:0.35, moveSpeed:2, speed:5, strength:8,  stamina:6, endurance:5, level:1 },
-      { col:8, row:8, name:'Wolf', spriteKey:'wolf-idle', animKey:'wolf-idle', spriteScale:0.35, moveSpeed:2, speed:5, strength:8,  stamina:6, endurance:5, level:1 },
+      { col:8, row:2, name:'Wolf', spriteKey:'wolf-idle', animKey:'wolf-idle', spriteScale:0.35, moveSpeed:5, speed:5, strength:8,  stamina:6, endurance:5, level:1 },
+      { col:8, row:5, name:'Wolf', spriteKey:'wolf-idle', animKey:'wolf-idle', spriteScale:0.35, moveSpeed:5, speed:5, strength:8,  stamina:6, endurance:5, level:1 },
+      { col:8, row:8, name:'Wolf', spriteKey:'wolf-idle', animKey:'wolf-idle', spriteScale:0.35, moveSpeed:5, speed:5, strength:8,  stamina:6, endurance:5, level:1 },
     ],
   },
   'M2': {
     region: 'Altroes',
     playerPos: { reno:[1,3], drace:[1,4], sela:[1,2], kael:[1,5], trice:[1,1] },
     enemies: [
-      { col:7, row:2, name:'Boar', spriteKey:'boar-idle', animKey:'boar-idle', spriteScale:0.35, moveSpeed:2, speed:4, strength:12, stamina:8, endurance:9, level:2 },
-      { col:8, row:7, name:'Boar', spriteKey:'boar-idle', animKey:'boar-idle', spriteScale:0.35, moveSpeed:2, speed:4, strength:12, stamina:8, endurance:9, level:2 },
+      { col:7, row:2, name:'Boar', spriteKey:'boar-idle', animKey:'boar-idle', spriteScale:0.35, moveSpeed:5, speed:4, strength:12, stamina:8, endurance:9, level:2 },
+      { col:8, row:7, name:'Boar', spriteKey:'boar-idle', animKey:'boar-idle', spriteScale:0.35, moveSpeed:5, speed:4, strength:12, stamina:8, endurance:9, level:2 },
     ],
   },
 

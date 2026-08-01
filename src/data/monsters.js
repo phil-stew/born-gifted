@@ -464,5 +464,13 @@ export function buildMonster({ base, tier = 1, kind = 'regular', element = null,
     skillCooldowns: {},
     skillUses: {},
     ...(sprite ?? { spriteKey: null, animKey: null, spriteScale: 1.0, moveSpeed: 2 }),
+    // Move speed by designation (2026-08-01, "game is too easy"'s
+    // follow-up) — overrides whatever SPRITE_INFO/UNIQUE_SPRITE_INFO had
+    // (those per-species values, e.g. Golem's moveSpeed:1, predate this and
+    // are now dead weight). Defensive (D: Bear/Golem) trades mobility for
+    // its tankiness; every other designation (C melee, Rg ranged) gets the
+    // higher value so they can actually close distance/keep range instead
+    // of being outrun on a 10x10 board.
+    moveSpeed: designation === 'D' ? 4 : 5,
   };
 }
