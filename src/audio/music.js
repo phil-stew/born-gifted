@@ -11,6 +11,8 @@
 // TweenManager for the same reason — a fade tied to the outgoing scene's
 // tweens would get killed by that scene's own shutdown mid-fade.
 
+import { getMusicVolume, setMusicVolume as persistMusicVolume } from './settings.js';
+
 const BASE = 'audio/music/';
 
 const TRACKS = {
@@ -58,9 +60,9 @@ export function playMusic(gameOrScene, key, { fadeMs = 900, volume = VOLUME } = 
   const prev = current;
   const next = game.sound.add(soundKey, { loop: true, volume: 0 });
   next.play();
-  current = { key, sound: next };
+  current = { key, sound: next, baseVolume: volume };
 
-  fade(next, 0, volume, fadeMs);
+  fade(next, 0, volume * getMusicVolume(), fadeMs);
   if (prev?.sound) fade(prev.sound, prev.sound.volume ?? volume, 0, fadeMs, () => prev.sound.stop());
 }
 
@@ -69,4 +71,13 @@ export function stopMusic(gameOrScene, { fadeMs = 900 } = {}) {
   const entry = current;
   current = null;
   fade(entry.sound, entry.sound.volume ?? VOLUME, 0, fadeMs, () => entry.sound.stop());
+}
+
+// Persists the player's music volume preference and, if a track is
+// currently playing (or mid-fade), applies it immediately — otherwise
+// turning the slider in SettingsScene wouldn't be heard until the next
+// scene.start() picks a new track.
+export function setMusicVolume(v) {
+  persistMusicVolume(v);
+  if (current?.sound) current.sound.setVolume((current.baseVolume ?? VOLUME) * getMusicVolume());
 }

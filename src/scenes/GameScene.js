@@ -129,6 +129,15 @@ export class GameScene extends Phaser.Scene {
       this.titleElements.push(fsBtn.container);
     }
 
+    const settingsBtn = drawButton(this, {
+      x: width - 60, y: document.fullscreenEnabled ? 64 : 24, w: 100, h: 32, label: '⚙ SETTINGS',
+      fontSize: '10px', radius: 6,
+      bg: 0x14142a, bgHover: 0x1e1e3a, border: 0x334477, accent: 0xaaaaff,
+      textColor: '#8899cc', depth: 50,
+      onClick: () => this.scene.start('SettingsScene', { returnScene: 'GameScene', returnData: { skipCrawl: true } }),
+    });
+    this.titleElements.push(settingsBtn.container);
+
     if (this.skipCrawl) {
       this.crawlText.setAlpha(0);
       this.tapHint.setAlpha(0);

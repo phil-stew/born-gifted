@@ -7,6 +7,8 @@
 // used for images elsewhere in this codebase. playSfx() no-ops quietly if a
 // scene calls it before that load has happened.
 
+import { getSfxVolume } from './settings.js';
+
 const BASE = 'audio/sfx/';
 
 const FILES = {
@@ -47,7 +49,8 @@ export function playSfx(scene, keyOrList, opts = {}) {
   if (!scene?.sound) return;
   const key = Array.isArray(keyOrList) ? keyOrList[Math.floor(Math.random() * keyOrList.length)] : keyOrList;
   if (!scene.cache.audio.exists(key)) return;
-  scene.sound.play(key, { volume: 0.5, ...opts });
+  const baseVolume = opts.volume ?? 0.5;
+  scene.sound.play(key, { ...opts, volume: baseVolume * getSfxVolume() });
 }
 
 // Plays a short ascending run of clips back to back — used for victory /
@@ -57,7 +60,7 @@ export function playStinger(scene, keys, { gap = 130, rateStep = 0.08, volume = 
   if (!scene?.sound) return;
   keys.forEach((key, i) => {
     scene.time.delayedCall(i * gap, () => {
-      if (scene.cache.audio.exists(key)) scene.sound.play(key, { volume, rate: 1 + i * rateStep });
+      if (scene.cache.audio.exists(key)) scene.sound.play(key, { volume: volume * getSfxVolume(), rate: 1 + i * rateStep });
     });
   });
 }
