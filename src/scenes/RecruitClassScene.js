@@ -5,6 +5,7 @@ import {
 } from '../data/gameState.js';
 import { loadHeroSprites, stripHeroBackground, heroKey, firstFrame, spriteKeyForRole } from '../data/heroSprites.js';
 import { mount, unmount, onClick, esc } from '../ui/domUI.js';
+import { playSfx, SFX } from '../audio/sound.js';
 
 // Recruit flow: same sport → role → element → talent1 → talent2 choice
 // machine as CharacterCreationScene (the protagonist's own new-game flow),
@@ -182,7 +183,7 @@ export class RecruitClassScene extends Phaser.Scene {
     const z = this.add.zone(x, y, w, h).setInteractive({ useHandCursor: true });
     z.on('pointerover', () => draw(true));
     z.on('pointerout',  () => draw(false));
-    z.on('pointerdown', onClick);
+    z.on('pointerdown', (...args) => { playSfx(this, SFX.click); onClick(...args); });
     this.con.add(z);
   }
 
@@ -191,7 +192,7 @@ export class RecruitClassScene extends Phaser.Scene {
   backLink(onClick) {
     this.con.add(this.add.text(20, 16, '◀ back', {
       fontSize: '11px', fontFamily: 'monospace', color: '#556688',
-    }).setInteractive({ useHandCursor: true }).on('pointerdown', onClick));
+    }).setInteractive({ useHandCursor: true }).on('pointerdown', (...args) => { playSfx(this, SFX.click); onClick(...args); }));
   }
 
   renderSportStep() {

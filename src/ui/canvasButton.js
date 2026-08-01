@@ -6,6 +6,8 @@
 // Not used by PartyScene/LoadoutScene — those are DOM/CSS UI with their own
 // already-modern (rounded/shadowed) styling, a separate system entirely.
 
+import { playSfx, SFX } from '../audio/sound.js';
+
 // Minimum comfortable touch target (Apple HIG / Android Material both land
 // around 44-48px) — the visual button can be smaller than this (a lot of
 // this game's UI was originally sized for mouse-precision hover states), but
@@ -63,7 +65,7 @@ export function drawButton(scene, {
   const zone = scene.add.zone(x, y, Math.max(w, MIN_TOUCH), Math.max(h, MIN_TOUCH)).setInteractive({ useHandCursor: !!onClick });
   zone.on('pointerover', () => { draw(true); txt.setColor(textHoverColor); });
   zone.on('pointerout',  () => { draw(false); txt.setColor(isActive ? textHoverColor : textColor); });
-  if (onClick) zone.on('pointerdown', onClick);
+  if (onClick) zone.on('pointerdown', () => { playSfx(scene, SFX.click); onClick(); });
   con.add(zone);
 
   return {

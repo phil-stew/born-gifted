@@ -1,6 +1,8 @@
 import Phaser from 'phaser';
 import { state, roleDisplayLabel, gearLayoutForUnit } from '../data/gameState.js';
 import { FORGE_RECIPES, ORE_TIER_TO_RARITY, RARITY_GEAR_VALUE, rollGearItem, getItem } from '../data/items.js';
+import { playSfx, SFX } from '../audio/sound.js';
+import { playMusic } from '../audio/music.js';
 
 // Cost to reinforce: 75 per level (level 0→1 costs 75, 1→2 costs 150, 2→3 costs 225)
 const REINFORCE_BASE = 75;
@@ -28,6 +30,8 @@ export class ForgeScene extends Phaser.Scene {
   create() {
     const { width, height } = this.scale;
     this.W = width; this.H = height;
+
+    playMusic(this, 'hub');
 
     const bg = this.add.graphics();
     bg.fillStyle(0x070508, 1);
@@ -58,6 +62,7 @@ export class ForgeScene extends Phaser.Scene {
     back.on('pointerover', () => back.setStyle({ color: '#ffffff' }));
     back.on('pointerout',  () => back.setStyle({ color: '#7777aa' }));
     back.on('pointerdown', () => {
+      playSfx(this, SFX.click);
       this.cameras.main.fadeOut(300, 0, 0, 0);
       this.cameras.main.once('camerafadeoutcomplete', () => {
         // The old "leaving the Forge after M3 reveals M4" one-off cutscene
@@ -118,6 +123,7 @@ export class ForgeScene extends Phaser.Scene {
         z.on('pointerover', () => draw(true));
         z.on('pointerout',  () => draw(false));
         z.on('pointerdown', () => {
+          playSfx(this, SFX.click);
           this.mode = key;
           this.selectedSlot = null;
           this.selectedRecipe = null;
@@ -178,7 +184,7 @@ export class ForgeScene extends Phaser.Scene {
       const z = this.add.zone(lx + lw / 2, uy + 29, lw, 58).setInteractive({ useHandCursor: true });
       z.on('pointerover',  () => { if (!active) draw(true); });
       z.on('pointerout',   () => { if (!active) draw(false); });
-      z.on('pointerdown',  () => { this.unitIndex = i; this.selectedSlot = null; this.rebuild(); });
+      z.on('pointerdown',  () => { playSfx(this, SFX.click); this.unitIndex = i; this.selectedSlot = null; this.rebuild(); });
       this.unitCon.add(z);
     });
   }
@@ -243,7 +249,7 @@ export class ForgeScene extends Phaser.Scene {
           const z = this.add.zone(ex + ew / 2, iy + 23, ew - 8, 46).setInteractive({ useHandCursor: true });
           z.on('pointerover',  () => { if (!active) draw(true); });
           z.on('pointerout',   () => { if (!active) draw(false); });
-          z.on('pointerdown',  () => { this.selectedSlot = slot; this.rebuild(); });
+          z.on('pointerdown',  () => { playSfx(this, SFX.click); this.selectedSlot = slot; this.rebuild(); });
           this.equipCon.add(z);
         }
       } else {
@@ -374,6 +380,7 @@ export class ForgeScene extends Phaser.Scene {
     if (statKey && item.stats[statKey] !== undefined) {
       item.stats[statKey] += 1;
     }
+    playSfx(this, SFX.craft);
     this.rebuild();
   }
 
@@ -455,6 +462,7 @@ export class ForgeScene extends Phaser.Scene {
       z.on('pointerover', () => { if (!active) draw(true); });
       z.on('pointerout',  () => { if (!active) draw(false); });
       z.on('pointerdown', () => {
+        playSfx(this, SFX.click);
         this.selectedRecipe = recipe;
         this.selectedResultSlot = recipe.resultSlots[0];
         const ores = this.oreOptions();
@@ -522,7 +530,7 @@ export class ForgeScene extends Phaser.Scene {
           fontSize: '10px', fontFamily: 'monospace', color: active ? '#ffaa44' : '#997755',
         }).setOrigin(0.5));
         const z = this.add.zone(myBx, y + 13, bw, 26).setInteractive({ useHandCursor: true });
-        z.on('pointerdown', () => { this.selectedResultSlot = slot; this.rebuild(); });
+        z.on('pointerdown', () => { playSfx(this, SFX.click); this.selectedResultSlot = slot; this.rebuild(); });
         this.detCon.add(z);
         bx += bw + gap;
       }
@@ -550,7 +558,7 @@ export class ForgeScene extends Phaser.Scene {
           fontSize: '9px', fontFamily: 'monospace', color: active ? '#ffaa44' : '#997755',
         }).setOrigin(0.5));
         const z = this.add.zone(myBx, y + 12, bw, 24).setInteractive({ useHandCursor: true });
-        z.on('pointerdown', () => { this.selectedOreId = ore.id; this.rebuild(); });
+        z.on('pointerdown', () => { playSfx(this, SFX.click); this.selectedOreId = ore.id; this.rebuild(); });
         this.detCon.add(z);
         bx += bw + gap;
       }
@@ -642,6 +650,7 @@ export class ForgeScene extends Phaser.Scene {
     this.selectedRecipe = null;
     this.selectedResultSlot = null;
     this.selectedOreId = null;
+    playSfx(this, SFX.craft);
     this.rebuild();
   }
 }

@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { STARTING_SPORTS, sportById, TALENTS, ELEMENTS, createStarterUnit, newGame } from '../data/gameState.js';
+import { playSfx, SFX } from '../audio/sound.js';
 
 // New-game flow: pick a starting sport, then a role in it (if the sport has
 // 2+ roles), then an element, then pick 2 talents (repeats allowed). Each
@@ -78,7 +79,7 @@ export class CharacterCreationScene extends Phaser.Scene {
     const z = this.add.zone(x, y, w, h).setInteractive({ useHandCursor: true });
     z.on('pointerover', () => draw(true));
     z.on('pointerout',  () => draw(false));
-    z.on('pointerdown', onClick);
+    z.on('pointerdown', (...args) => { playSfx(this, SFX.click); onClick(...args); });
     this.con.add(z);
   }
 
@@ -129,6 +130,7 @@ export class CharacterCreationScene extends Phaser.Scene {
     this.con.add(this.add.text(20, 16, '◀ back', {
       fontSize: '11px', fontFamily: 'monospace', color: '#556688',
     }).setInteractive({ useHandCursor: true }).on('pointerdown', () => {
+      playSfx(this, SFX.click);
       this.step = 'sport';
       this.render();
     }));
@@ -159,6 +161,7 @@ export class CharacterCreationScene extends Phaser.Scene {
     this.con.add(this.add.text(20, 16, '◀ back', {
       fontSize: '11px', fontFamily: 'monospace', color: '#556688',
     }).setInteractive({ useHandCursor: true }).on('pointerdown', () => {
+      playSfx(this, SFX.click);
       this.step = sport.roles.length >= 2 ? 'role' : 'sport';
       this.render();
     }));
@@ -191,6 +194,7 @@ export class CharacterCreationScene extends Phaser.Scene {
     this.con.add(this.add.text(20, 16, '◀ back', {
       fontSize: '11px', fontFamily: 'monospace', color: '#556688',
     }).setInteractive({ useHandCursor: true }).on('pointerdown', () => {
+      playSfx(this, SFX.click);
       this.step = which === 1 ? 'element' : 'talent1';
       this.render();
     }));
@@ -231,6 +235,7 @@ export class CharacterCreationScene extends Phaser.Scene {
     this.con.add(this.add.text(20, 16, '◀ back', {
       fontSize: '11px', fontFamily: 'monospace', color: '#556688',
     }).setInteractive({ useHandCursor: true }).on('pointerdown', () => {
+      playSfx(this, SFX.click);
       this.step = 'talent2';
       this.render();
     }));

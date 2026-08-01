@@ -5,6 +5,7 @@ import { BACKDROPS } from '../data/storyBackdrops.js';
 import { drawButton } from '../ui/canvasButton.js';
 import { HUB_CONFIGS } from '../data/hubConfigs.js';
 import { getItem } from '../data/items.js';
+import { playMusic } from '../audio/music.js';
 
 // `connectsFrom` replaces the old implicit "connect to NODES[i-1]" ordering
 // so the map graph can branch — every node names its own parent explicitly,
@@ -443,6 +444,8 @@ export class WorldMapScene extends Phaser.Scene {
 
   create() {
     const { width, height } = this.scale;
+
+    playMusic(this, 'world');
 
     // M0b (Wolf's Den) becomes KNOWN once any party unit hits level 8 — this
     // only makes the node/quest-menu entry visible; actually entering the

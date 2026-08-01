@@ -1,6 +1,8 @@
 import Phaser from 'phaser';
 import { loadGame, getSaveSummary, deleteSave, SAVE_SLOTS } from '../data/gameState.js';
 import { drawButton } from '../ui/canvasButton.js';
+import { preloadSfx, playSfx, SFX } from '../audio/sound.js';
+import { preloadMusic, playMusic } from '../audio/music.js';
 
 export class GameScene extends Phaser.Scene {
   constructor() {
@@ -9,6 +11,8 @@ export class GameScene extends Phaser.Scene {
 
   preload() {
     if (!this.textures.exists('titlebg')) this.load.image('titlebg', 'world/title/titlebg.png');
+    preloadSfx(this);
+    preloadMusic(this);
   }
 
   init(data) {
@@ -42,6 +46,8 @@ export class GameScene extends Phaser.Scene {
     ];
 
     this.add.rectangle(cx, cy, width, height, 0x000000);
+
+    playMusic(this, 'title');
 
     // Title-phase visuals — collected so startCrawl() can clear them all at
     // once when the player picks New Game (crawl now plays after the title,
@@ -309,6 +315,7 @@ export class GameScene extends Phaser.Scene {
     zone.on('pointerover', () => drawBg(true));
     zone.on('pointerout',  () => drawBg(false));
     zone.on('pointerdown', () => {
+      playSfx(this, SFX.click);
       if (occupied) { loadGame(slot); this.goToMap(); }
       else { this.startCrawl(slot); }
     });
@@ -327,6 +334,7 @@ export class GameScene extends Phaser.Scene {
       rz.on('pointerout',  () => resetLabel.setColor(this.armedResetSlot === slot ? '#ff6666' : '#885555'));
       rz.on('pointerdown', (pointer, lx, ly, event) => {
         event?.stopPropagation();
+        playSfx(this, SFX.click);
         if (this.armedResetSlot === slot) {
           deleteSave(slot);
           this.startCrawl(slot);

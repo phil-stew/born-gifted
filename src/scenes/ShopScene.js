@@ -2,6 +2,8 @@ import Phaser from 'phaser';
 import { state, gearLayoutForUnit, roleDisplayLabel } from '../data/gameState.js';
 import { getItem, rarityColor, gearFrameName, materialFrameName, rollGearItem, GEAR_SHEET, GEAR_CLASS_COL, GEAR_SLOT_ROW, MATERIAL_ICON_FRAME } from '../data/items.js';
 import { stripBackgroundByKey } from '../data/heroSprites.js';
+import { playSfx, SFX } from '../audio/sound.js';
+import { playMusic } from '../audio/music.js';
 
 const SLOT_LABEL = { weapon:'Weapon', footwear:'Shoes', handwear:'Gloves', chest:'Chest', headwear:'Headgear' };
 
@@ -146,6 +148,8 @@ export class ShopScene extends Phaser.Scene {
     const { width, height } = this.scale;
     this.W = width; this.H = height;
 
+    playMusic(this, 'hub');
+
     stripBackgroundByKey(this, 'gears',     { cols: GEAR_SHEET.cols,     rows: GEAR_SHEET.rows });
     stripBackgroundByKey(this, 'materials', { cols: 5, rows: 3 }); // irregular sheet; approximate for seeding
     this._registerFrames();
@@ -171,6 +175,7 @@ export class ShopScene extends Phaser.Scene {
     back.on('pointerover', () => back.setStyle({ color: TEXT_DARK }));
     back.on('pointerout',  () => back.setStyle({ color: TEXT_MED }));
     back.on('pointerdown', () => {
+      playSfx(this, SFX.click);
       this.cameras.main.fadeOut(300, 0, 0, 0);
       this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start('HubScene', this.hubData));
     });
@@ -299,7 +304,7 @@ export class ShopScene extends Phaser.Scene {
         const z = this.add.zone(tx + tw / 2, ty + th / 2, tw, th).setInteractive({ useHandCursor: true });
         z.on('pointerover',  () => draw(true));
         z.on('pointerout',   () => draw(false));
-        z.on('pointerdown',  () => { this.tab = key; this.selected = null; this.rebuild(); });
+        z.on('pointerdown',  () => { playSfx(this, SFX.click); this.tab = key; this.selected = null; this.rebuild(); });
         this.tabCon.add(z);
       }
     });
@@ -329,7 +334,7 @@ export class ShopScene extends Phaser.Scene {
         const z = this.add.zone(tx + tw / 2, ty + th / 2, tw, th).setInteractive({ useHandCursor: true });
         z.on('pointerover',  () => draw(true));
         z.on('pointerout',   () => draw(false));
-        z.on('pointerdown',  () => { this.category = key; this.selected = null; this.rebuild(); });
+        z.on('pointerdown',  () => { playSfx(this, SFX.click); this.category = key; this.selected = null; this.rebuild(); });
         this.tabCon.add(z);
       }
     });
@@ -413,7 +418,7 @@ export class ShopScene extends Phaser.Scene {
       const z = this.add.zone(lx + lw / 2, y + itemH / 2, lw, itemH).setInteractive({ useHandCursor: true });
       z.on('pointerover',  () => { if (!active) draw(true); });
       z.on('pointerout',   () => { if (!active) draw(false); });
-      z.on('pointerdown',  () => { this.selected = item; this.rebuild(); });
+      z.on('pointerdown',  () => { playSfx(this, SFX.click); this.selected = item; this.rebuild(); });
       this.listCon.add(z);
 
       y += itemH;
@@ -562,6 +567,7 @@ export class ShopScene extends Phaser.Scene {
       state.tytrate += price;
       if (!state.inventory.some(it => it.id === item.id)) this.selected = null;
     }
+    playSfx(this, SFX.coin);
     this.rebuild();
   }
 }

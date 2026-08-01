@@ -9,6 +9,8 @@ import { loadHeroSprites, createHeroAnims, stripHeroBackground, stripBackgroundB
 import { buildMonster, buildMonsterKit, spriteInfoForBase } from '../data/monsters.js';
 import { isUsableItem, rollGearItem } from '../data/items.js';
 import { BACKDROPS } from '../data/storyBackdrops.js';
+import { preloadSfx, playSfx, playStinger, SFX } from '../audio/sound.js';
+import { preloadMusic, playMusic } from '../audio/music.js';
 
 const COLS = 10, ROWS = 10;
 // Bigger isometric tiles (2026-07-07 feedback) — was 64×32 at .setScale(2)
@@ -1092,6 +1094,9 @@ export class BattleScene extends Phaser.Scene {
   }
 
   preload() {
+    preloadSfx(this);
+    preloadMusic(this);
+
     // Load stage tiles for this mission
     const stageCfg = STAGE_CONFIGS[state.currentMission] ?? STAGE_CONFIGS['M1'];
     for (const num of stageCfg.tiles) {
@@ -1145,6 +1150,8 @@ export class BattleScene extends Phaser.Scene {
     this.originX = width / 2;
     this.originY = 70;
     this.turnCount = 1;
+
+    playMusic(this, 'battle');
 
     const missionId  = state.currentMission ?? 'M1';
     const missionCfg = MISSION_CONFIGS[missionId] ?? MISSION_CONFIGS['M1'];
@@ -1402,6 +1409,7 @@ export class BattleScene extends Phaser.Scene {
     exitBtn.on('pointerover', () => exitBtn.setStyle({ color: '#ff7777' }));
     exitBtn.on('pointerout',  () => exitBtn.setStyle({ color: '#aa5555' }));
     exitBtn.on('pointerdown', () => {
+      playSfx(this, SFX.battleClick);
       this.cameras.main.fadeOut(400, 0, 0, 0);
       this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start('WorldMapScene'));
     });
@@ -2175,6 +2183,7 @@ export class BattleScene extends Phaser.Scene {
   }
 
   killUnit(unit) {
+    playSfx(this, SFX.death);
     unit.isDead = true;
     if (unit.team === 'enemy') {
       this.killedEnemies++;
@@ -2201,6 +2210,7 @@ export class BattleScene extends Phaser.Scene {
       } else {
         this.time.delayedCall(500, () => {
           this.phase = 'defeat';
+          playSfx(this, SFX.defeat);
           this.showEndBanner('DEFEAT', '#ff4444');
           this.time.delayedCall(2500, () => this.scene.start('WorldMapScene'));
         });
@@ -2224,6 +2234,7 @@ export class BattleScene extends Phaser.Scene {
   // this same path again.
   triggerScriptedDefeat() {
     this.phase = 'defeat';
+    playSfx(this, SFX.defeat);
     for (const id of ['M7', 'M7a']) {
       if (!state.completedMissions.includes(id)) state.completedMissions.push(id);
     }
@@ -2271,6 +2282,7 @@ export class BattleScene extends Phaser.Scene {
   triggerVictory() {
     this.phase = 'victory';
     this.time.delayedCall(500, () => {
+      playStinger(this, SFX.victory);
       this.showPhaseBanner('VICTORY!');
       // Play celebration for all player heroes with the anim
       for (const u of this.playerUnits) {
@@ -2291,6 +2303,7 @@ export class BattleScene extends Phaser.Scene {
   }
 
   showDamage(x, y, amount, color) {
+    if (typeof amount === 'number') playSfx(this, SFX.hit);
     const txt = this.add.text(x, y - 10, `-${amount}`, {
       fontSize: '18px', fontFamily: 'monospace', fontStyle: 'bold',
       color, stroke: '#000000', strokeThickness: 3,
@@ -2423,7 +2436,7 @@ export class BattleScene extends Phaser.Scene {
           .setInteractive({ useHandCursor: true });
         z.on('pointerover',  () => draw(true));
         z.on('pointerout',   () => draw(false));
-        z.on('pointerdown',  (ptr, lx, ly, evt) => { evt.stopPropagation(); action(); });
+        z.on('pointerdown',  (ptr, lx, ly, evt) => { evt.stopPropagation(); playSfx(this, SFX.battleClick); action(); });
         con.add(z);
       }
     });
@@ -2578,7 +2591,7 @@ export class BattleScene extends Phaser.Scene {
     }).setOrigin(0, 0.5));
     const bz = this.add.zone(MW/2, PAD + IH/2, MW, IH).setInteractive({ useHandCursor:true });
     bz.on('pointerover', () => drawBack(true)); bz.on('pointerout', () => drawBack(false));
-    bz.on('pointerdown', (ptr,lx,ly,evt) => { evt.stopPropagation(); this.showActionMenu(unit); });
+    bz.on('pointerdown', (ptr,lx,ly,evt) => { evt.stopPropagation(); playSfx(this, SFX.battleClick); this.showActionMenu(unit); });
     con.add(bz);
 
     abilities.forEach((ab, i) => {
@@ -2613,6 +2626,7 @@ export class BattleScene extends Phaser.Scene {
         z.on('pointerover', () => draw(true)); z.on('pointerout', () => draw(false));
         z.on('pointerdown', (ptr,lx,ly,evt) => {
           evt.stopPropagation();
+          playSfx(this, SFX.battleClick);
           this.hideActionMenu();
           if (ab.selfActivate) this.executeSelfAbility(ab);
           else this.startTargeting(ab);
@@ -2713,7 +2727,7 @@ export class BattleScene extends Phaser.Scene {
     }).setOrigin(0, 0.5));
     const bz = this.add.zone(MW/2, PAD + IH/2, MW, IH).setInteractive({ useHandCursor:true });
     bz.on('pointerover', () => drawBack(true)); bz.on('pointerout', () => drawBack(false));
-    bz.on('pointerdown', (ptr,lx,ly,evt) => { evt.stopPropagation(); this.showActionMenu(unit); });
+    bz.on('pointerdown', (ptr,lx,ly,evt) => { evt.stopPropagation(); playSfx(this, SFX.battleClick); this.showActionMenu(unit); });
     con.add(bz);
 
     if (!groups.length) {
@@ -2750,6 +2764,7 @@ export class BattleScene extends Phaser.Scene {
       z.on('pointerover', () => draw(true)); z.on('pointerout', () => draw(false));
       z.on('pointerdown', (ptr,lx,ly,evt) => {
         evt.stopPropagation();
+        playSfx(this, SFX.battleClick);
         this.useItemOnUnit(unit, item);
       });
       con.add(z);

@@ -3,6 +3,7 @@ import { state, MAX_ROSTER_SIZE } from '../data/gameState.js';
 import { BACKDROPS } from '../data/storyBackdrops.js';
 import { HUB_CONFIGS } from '../data/hubConfigs.js';
 import { drawButton } from '../ui/canvasButton.js';
+import { playMusic } from '../audio/music.js';
 
 // Sirblanc/Hidden Village is Reno's home town — once the player has left it
 // (M1 cleared), revisiting the hub uses a photo backdrop instead of the
@@ -46,6 +47,8 @@ export class HubScene extends Phaser.Scene {
   create() {
     const { width, height } = this.scale;
     const artH = height * 0.58;
+
+    playMusic(this, 'hub');
 
     const bg = this.add.graphics();
     bg.fillStyle(0x07080f, 1);

@@ -2,6 +2,8 @@
 // used by menu/story scenes per the 2026-07-04 visual style guide.
 // Battle stays pure Phaser/pixel-art; this never touches BattleScene.
 
+import { playSfx, SFX } from '../audio/sound.js';
+
 const root = document.getElementById('ui-root');
 
 // Renders `html` into #ui-root and shows it. Call once per scene render;
@@ -46,7 +48,13 @@ export function bindScene(scene, render) {
 // #ui-root. Re-attach after every mount() since innerHTML replaces nodes.
 export function onClick(selector, handler) {
   root.querySelectorAll(selector).forEach(node => {
-    node.addEventListener('click', (e) => handler(e, node));
+    node.addEventListener('click', (e) => {
+      // No Phaser scene in scope at this layer — playSfx just needs
+      // .sound/.cache off of something, and the Game instance (the same
+      // object every scene's this.sound/this.cache proxy to) has both.
+      playSfx(window.__game, SFX.click);
+      handler(e, node);
+    });
   });
 }
 

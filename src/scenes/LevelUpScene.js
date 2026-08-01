@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { pendingPromotion, t3SportOptions, sportById, chainById, promoteUnit, roleDisplayLabel } from '../data/gameState.js';
 import { drawButton } from '../ui/canvasButton.js';
+import { playStinger, SFX } from '../audio/sound.js';
 
 export class LevelUpScene extends Phaser.Scene {
   constructor() { super({ key: 'LevelUpScene' }); }
@@ -74,6 +75,7 @@ export class LevelUpScene extends Phaser.Scene {
 
   renderStats(lu) {
     const { width, height } = this.scale;
+    playStinger(this, SFX.levelup);
 
     // Level up text
     this.add.text(width / 2, 250, 'LEVEL UP!', {
