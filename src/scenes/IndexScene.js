@@ -32,6 +32,7 @@ const GLOSSARY = [
   { term: 'Class Skill', def: 'A permanent passive buff, equipped into one of up to 3 slots unlocked at levels 5/10/20.' },
   { term: 'Buff icon (⬆)',   def: 'Shown above a unit\'s head in battle whenever it has an active attack/move buff, an armed dodge/endure, or a ticking overdrive/damage-reduction effect.' },
   { term: 'Debuff icon (⬇)', def: 'Shown above a unit\'s head in battle whenever it\'s currently slowed or has a stat lowered by an enemy ability.' },
+  { term: 'Damage number color', def: 'White = no bonus, orange = 1 stacking, dark orange (bigger) = 2, rainbow (biggest) = 3+ — see Damage Number Colors below.' },
   { term: 'Difficulty',  def: 'Set in Settings (Newbie/Veteran/Perilous) — governs every first-time mission. Separate from the Normal/Hard/Elite picker shown when replaying an already-cleared mission.' },
 ];
 
@@ -293,6 +294,34 @@ export class IndexScene extends Phaser.Scene {
           melee-range (adjacent-tile) hit. This stacks multiplicatively with the triangle bonus above,
           so a Combat attacker that ALSO has type advantage hits for ×2.5 total. Doesn't apply to a
           ranged attack (e.g. Throw), even from a unit that has Combat as one of its designations.
+        </div>
+      </div>
+
+      <div class="ui-section">
+        <div class="ui-section-label">Damage Number Colors</div>
+        <div class="ui-card-sub" style="margin-bottom:8px;">
+          A hit's damage number is colored/sized by how many of the 4 bonus sources above are
+          stacking on it at once — Combat adjacency, designation-triangle advantage, elemental
+          affinity, and a sports-partner damage passive (2 for 2/Doubles/Lock-On). Difficulty tier
+          and attack-buff bonuses don't count toward this — only per-hit tactical bonuses do.
+        </div>
+        <div class="ui-index-ability-grid">
+          <div class="ui-index-ability">
+            <div class="ui-card-name" style="color:#ffffff;">-42 · Plain</div>
+            <div class="ui-card-sub">No bonus active — white, normal size.</div>
+          </div>
+          <div class="ui-index-ability">
+            <div class="ui-card-name" style="color:#ff8800;">-55 · One bonus</div>
+            <div class="ui-card-sub">Exactly one of the 4 sources — orange, normal size.</div>
+          </div>
+          <div class="ui-index-ability">
+            <div class="ui-card-name" style="color:#cc5500; font-size:18px;">-88 · Two bonuses</div>
+            <div class="ui-card-sub">Any two stacking — dark orange, bigger font.</div>
+          </div>
+          <div class="ui-index-ability">
+            <div class="ui-card-name" style="font-size:18px;"><span style="color:#ff3b3b;">-</span><span style="color:#ff9c33;">1</span><span style="color:#ffe135;">3</span><span style="color:#4ade80;">0</span> · Three or more</div>
+            <div class="ui-card-sub">E.g. affinity + designation advantage + Combat adjacency — rainbow, biggest font.</div>
+          </div>
         </div>
       </div>
 
