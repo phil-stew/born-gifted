@@ -1991,7 +1991,7 @@ export class BattleScene extends Phaser.Scene {
     con.add(shadow);
 
     const bg = this.add.graphics();
-    bg.fillStyle(0x0d1428, 0.5);
+    bg.fillStyle(0x0d1428, 0.3);
     bg.fillRoundedRect(0, 0, MW, MH, RADIUS);
     bg.lineStyle(1.5, 0x4477cc, 0.75);
     bg.strokeRoundedRect(0, 0, MW, MH, RADIUS);
@@ -2693,9 +2693,11 @@ export class BattleScene extends Phaser.Scene {
     shadow.fillRoundedRect(4, 6, MW, MH, RADIUS);
     con.add(shadow);
 
-    // Panel background — modern translucent "glass" card, 50% opacity
+    // Panel background — modern translucent "glass" card, 30% opacity
+    // (2026-08-04, "make the menu in combat a little more see through" —
+    // was 50%)
     const bg = this.add.graphics();
-    bg.fillStyle(0x0d1428, 0.5);
+    bg.fillStyle(0x0d1428, 0.3);
     bg.fillRoundedRect(0, 0, MW, MH, RADIUS);
     bg.lineStyle(1.5, unit.color, 0.75);
     bg.strokeRoundedRect(0, 0, MW, MH, RADIUS);
@@ -2708,7 +2710,7 @@ export class BattleScene extends Phaser.Scene {
     const ax = toRight ? -7 : MW;
     const ay = MH / 2;
     const arrowG = this.add.graphics();
-    arrowG.fillStyle(0x0d1428, 0.5);
+    arrowG.fillStyle(0x0d1428, 0.3);
     arrowG.fillTriangle(ax, ay - 6, ax, ay + 6, toRight ? ax - 7 : ax + 7, ay);
     con.add(arrowG);
 
@@ -2914,7 +2916,7 @@ export class BattleScene extends Phaser.Scene {
     con.add(shadow);
 
     const bg = this.add.graphics();
-    bg.fillStyle(0x0d1428, 0.5);
+    bg.fillStyle(0x0d1428, 0.3);
     bg.fillRoundedRect(0, 0, MW, MH, RADIUS);
     bg.lineStyle(1.5, unit.color, 0.75);
     bg.strokeRoundedRect(0, 0, MW, MH, RADIUS);
@@ -2924,7 +2926,7 @@ export class BattleScene extends Phaser.Scene {
     const ax = toRight ? -7 : MW;
     const ay = MH / 2;
     const arrowG = this.add.graphics();
-    arrowG.fillStyle(0x0d1428, 0.5);
+    arrowG.fillStyle(0x0d1428, 0.3);
     arrowG.fillTriangle(ax, ay - 6, ax, ay + 6, toRight ? ax - 7 : ax + 7, ay);
     con.add(arrowG);
 
@@ -3063,7 +3065,7 @@ export class BattleScene extends Phaser.Scene {
     con.add(shadow);
 
     const bg = this.add.graphics();
-    bg.fillStyle(0x0d1428, 0.5);
+    bg.fillStyle(0x0d1428, 0.3);
     bg.fillRoundedRect(0, 0, MW, MH, RADIUS);
     bg.lineStyle(1.5, unit.color, 0.75);
     bg.strokeRoundedRect(0, 0, MW, MH, RADIUS);
@@ -3073,7 +3075,7 @@ export class BattleScene extends Phaser.Scene {
     const ax = toRight ? -7 : MW;
     const ay = MH / 2;
     const arrowG = this.add.graphics();
-    arrowG.fillStyle(0x0d1428, 0.5);
+    arrowG.fillStyle(0x0d1428, 0.3);
     arrowG.fillTriangle(ax, ay - 6, ax, ay + 6, toRight ? ax - 7 : ax + 7, ay);
     con.add(arrowG);
 
@@ -3205,7 +3207,7 @@ export class BattleScene extends Phaser.Scene {
     con.add(shadow);
 
     const bg = this.add.graphics();
-    bg.fillStyle(0x0d1428, 0.5);
+    bg.fillStyle(0x0d1428, 0.3);
     bg.fillRoundedRect(0, 0, PW, PH, RADIUS);
     bg.lineStyle(1.5, unit.color, 0.75);
     bg.strokeRoundedRect(0, 0, PW, PH, RADIUS);
@@ -3242,7 +3244,7 @@ export class BattleScene extends Phaser.Scene {
       shadow.fillStyle(0x000000, 0.32);
       shadow.fillRoundedRect(3, 5, PW, PH2, RADIUS);
       bg.clear();
-      bg.fillStyle(0x0d1428, 0.5);
+      bg.fillStyle(0x0d1428, 0.3);
       bg.fillRoundedRect(0, 0, PW, PH2, RADIUS);
       bg.lineStyle(1.5, unit.color, 0.75);
       bg.strokeRoundedRect(0, 0, PW, PH2, RADIUS);
