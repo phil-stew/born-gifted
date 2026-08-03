@@ -2242,7 +2242,7 @@ export class BattleScene extends Phaser.Scene {
 
     const { x, y } = this.gridToScreen(target.col, target.row);
     this.showEffect(x, y + TH2 - 22, 'FOLLOW-UP', '#ffdd44');
-    this.showDamage(x, y + TH2, dmg, '#ffcc44');
+    this.showDamage(x, y + TH2, dmg, '#ffcc44', this.countDamageBonuses(partner, target, followUp));
     if (target.sprite) {
       target.sprite.setTint(0xff3300);
       this.time.delayedCall(180, () => {
@@ -2286,7 +2286,7 @@ export class BattleScene extends Phaser.Scene {
 
     const { x, y } = this.gridToScreen(defender.col, defender.row);
     const color = attacker.team === 'player' ? '#ffee44' : '#ff5555';
-    this.showDamage(x, y + TH2, dmg, color);
+    this.showDamage(x, y + TH2, dmg, color, this.countDamageBonuses(attacker, defender, ATTACK));
 
     if (defender.endureReady && defender.hp - dmg <= 0) {
       defender.endureReady = false;
@@ -2438,20 +2438,89 @@ export class BattleScene extends Phaser.Scene {
     });
   }
 
-  showDamage(x, y, amount, color) {
-    if (typeof amount === 'number') playSfx(this, SFX.hit);
+  // Counts how many distinct damage-bonus sources are live on this hit
+  // (2026-08-04) — Combat adjacency (x2), designation-triangle advantage
+  // (x1.25), elemental affinity advantage (x1.5), and a sports-partner
+  // damage passive (2 for 2/Doubles/Lock-On). Drives showDamage's
+  // color/size tiers. Deliberately excludes the difficulty tier's damage%
+  // and atkBuff — those are global modifiers, not a per-hit tactical bonus.
+  countDamageBonuses(attacker, defender, ability) {
+    if (!attacker || !defender) return 0;
+    let n = 0;
+    const live = attackDesignations(attacker, ability);
+    if (live.includes('C')) n++; // Combat adjacency x2
+    const defDesigs = defender.designations ?? [];
+    if (live.length && defDesigs.length) {
+      const advantage    = live.some(ad => defDesigs.includes(DESIGNATION_BEATS[ad]));
+      const disadvantage = live.some(ad => defDesigs.some(dd => DESIGNATION_BEATS[dd] === ad));
+      if (advantage && !disadvantage) n++; // designation-triangle advantage
+    }
+    if (elementMultiplier(attacker, defender) > 1.0) n++; // elemental affinity
+    if (this.partnerAttackMultiplier(attacker) > 1.0) n++; // partner damage buff
+    return n;
+  }
+
+  // bonusCount (2026-08-04) — color/size tier for numeric damage, driven by
+  // countDamageBonuses(): 0 = plain white, 1 = orange, 2 = dark orange +
+  // bigger font, 3+ = rainbow (one Text per digit) + bigger font still.
+  // Status-text calls (SLOW, STAT DOWN, ...) pass a non-numeric `amount`
+  // and are untouched — they keep the caller's own `color` exactly as before.
+  showDamage(x, y, amount, color, bonusCount = 0) {
+    if (typeof amount !== 'number') {
+      // Matches the original unconditional `-${amount}` prefix exactly
+      // (yes, this renders e.g. "-SLOW" — pre-existing, unrelated to this
+      // change, left as-is).
+      const txt = this.add.text(x, y - 10, `-${amount}`, {
+        fontSize: '18px', fontFamily: 'monospace', fontStyle: 'bold',
+        color, stroke: '#000000', strokeThickness: 3,
+      }).setOrigin(0.5).setDepth(2000);
+      this.floatAndFade(txt, y);
+      return;
+    }
+
+    playSfx(this, SFX.hit);
+    if (bonusCount >= 3) { this.showRainbowDamage(x, y, amount); return; }
+
+    const dmgColor  = bonusCount === 2 ? '#cc5500' : bonusCount === 1 ? '#ff8800' : '#ffffff';
+    const dmgFontPx = bonusCount === 2 ? 24 : 18;
     const txt = this.add.text(x, y - 10, `-${amount}`, {
-      fontSize: '18px', fontFamily: 'monospace', fontStyle: 'bold',
-      color, stroke: '#000000', strokeThickness: 3,
+      fontSize: `${dmgFontPx}px`, fontFamily: 'monospace', fontStyle: 'bold',
+      color: dmgColor, stroke: '#000000', strokeThickness: 3,
     }).setOrigin(0.5).setDepth(2000);
-    // Float up and hold, then fade out
+    this.floatAndFade(txt, y);
+  }
+
+  // One Text object per character, each a different rainbow color, laid
+  // out side by side to spell out the full number — a plain Phaser Text
+  // object can't mix colors within itself. Shares floatAndFade's exact
+  // float/hold/fade timing via a container so the whole number moves as one.
+  showRainbowDamage(x, y, amount) {
+    const RAINBOW = ['#ff3b3b', '#ff9c33', '#ffe135', '#4ade80', '#38bdf8', '#a78bfa', '#f472b6'];
+    const str = `-${amount}`;
+    const fontPx = 26;
+    const charW = fontPx * 0.64; // monospace glyph width approximation
+    const startX = x - (charW * (str.length - 1)) / 2;
+    const con = this.add.container(0, 0).setDepth(2000);
+    for (let i = 0; i < str.length; i++) {
+      con.add(this.add.text(startX + i * charW, y - 10, str[i], {
+        fontSize: `${fontPx}px`, fontFamily: 'monospace', fontStyle: 'bold',
+        color: RAINBOW[i % RAINBOW.length], stroke: '#000000', strokeThickness: 3,
+      }).setOrigin(0.5));
+    }
+    this.floatAndFade(con, y);
+  }
+
+  // Shared float-up/hold/fade-out tween — same timing showDamage always
+  // used, factored out so the rainbow container animates identically to a
+  // single Text object.
+  floatAndFade(target, y) {
     this.tweens.add({
-      targets: txt, y: y - 48, duration: 400, ease: 'Power2',
+      targets: target, y: y - 48, duration: 400, ease: 'Power2',
       onComplete: () => {
         this.time.delayedCall(2500, () => {
           this.tweens.add({
-            targets: txt, alpha: 0, duration: 1000, ease: 'Power1',
-            onComplete: () => txt.destroy(),
+            targets: target, alpha: 0, duration: 1000, ease: 'Power1',
+            onComplete: () => target.destroy(),
           });
         });
       },
@@ -3144,7 +3213,7 @@ export class BattleScene extends Phaser.Scene {
       dmg = Math.round(dmg * this.partnerDefenseMultiplier(target) * this.difficultyDamageMult(unit));
       target.hp = Math.max(0, target.hp - dmg);
       const { x, y } = this.gridToScreen(target.col, target.row);
-      this.showDamage(x, y + TH2, dmg, '#ffaa22');
+      this.showDamage(x, y + TH2, dmg, '#ffaa22', this.countDamageBonuses(unit, target, ability));
       if (target.sprite) {
         target.sprite.setTint(0xff3300);
         this.time.delayedCall(180, () => {
@@ -3318,7 +3387,7 @@ export class BattleScene extends Phaser.Scene {
       target.hp = Math.max(0, target.hp - dmg);
 
       const { x, y } = this.gridToScreen(target.col, target.row);
-      this.showDamage(x, y + TH2, dmg, target.team === 'player' ? '#ff5555' : '#ffaa22');
+      this.showDamage(x, y + TH2, dmg, target.team === 'player' ? '#ff5555' : '#ffaa22', this.countDamageBonuses(unit, target, ability));
       if (target.sprite) {
         target.sprite.setTint(0xff3300);
         this.time.delayedCall(180, () => {
@@ -3544,7 +3613,7 @@ export class BattleScene extends Phaser.Scene {
       target.hp  = Math.max(0, target.hp - dmg);
 
       const { x, y } = this.gridToScreen(target.col, target.row);
-      this.showDamage(x, y + TH2, dmg, '#ffaa22');
+      this.showDamage(x, y + TH2, dmg, '#ffaa22', this.countDamageBonuses(attacker, target, ability));
 
       if (target.sprite) {
         target.sprite.setTint(0xff3300);
@@ -3806,7 +3875,7 @@ export class BattleScene extends Phaser.Scene {
     target.hp = Math.max(0, target.hp - dmg);
 
     const { x, y } = this.gridToScreen(target.col, target.row);
-    this.showDamage(x, y + TH2, dmg, '#ff8844');
+    this.showDamage(x, y + TH2, dmg, '#ff8844', this.countDamageBonuses(attacker, target, ability));
 
     if (target.sprite) {
       target.sprite.setTint(0xff2222);
