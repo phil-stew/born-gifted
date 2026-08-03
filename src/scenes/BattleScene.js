@@ -613,10 +613,14 @@ const MISSION_CONFIGS = {
   'M1': {
     region: 'Altroes',
     playerPos: { reno:[1,2], drace:[1,3], sela:[1,4], kael:[1,5], trice:[1,6] },
+    // Held at 2 (was 3, 2026-08-03 "keep enemy spawn rate at 2 for the
+    // first few missions until player is able to recruit more units") —
+    // M1 is fought solo (Reno only; the first recruit doesn't happen
+    // until M3's capitalQuest reaches 'recruit_pending'), so 3 enemies
+    // meant 1 unit facing 3 at once.
     enemies: [
       { col:8, row:2, name:'Wolf', spriteKey:'wolf-idle', animKey:'wolf-idle', spriteScale:0.35, moveSpeed:5, speed:5, strength:8,  stamina:6, endurance:5, level:1, designation:'C' },
       { col:8, row:5, name:'Wolf', spriteKey:'wolf-idle', animKey:'wolf-idle', spriteScale:0.35, moveSpeed:5, speed:5, strength:8,  stamina:6, endurance:5, level:1, designation:'C' },
-      { col:8, row:8, name:'Wolf', spriteKey:'wolf-idle', animKey:'wolf-idle', spriteScale:0.35, moveSpeed:5, speed:5, strength:8,  stamina:6, endurance:5, level:1, designation:'C' },
     ],
   },
   'M2': {
@@ -630,14 +634,17 @@ const MISSION_CONFIGS = {
 
   // ── Capital test battles (M0-M4 redesign, Phase 3) ────────────────────────
   'M3a': {
-    // Northern Cave — test 1: 3 Goblins, via buildMonster (same pipeline as
-    // the Deer spawn — Goblin/Lion now have sprite art wired, see monsters.js).
+    // Northern Cave — test 1, via buildMonster (same pipeline as the Deer
+    // spawn — Goblin/Lion now have sprite art wired, see monsters.js).
+    // Held at 2 (was 3, 2026-08-03 "keep enemy spawn rate at 2 for the
+    // first few missions until player is able to recruit more units") —
+    // still solo-Reno here too (recruit_pending comes after both Capital
+    // test battles, see capitalQuest's stage order in WorldMapScene.js).
     region: 'Altroes',
     playerPos: { reno:[1,3], drace:[1,4], sela:[1,2], kael:[1,5], trice:[1,1] },
     enemies: [
       { col:7, row:2, ...buildMonster({ base: 'Goblin', tier: 1 }) },
       { col:8, row:5, ...buildMonster({ base: 'Goblin', tier: 1 }) },
-      { col:7, row:8, ...buildMonster({ base: 'Goblin', tier: 1 }) },
     ],
   },
   'M3b': {
