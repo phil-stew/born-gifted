@@ -11,7 +11,7 @@ import { isUsableItem, rollGearItem } from '../data/items.js';
 import { BACKDROPS } from '../data/storyBackdrops.js';
 import { preloadSfx, playSfx, playStinger, SFX } from '../audio/sound.js';
 import { preloadMusic, playMusic } from '../audio/music.js';
-import { getDifficultyMult } from '../data/difficulty.js';
+import { getDifficultyConfig } from '../data/difficulty.js';
 
 const COLS = 10, ROWS = 10;
 // Bigger isometric tiles (2026-07-07 feedback) — was 64×32 at .setScale(2)
@@ -1111,7 +1111,16 @@ export class BattleScene extends Phaser.Scene {
   constructor() { super({ key: 'BattleScene' }); }
 
   init(data) {
-    this.difficulty = data?.difficulty ?? getDifficultyMult();
+    // Two independent difficulty systems (2026-08-03) — an explicit
+    // data.difficulty (WorldMapScene's per-replay Normal/Hard/Elite picker)
+    // keeps the original flat raw-stat-mult behavior untouched, unrelated
+    // to Settings. Absent that (every first-time mission), this.difficulty
+    // stays neutral (1.0 — the new tier system doesn't scale raw stats at
+    // all) and this.difficultyCfg carries the actual Newbie/Veteran/
+    // Perilous tier (level-floor + damage% — see create() and
+    // difficultyDamageMult()).
+    this.difficulty = data?.difficulty ?? 1.0;
+    this.difficultyCfg = data?.difficulty != null ? null : getDifficultyConfig();
     this._initData = data ?? {};
   }
 
@@ -1388,26 +1397,34 @@ export class BattleScene extends Phaser.Scene {
 
     // ── Enemies — driven by mission config ────────────────────────────────
     const diff = this.difficulty ?? 1.0;
-    // Difficulty also guarantees a level FLOOR relative to the party's own
-    // level, so REPLAYING an early mission well past it doesn't stay
-    // trivial forever: Normal floors at the hero's own level, Elite at
-    // +2 (Hard splits the difference at +1 — not explicitly specified,
-    // picked as the natural middle value). Math.max with the existing
-    // diff-multiplier scaling below means this only ever raises a
-    // mission's level, never lowers a naturally-higher one.
-    //
-    // isReplay-gated (2026-08-03 fix, "monsters hit too hard on normal
-    // starting out") — the floor was firing on FIRST-time plays too, and
-    // STARTER_LEVEL is 5 (gameState.js), well above M1/M2's authored base
-    // level of 1-2, so every brand-new save's first fight was silently
-    // getting floored up to a level-5 encounter (plus this same pass's
-    // move-speed/Combat-x2/monster-stat-growth changes stacked on top of
-    // that) instead of the intended tutorial-difficulty fight. The floor's
-    // whole premise — "the party has outgrown this mission" — only makes
-    // sense once the mission's actually been cleared once already.
-    const isReplay = state.completedMissions.includes(missionId);
+    const cfg = this.difficultyCfg; // null when data.difficulty was explicit (replay picker) — see init()
     const heroLevel = Math.max(1, ...state.party.map(u => u.level));
-    const levelFloor = isReplay ? heroLevel + (diff >= 1.5 ? 2 : diff >= 1.2 ? 1 : 0) : 0;
+    // Level FLOOR relative to the party's own level — two independent
+    // sources depending on how this battle was entered (2026-08-03):
+    //  - Replay picker (cfg === null): the original isReplay-gated formula,
+    //    unchanged — Normal +0 / Hard +1 / Elite +2, only ever active on a
+    //    replay (see the 2026-08-03 "too hard starting out" fix below).
+    //  - Settings tier (cfg set): each tier states its own floor outright —
+    //    Newbie disables it entirely (levelFloorOffset: null, so `false`
+    //    below always wins and no floor applies, first-time OR replay
+    //    alike — "enemy levels don't scale to player"), Veteran/Perilous
+    //    apply unconditionally (0 / +2) since picking one of those in
+    //    Settings is itself the deliberate "make it harder" choice — no
+    //    isReplay gate needed the way the legacy replay-picker path has one.
+    let levelFloor = 0;
+    if (cfg) {
+      if (cfg.levelFloorOffset != null) levelFloor = heroLevel + cfg.levelFloorOffset;
+    } else {
+      // isReplay-gated (2026-08-03 fix, "monsters hit too hard on normal
+      // starting out") — this floor was firing on FIRST-time plays too, and
+      // STARTER_LEVEL is 5 (gameState.js), well above M1/M2's authored base
+      // level of 1-2, so every brand-new save's first fight was silently
+      // getting floored up to a level-5 encounter. The floor's whole
+      // premise — "the party has outgrown this mission" — only makes sense
+      // once the mission's actually been cleared once already.
+      const isReplay = state.completedMissions.includes(missionId);
+      if (isReplay) levelFloor = heroLevel + (diff >= 1.5 ? 2 : diff >= 1.2 ? 1 : 0);
+    }
     const scaledLevel = (base) => Math.max(1, Math.round(base + (diff - 1) * 10), levelFloor);
     // M0a/M0b repeat-scaling (M0-M4 redesign, Phase 5; extended to M0b
     // 2026-07-07) — each replay after the first escalates enemies: level
@@ -1421,7 +1438,12 @@ export class BattleScene extends Phaser.Scene {
     // mission using this same repeatCount path (currently M0a and M0b).
     // Only the level number is capped; HP/attack keep scaling with repeats
     // past that point (not asked to change).
-    const repeatCount = (missionId === 'M0a' || missionId === 'M0b') ? (state.repeatCounts[missionId] ?? 0) : 0;
+    // disableRepeatScaling (Newbie tier, 2026-08-03) — "repeat enemy levels
+    // don't scale" — even M0a/M0b's separate per-replay escalation is held
+    // neutral under Newbie, so it always stays at the same baseline fight
+    // no matter how many times it's replayed.
+    const repeatCount = (cfg?.disableRepeatScaling) ? 0
+      : (missionId === 'M0a' || missionId === 'M0b') ? (state.repeatCounts[missionId] ?? 0) : 0;
     const repeatLevelBonus = repeatCount * 2;
     const repeatHpMult = 1 + 0.25 * repeatCount;
     const repeatAtkMult = 1 + 0.10 * repeatCount;
@@ -1466,10 +1488,17 @@ export class BattleScene extends Phaser.Scene {
     }).setOrigin(1, 0).setDepth(1001);
 
     if (diff > 1.0) {
+      // Legacy replay-picker banner (Hard/Elite) — untouched.
       const diffLabel = diff >= 1.5 ? 'ELITE' : 'HARD';
       const diffColor = diff >= 1.5 ? '#ff4444' : '#ffaa33';
       this.add.text(width / 2, 8, diffLabel, {
         fontSize: '12px', fontFamily: 'monospace', fontStyle: 'bold', color: diffColor,
+      }).setOrigin(0.5, 0).setDepth(1001);
+    } else if (cfg && cfg.key !== 'newbie') {
+      // Settings-tier banner (Veteran/Perilous) — Newbie is the baseline
+      // default, same "no banner" treatment Normal always had.
+      this.add.text(width / 2, 8, cfg.label.toUpperCase(), {
+        fontSize: '12px', fontFamily: 'monospace', fontStyle: 'bold', color: cfg.color,
       }).setOrigin(0.5, 0).setDepth(1001);
     }
 
@@ -2033,6 +2062,16 @@ export class BattleScene extends Phaser.Scene {
       o !== unit && !o.isDead && o.classGrouping === unit.classGrouping && this.isAdjacent(unit, o)
     );
   }
+  // Damage-DEALT multiplier from the active Settings difficulty tier
+  // (2026-08-03) — Newbie: enemies -20%/players +20%; Veteran: enemies
+  // +10%; Perilous: neutral (relies on its level+2 floor alone). Neutral
+  // (1.0) whenever this battle came from the replay picker instead
+  // (this.difficultyCfg is null then — see init()), since that's the
+  // separate legacy system and never had a damage-dealt% of its own.
+  difficultyDamageMult(attacker) {
+    if (!this.difficultyCfg) return 1.0;
+    return attacker.team === 'enemy' ? this.difficultyCfg.enemyDamageMult : this.difficultyCfg.playerDamageMult;
+  }
   // Damage-DEALT multiplier from an equipped partner-adjacency passive —
   // 2 for 2 (Bat & Ball) and Doubles (Racquet) double damage; the sheet gives
   // Doubles no explicit number of its own, so it's assumed to match the "same
@@ -2198,7 +2237,7 @@ export class BattleScene extends Phaser.Scene {
     const elemMult = elementMultiplier(partner, target);
     let dmg = 0;
     for (let h = 0; h < hits; h++) dmg += Math.round(calcAtk(partner) * followUpMult * desigMult * elemMult);
-    dmg = Math.round(dmg * this.partnerDefenseMultiplier(target));
+    dmg = Math.round(dmg * this.partnerDefenseMultiplier(target) * this.difficultyDamageMult(partner));
     target.hp = Math.max(0, target.hp - dmg);
 
     const { x, y } = this.gridToScreen(target.col, target.row);
@@ -2235,7 +2274,7 @@ export class BattleScene extends Phaser.Scene {
 
     let dmg = Math.round(calcAtk(attacker) * designationMultiplier(attacker, defender, ATTACK) * elementMultiplier(attacker, defender)
       * this.partnerAttackMultiplier(attacker));
-    dmg = Math.round(dmg * this.partnerDefenseMultiplier(defender));
+    dmg = Math.round(dmg * this.partnerDefenseMultiplier(defender) * this.difficultyDamageMult(attacker));
     if (defender.damageReduction) {
       dmg = Math.max(0, dmg - defender.damageReduction.amount);
     }
@@ -3102,7 +3141,7 @@ export class BattleScene extends Phaser.Scene {
     const partnerAtkMult = this.partnerAttackMultiplier(unit);
     const applyHit = (target, mult) => {
       let dmg = Math.round(calcAtk(unit) * mult * designationMultiplier(unit, target, ability) * elementMultiplier(unit, target) * partnerAtkMult);
-      dmg = Math.round(dmg * this.partnerDefenseMultiplier(target));
+      dmg = Math.round(dmg * this.partnerDefenseMultiplier(target) * this.difficultyDamageMult(unit));
       target.hp = Math.max(0, target.hp - dmg);
       const { x, y } = this.gridToScreen(target.col, target.row);
       this.showDamage(x, y + TH2, dmg, '#ffaa22');
@@ -3275,7 +3314,7 @@ export class BattleScene extends Phaser.Scene {
       const elemMult = elementMultiplier(unit, target);
       let dmg = 0;
       for (let h = 0; h < hits; h++) dmg += Math.round(calcAtk(unit) * ability.multiplier * desigMult * elemMult);
-      dmg = Math.round(dmg * this.partnerDefenseMultiplier(target));
+      dmg = Math.round(dmg * this.partnerDefenseMultiplier(target) * this.difficultyDamageMult(unit));
       target.hp = Math.max(0, target.hp - dmg);
 
       const { x, y } = this.gridToScreen(target.col, target.row);
@@ -3501,7 +3540,7 @@ export class BattleScene extends Phaser.Scene {
       const partnerAtkMult = this.partnerAttackMultiplier(attacker);
       let dmg = 0;
       for (let h = 0; h < hits; h++) dmg += Math.round(calcAtk(attacker) * mult * desigMult * elemMult * partnerAtkMult);
-      dmg = Math.round(dmg * this.partnerDefenseMultiplier(target));
+      dmg = Math.round(dmg * this.partnerDefenseMultiplier(target) * this.difficultyDamageMult(attacker));
       target.hp  = Math.max(0, target.hp - dmg);
 
       const { x, y } = this.gridToScreen(target.col, target.row);
@@ -3762,7 +3801,7 @@ export class BattleScene extends Phaser.Scene {
     const partnerAtkMult = this.partnerAttackMultiplier(attacker);
     let dmg = 0;
     for (let h = 0; h < hits; h++) dmg += Math.round(calcAtk(attacker) * mult * desigMult * elemMult * partnerAtkMult);
-    dmg = Math.round(dmg * this.partnerDefenseMultiplier(target));
+    dmg = Math.round(dmg * this.partnerDefenseMultiplier(target) * this.difficultyDamageMult(attacker));
     if (attacker.oneShotKill) dmg = target.hp; // see doAttack's oneShotKill comment
     target.hp = Math.max(0, target.hp - dmg);
 

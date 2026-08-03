@@ -6,7 +6,6 @@ import { drawButton } from '../ui/canvasButton.js';
 import { HUB_CONFIGS } from '../data/hubConfigs.js';
 import { getItem } from '../data/items.js';
 import { playMusic } from '../audio/music.js';
-import { DIFFICULTIES } from '../data/difficulty.js';
 
 // `connectsFrom` replaces the old implicit "connect to NODES[i-1]" ordering
 // so the map graph can branch — every node names its own parent explicitly,
@@ -1385,7 +1384,18 @@ export class WorldMapScene extends Phaser.Scene {
       fontSize: '10px', fontFamily: 'monospace', color: '#445566',
     }).setOrigin(0.5));
 
-    const DIFFS = DIFFICULTIES;
+    // Own independent table (2026-08-03, "the replay difficulty is a
+    // separate system compared to the one available in settings") — this
+    // picker keeps the original flat raw-stat-mult behavior untouched;
+    // src/data/difficulty.js's Newbie/Veteran/Perilous tiers are a
+    // different mechanic entirely (level-floor toggle + damage%) and only
+    // govern battles NOT started from this picker (see BattleScene.create()'s
+    // data?.difficulty != null branch).
+    const DIFFS = [
+      { label: 'Normal',  mult: 1.0, color: '#44cc77', bdr: 0x1e6630, bg0: 0x090e0a },
+      { label: 'Hard',    mult: 1.2, color: '#ffaa33', bdr: 0x7a4410, bg0: 0x110a04 },
+      { label: 'Elite',   mult: 1.5, color: '#ff4444', bdr: 0x7a1a1a, bg0: 0x110404 },
+    ];
     const bw = 88, bh = 70, gap = 10;
     let bx = px + (PW - DIFFS.length * (bw + gap) + gap) / 2;
 

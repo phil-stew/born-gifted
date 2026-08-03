@@ -1,19 +1,37 @@
-// Global default difficulty preference — separate from any one save slot
-// (like the audio settings), since it's a player preference about how the
-// game should play, not game state. Applied as BattleScene's fallback
-// (see `this.difficulty = data?.difficulty ?? getDifficultyMult()`) for any
-// battle that doesn't explicitly pass its own `difficulty` — i.e. every
-// first-time mission play, which previously had no way to start on
-// anything but Normal. The existing per-replay Normal/Hard/Elite picker
-// (WorldMapScene.showDifficultyPicker) still overrides this on top, same
-// "layered on, not replaced" relationship it already had.
+// Global default difficulty preference (Settings menu) — a SEPARATE system
+// from WorldMapScene's per-replay Normal/Hard/Elite picker (that one still
+// keeps its own local table and its own flat ×1.0/1.2/1.5 raw-stat-mult
+// behavior, untouched by this file). This one governs every battle that
+// isn't an explicit replay-picker choice — i.e. every first-time mission —
+// via two independent levers instead of a single stat multiplier:
+//   - levelFloorOffset: how far enemy level gets floored relative to the
+//     party's own level (null = no floor at all, ever)
+//   - enemyDamageMult / playerDamageMult: flat damage-DEALT multipliers,
+//     applied at the final hit calculation (BattleScene.difficultyDamageMult)
+//   - disableRepeatScaling: also turns off M0a/M0b's separate repeat-count
+//     escalation (repeatLevelBonus/repeatHpMult/repeatAtkMult)
 const KEY = 'born-gifted-difficulty';
-const DEFAULT_KEY = 'normal';
+const DEFAULT_KEY = 'newbie';
 
 export const DIFFICULTIES = [
-  { key: 'normal', label: 'Normal', mult: 1.0, color: '#44cc77', bdr: 0x1e6630, bg0: 0x090e0a },
-  { key: 'hard',   label: 'Hard',   mult: 1.2, color: '#ffaa33', bdr: 0x7a4410, bg0: 0x110a04 },
-  { key: 'elite',  label: 'Elite',  mult: 1.5, color: '#ff4444', bdr: 0x7a1a1a, bg0: 0x110404 },
+  {
+    key: 'newbie', label: 'Newbie',
+    levelFloorOffset: null, disableRepeatScaling: true,
+    enemyDamageMult: 0.8, playerDamageMult: 1.2,
+    color: '#44cc77', bdr: 0x1e6630, bg0: 0x090e0a,
+  },
+  {
+    key: 'veteran', label: 'Veteran',
+    levelFloorOffset: 0, disableRepeatScaling: false,
+    enemyDamageMult: 1.10, playerDamageMult: 1.0,
+    color: '#ffaa33', bdr: 0x7a4410, bg0: 0x110a04,
+  },
+  {
+    key: 'perilous', label: 'Perilous',
+    levelFloorOffset: 2, disableRepeatScaling: false,
+    enemyDamageMult: 1.0, playerDamageMult: 1.0,
+    color: '#ff4444', bdr: 0x7a1a1a, bg0: 0x110404,
+  },
 ];
 
 export function getDifficultyKey() {
@@ -25,6 +43,6 @@ export function setDifficultyKey(key) {
   try { localStorage.setItem(KEY, key); } catch { /* private mode etc — just don't persist */ }
 }
 
-export function getDifficultyMult() {
-  return DIFFICULTIES.find(d => d.key === getDifficultyKey())?.mult ?? 1.0;
+export function getDifficultyConfig() {
+  return DIFFICULTIES.find(d => d.key === getDifficultyKey()) ?? DIFFICULTIES[0];
 }

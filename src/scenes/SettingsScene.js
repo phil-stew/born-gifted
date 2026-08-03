@@ -45,10 +45,12 @@ export class SettingsScene extends Phaser.Scene {
     this.cameras.main.fadeIn(250, 0, 0, 0);
   }
 
-  // Sets the default difficulty new/first-time battles start on — see
-  // BattleScene's `data?.difficulty ?? getDifficultyMult()` fallback.
-  // Doesn't touch or replace WorldMapScene's per-replay Normal/Hard/Elite
-  // picker, which still layers its own explicit choice on top.
+  // Sets the difficulty tier every battle NOT started from WorldMapScene's
+  // per-replay Normal/Hard/Elite picker uses (see BattleScene.init()'s
+  // `data?.difficulty != null` branch) — a fully separate system from that
+  // picker, not a default/fallback for it: Newbie/Veteran/Perilous govern
+  // the level-floor + damage% mechanic (src/data/difficulty.js), while the
+  // picker keeps its own untouched flat raw-stat-mult behavior.
   buildDifficultyRow(y) {
     const { width } = this.scale;
     const cx = width / 2;
