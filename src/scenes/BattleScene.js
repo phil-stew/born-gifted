@@ -614,17 +614,17 @@ const MISSION_CONFIGS = {
     region: 'Altroes',
     playerPos: { reno:[1,2], drace:[1,3], sela:[1,4], kael:[1,5], trice:[1,6] },
     enemies: [
-      { col:8, row:2, name:'Wolf', spriteKey:'wolf-idle', animKey:'wolf-idle', spriteScale:0.35, moveSpeed:5, speed:5, strength:8,  stamina:6, endurance:5, level:1 },
-      { col:8, row:5, name:'Wolf', spriteKey:'wolf-idle', animKey:'wolf-idle', spriteScale:0.35, moveSpeed:5, speed:5, strength:8,  stamina:6, endurance:5, level:1 },
-      { col:8, row:8, name:'Wolf', spriteKey:'wolf-idle', animKey:'wolf-idle', spriteScale:0.35, moveSpeed:5, speed:5, strength:8,  stamina:6, endurance:5, level:1 },
+      { col:8, row:2, name:'Wolf', spriteKey:'wolf-idle', animKey:'wolf-idle', spriteScale:0.35, moveSpeed:5, speed:5, strength:8,  stamina:6, endurance:5, level:1, designation:'C' },
+      { col:8, row:5, name:'Wolf', spriteKey:'wolf-idle', animKey:'wolf-idle', spriteScale:0.35, moveSpeed:5, speed:5, strength:8,  stamina:6, endurance:5, level:1, designation:'C' },
+      { col:8, row:8, name:'Wolf', spriteKey:'wolf-idle', animKey:'wolf-idle', spriteScale:0.35, moveSpeed:5, speed:5, strength:8,  stamina:6, endurance:5, level:1, designation:'C' },
     ],
   },
   'M2': {
     region: 'Altroes',
     playerPos: { reno:[1,3], drace:[1,4], sela:[1,2], kael:[1,5], trice:[1,1] },
     enemies: [
-      { col:7, row:2, name:'Boar', spriteKey:'boar-idle', animKey:'boar-idle', spriteScale:0.35, moveSpeed:5, speed:4, strength:12, stamina:8, endurance:9, level:2 },
-      { col:8, row:7, name:'Boar', spriteKey:'boar-idle', animKey:'boar-idle', spriteScale:0.35, moveSpeed:5, speed:4, strength:12, stamina:8, endurance:9, level:2 },
+      { col:7, row:2, name:'Boar', spriteKey:'boar-idle', animKey:'boar-idle', spriteScale:0.35, moveSpeed:5, speed:4, strength:12, stamina:8, endurance:9, level:2, designation:'C' },
+      { col:8, row:7, name:'Boar', spriteKey:'boar-idle', animKey:'boar-idle', spriteScale:0.35, moveSpeed:5, speed:4, strength:12, stamina:8, endurance:9, level:2, designation:'C' },
     ],
   },
 
@@ -1047,18 +1047,27 @@ function attackDesignations(attacker, ability) {
   return [...new Set(live)];
 }
 function designationMultiplier(attacker, defender, ability) {
+  const live = attackDesignations(attacker, ability);
+  // Combat (C) units hit twice as hard at melee range (2026-08-03) — 'C'
+  // only ever shows up in `live` when attackDesignations() already found
+  // the attack melee-range AND the attacker has Combat, so this covers
+  // "adjacent" for free. Applies to every unit with a live Combat
+  // designation, players and monsters alike (MONSTER_DESIGNATION already
+  // marks Wolf/Boar/Deer/Goblin/Lion as C), and stacks multiplicatively
+  // with everything below (the advantage roll, or the alwaysWeak override).
+  const comboMult = live.includes('C') ? 2.0 : 1.0;
+
   // alwaysWeak (Ester Academy's "Rock" quest, 2026-07-11) — a defender that's
   // "weak to everything" always takes the same advantage bonus a matching
   // designation would give, regardless of the attacker's own designation set.
-  if (defender.alwaysWeak) return 1.25;
-  const live = attackDesignations(attacker, ability);
+  if (defender.alwaysWeak) return 1.25 * comboMult;
   const defDesigs = defender.designations ?? [];
-  if (!live.length || !defDesigs.length) return 1.0;
+  if (!live.length || !defDesigs.length) return 1.0 * comboMult;
   const advantage    = live.some(ad => defDesigs.includes(DESIGNATION_BEATS[ad]));
   const disadvantage = live.some(ad => defDesigs.some(dd => DESIGNATION_BEATS[dd] === ad));
-  if (advantage && !disadvantage) return 1.25;
-  if (disadvantage && !advantage) return 0.8;
-  return 1.0;
+  if (advantage && !disadvantage) return 1.25 * comboMult;
+  if (disadvantage && !advantage) return 0.8 * comboMult;
+  return 1.0 * comboMult;
 }
 
 // ── Elemental affinity cycle ────────────────────────────────────────────────
@@ -1513,6 +1522,13 @@ export class BattleScene extends Phaser.Scene {
       endurance: Math.round(d.endurance * diff * repeatHpMult) + levelGrowth,
       xpValue:   40 * lv,
       primaryStat, element,
+      // monsters.js's buildMonster() only ever sets a singular `designation`
+      // (e.g. 'C') — designationMultiplier/attackDesignations read the
+      // plural `designations` ARRAY player units get from currentDesignations().
+      // Without this, every monster's designations ?? [] was silently empty,
+      // so the whole C/Rg/D advantage triangle (and the Combat-adjacent x2
+      // below) never actually applied to a monster on either side of a hit.
+      designations: d.designation ? [d.designation] : [],
     };
     scaled[primaryStat] = Math.round(scaled[primaryStat] * PRIMARY_STAT_BOOST);
     // equip (the next school's tournament, 2026-07-11, "all units will have
