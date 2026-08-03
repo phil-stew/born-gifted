@@ -2589,6 +2589,21 @@ export class BattleScene extends Phaser.Scene {
     return unit.sp >= this.effectiveSpCost(unit, ab);
   }
 
+  // Combat-type + affinity tag shown next to each attack in the ability
+  // list (2026-08-03) — the live designation this specific unit/ability
+  // combo would actually trigger (attackDesignations(), the exact same
+  // check designationMultiplier() uses for damage) plus the unit's own
+  // element, so the C/Rg/D and Fire/Wind/Earth/Lightning/Water matchup is
+  // visible before committing to a move. Only meaningful for enemy-
+  // targeted attacks — self-buffs/heals never touch designationMultiplier/
+  // elementMultiplier, so there's nothing real to tag on those.
+  abilityTypeTag(unit, ab) {
+    if (ab.targetType !== 'enemy') return '';
+    const live = attackDesignations(unit, ab).map(d => designationIcon(d)).join('');
+    const el = unit.element ? elementIcon(unit.element) : '';
+    return [live, el].filter(Boolean).join(' ');
+  }
+
   // Cost/cooldown/uses label shown next to an ability in the submenu
   abilitySubLabel(unit, ab) {
     if (ab.category === 'skill') {
@@ -2691,10 +2706,23 @@ export class BattleScene extends Phaser.Scene {
 
       const tc = canUse ? '#ffffff' : '#252535';
       const sc = canUse ? '#66aaff' : '#1e2233';
-      con.add(this.add.text(10, iy + IH / 2, `${ab.icon}  ${ab.name}`, {
+      const nameText = this.add.text(10, iy + IH / 2, `${ab.icon}  ${ab.name}`, {
         fontSize:'12px', fontFamily:'monospace', fontStyle:'bold', color: tc,
         stroke: '#000000', strokeThickness: canUse ? 3 : 0,
-      }).setOrigin(0, 0.5));
+      }).setOrigin(0, 0.5);
+      con.add(nameText);
+
+      // Combat-type + affinity tag, right after the name — see
+      // abilityTypeTag(). Positioned off the name's own measured width so
+      // it never overlaps regardless of how long the ability's name is.
+      const typeTag = this.abilityTypeTag(unit, ab);
+      if (typeTag) {
+        con.add(this.add.text(nameText.x + nameText.width + 6, iy + IH / 2, typeTag, {
+          fontSize: '11px', fontFamily: 'monospace', color: canUse ? '#ddccaa' : '#3a3428',
+          stroke: '#000000', strokeThickness: canUse ? 2 : 0,
+        }).setOrigin(0, 0.5));
+      }
+
       con.add(this.add.text(MW - 8, iy + IH / 2, this.abilitySubLabel(unit, ab), {
         fontSize:'10px', fontFamily:'monospace', color: sc,
         stroke: '#000000', strokeThickness: canUse ? 2 : 0,
