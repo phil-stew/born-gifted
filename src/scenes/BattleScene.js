@@ -1288,6 +1288,8 @@ export class BattleScene extends Phaser.Scene {
     this.xpEarned       = 0;
     this.actionMenu     = null;
     this.statusPopup    = null;
+    this.emptyTileMenu  = null;
+    this.lastMove       = null;
     this.activeAbility  = null;
     // The Corrupted One's monsters (M6, 2026-07-17) all share ONE locked
     // target instead of each picking their own nearest hero — see
@@ -1881,8 +1883,9 @@ export class BattleScene extends Phaser.Scene {
     }
 
     if (this.phase === 'player_turn') {
-      if (occupant?.team === 'player' && !occupant.isDone) this.selectUnit(occupant);
+      if (occupant?.team === 'player' && !occupant.isDone) { this.hideActionMenu(); this.selectUnit(occupant); }
       else if (occupant?.team === 'enemy') this.showUnitStatus(occupant);
+      else if (!occupant) this.showEmptyTileMenu(sx, sy);
 
     } else if (this.phase === 'unit_selected') {
       // "Move" was chosen — waiting for a tile
@@ -1957,6 +1960,122 @@ export class BattleScene extends Phaser.Scene {
     this.phase = 'player_turn';
   }
 
+  // Empty-tile menu (2026-08-04) — clicking open ground during player_turn
+  // (no unit selected, no tile occupant) offers a way to bail out of the
+  // turn early or walk back a movement mistake, without having to select
+  // a specific unit first.
+  showEmptyTileMenu(sx, sy) {
+    this.hideActionMenu();
+    const { width, height } = this.scale;
+    const IH = 32, PAD = 6, MW = 180;
+    // Undo only offered while it's still a clean, fully-reversible
+    // rollback — position only, nothing else touched the board since
+    // (the moved unit hasn't also attacked/used an ability, and is alive).
+    const canUndo = !!this.lastMove && !this.lastMove.unit.isDead && !this.lastMove.unit.hasActed;
+    const items = [
+      { icon: '⏭', label: 'End Player Turn', disabled: false, action: () => this.endPlayerTurnEarly() },
+      { icon: '↺', label: 'Undo Last Move',   disabled: !canUndo, action: () => this.undoLastMoveAndResetTurn() },
+    ];
+    const MH = items.length * IH + PAD * 2;
+    const toRight = sx + 20 + MW < width - 4;
+    const mx = toRight ? sx + 20 : sx - 20 - MW;
+    const my = Math.min(Math.max(sy - MH / 2, 6), height - MH - 6);
+
+    const con = this.add.container(mx, my).setDepth(4000);
+    this.emptyTileMenu = con;
+    const RADIUS = 10;
+
+    const shadow = this.add.graphics();
+    shadow.fillStyle(0x000000, 0.32);
+    shadow.fillRoundedRect(4, 6, MW, MH, RADIUS);
+    con.add(shadow);
+
+    const bg = this.add.graphics();
+    bg.fillStyle(0x0d1428, 0.5);
+    bg.fillRoundedRect(0, 0, MW, MH, RADIUS);
+    bg.lineStyle(1.5, 0x4477cc, 0.75);
+    bg.strokeRoundedRect(0, 0, MW, MH, RADIUS);
+    bg.fillStyle(0x4477cc, 0.6);
+    bg.fillRoundedRect(0, 0, MW, 3, { tl: RADIUS, tr: RADIUS, bl: 0, br: 0 });
+    con.add(bg);
+
+    items.forEach(({ icon, label, disabled, action }, i) => {
+      const iy = PAD + i * IH;
+      const g = this.add.graphics();
+      const draw = (h) => {
+        g.clear();
+        if (h && !disabled) {
+          g.fillStyle(0x2a4a90, 0.5);
+          g.fillRoundedRect(2, iy + 2, MW - 4, IH - 4, 6);
+          g.fillStyle(0x88aaff, 0.9);
+          g.fillRoundedRect(2, iy + 2, 3, IH - 4, 2);
+        }
+      };
+      draw(false);
+      con.add(g);
+
+      const tc = disabled ? '#3a3a52' : '#ffffff';
+      con.add(this.add.text(12, iy + IH / 2, `${icon}  ${label}`, {
+        fontSize: '12px', fontFamily: 'monospace', fontStyle: disabled ? 'normal' : 'bold', color: tc,
+        stroke: '#000000', strokeThickness: disabled ? 0 : 3,
+      }).setOrigin(0, 0.5));
+
+      if (!disabled) {
+        const z = this.add.zone(MW / 2, iy + IH / 2, MW, IH).setInteractive({ useHandCursor: true });
+        z.on('pointerover', () => draw(true));
+        z.on('pointerout',  () => draw(false));
+        z.on('pointerdown', (ptr, lx, ly, evt) => {
+          evt.stopPropagation();
+          playSfx(this, SFX.battleClick);
+          action();
+        });
+        con.add(z);
+      }
+    });
+  }
+
+  // Ends the whole player phase immediately — marks every not-yet-done
+  // player unit `isDone` (they simply don't act this turn) and hands off
+  // to the enemy, same as if every unit had individually chosen Wait.
+  endPlayerTurnEarly() {
+    this.hideActionMenu();
+    this.deselect();
+    for (const u of this.playerUnits) {
+      if (!u.isDead) u.isDone = true;
+    }
+    this.redraw();
+    this.time.delayedCall(400, () => this.startEnemyTurn());
+  }
+
+  // Walks the most recent move back to its origin tile and un-consumes
+  // that unit's turn (hasMoved/hasActed/isDone all reset) — a position-only
+  // rollback, NOT a full battle-state undo: any damage already dealt this
+  // turn (by this unit or any other) is untouched. Only reachable while
+  // canUndo held in showEmptyTileMenu — the unit hasn't acted since moving.
+  undoLastMoveAndResetTurn() {
+    const lm = this.lastMove;
+    if (!lm || lm.unit.isDead || lm.unit.hasActed) return;
+    const unit = lm.unit;
+
+    this.unitMap.delete(`${unit.col},${unit.row}`);
+    unit.col = lm.fromCol;
+    unit.row = lm.fromRow;
+    this.unitMap.set(`${unit.col},${unit.row}`, unit);
+
+    const { x, y } = this.gridToScreen(unit.col, unit.row);
+    if (unit.sprite)   unit.sprite.setPosition(x, y + TH2).setDepth((unit.col + unit.row) * 10 + 5);
+    if (unit.portrait) unit.portrait.setPosition(x, y + TH2 + 10).setDepth((unit.col + unit.row) * 10 + 6);
+
+    unit.hasMoved = false;
+    unit.hasActed = false;
+    unit.isDone   = false;
+    this.lastMove = null;
+
+    this.hideActionMenu();
+    this.deselect();
+    this.redraw();
+  }
+
   endUnitTurn(unit) {
     this.hideActionMenu();
     this.activeAbility = null;
@@ -1980,6 +2099,14 @@ export class BattleScene extends Phaser.Scene {
     // frames before snapping to idle — read as a "slideshow"/jump-cut,
     // worst on classes with strong pose-to-pose contrast (2026-07-08).
     const tileDist = Math.max(1, Math.abs(col - unit.col) + Math.abs(row - unit.row));
+
+    // Remembers the single most recent player move (position only — not a
+    // full state snapshot) for the empty-tile menu's "Undo Last Move"
+    // (2026-08-04). Free moves (Duo's partner-swap) don't count as an
+    // undoable "move" — Duo has its own cancel path already.
+    if (unit.team === 'player' && !free) {
+      this.lastMove = { unit, fromCol: unit.col, fromRow: unit.row };
+    }
 
     // Track facing direction for future use
     if (unit.portrait && unit.team === 'player') {
@@ -3141,6 +3268,7 @@ export class BattleScene extends Phaser.Scene {
   hideActionMenu() {
     if (this.actionMenu)   { this.actionMenu.destroy(true);   this.actionMenu   = null; }
     if (this.statusPopup)  { this.statusPopup.destroy(true);  this.statusPopup  = null; }
+    if (this.emptyTileMenu){ this.emptyTileMenu.destroy(true);this.emptyTileMenu= null; }
   }
 
   startTargeting(ability) {
