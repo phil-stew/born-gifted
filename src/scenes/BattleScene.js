@@ -1382,14 +1382,25 @@ export class BattleScene extends Phaser.Scene {
     // ── Enemies — driven by mission config ────────────────────────────────
     const diff = this.difficulty ?? 1.0;
     // Difficulty also guarantees a level FLOOR relative to the party's own
-    // level, so replaying an early mission well past it doesn't stay
+    // level, so REPLAYING an early mission well past it doesn't stay
     // trivial forever: Normal floors at the hero's own level, Elite at
     // +2 (Hard splits the difference at +1 — not explicitly specified,
     // picked as the natural middle value). Math.max with the existing
     // diff-multiplier scaling below means this only ever raises a
     // mission's level, never lowers a naturally-higher one.
+    //
+    // isReplay-gated (2026-08-03 fix, "monsters hit too hard on normal
+    // starting out") — the floor was firing on FIRST-time plays too, and
+    // STARTER_LEVEL is 5 (gameState.js), well above M1/M2's authored base
+    // level of 1-2, so every brand-new save's first fight was silently
+    // getting floored up to a level-5 encounter (plus this same pass's
+    // move-speed/Combat-x2/monster-stat-growth changes stacked on top of
+    // that) instead of the intended tutorial-difficulty fight. The floor's
+    // whole premise — "the party has outgrown this mission" — only makes
+    // sense once the mission's actually been cleared once already.
+    const isReplay = state.completedMissions.includes(missionId);
     const heroLevel = Math.max(1, ...state.party.map(u => u.level));
-    const levelFloor = heroLevel + (diff >= 1.5 ? 2 : diff >= 1.2 ? 1 : 0);
+    const levelFloor = isReplay ? heroLevel + (diff >= 1.5 ? 2 : diff >= 1.2 ? 1 : 0) : 0;
     const scaledLevel = (base) => Math.max(1, Math.round(base + (diff - 1) * 10), levelFloor);
     // M0a/M0b repeat-scaling (M0-M4 redesign, Phase 5; extended to M0b
     // 2026-07-07) — each replay after the first escalates enemies: level
