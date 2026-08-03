@@ -742,6 +742,15 @@ export class WorldMapScene extends Phaser.Scene {
       textColor: '#cc99ee', depth: 20,
       onClick: () => this.scene.start('IndexScene'),
     });
+    // Settings (2026-08-03 — previously title-screen-only). Icon-only to
+    // fit the remaining gap before the Tytrate/mission-count text.
+    drawButton(this, {
+      x: 606, y: height - 24, w: 40, h: 32, label: '⚙',
+      fontSize: '16px', radius: 6,
+      bg: 0x14142a, bgHover: 0x1e1e3a, border: 0x334477, accent: 0xaaaaff,
+      textColor: '#8899cc', depth: 20,
+      onClick: () => this.scene.start('SettingsScene', { returnScene: 'WorldMapScene', returnData: {} }),
+    });
 
     // Tytrate
     this.add.text(width - 16, height - 24, `T: ${state.tytrate}`, {
