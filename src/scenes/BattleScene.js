@@ -3014,30 +3014,32 @@ export class BattleScene extends Phaser.Scene {
   }
 
   // Consumes one copy of `item` from inventory and applies its heal/SP
-  // restore to `unit` (self-target only — no ally-targeting UI yet). Ends
-  // the unit's turn the same way an ability use does.
-  useItemOnUnit(unit, item) {
+  // restore to `target` — any living party member, picked via
+  // showItemTargetMenu (2026-08-04, previously self-only). Ends the ACTING
+  // unit's turn (`actor`, who may differ from `target`) the same way an
+  // ability use does.
+  useItemOnUnit(actor, target, item) {
     const idx = state.inventory.findIndex(i => i.id === item.id);
     if (idx === -1) return;
     state.inventory.splice(idx, 1);
 
     const parts = [];
     if (item.healPct) {
-      const heal = Math.round(unit.maxHp * item.healPct);
-      unit.hp = Math.min(unit.maxHp, unit.hp + heal);
+      const heal = Math.round(target.maxHp * item.healPct);
+      target.hp = Math.min(target.maxHp, target.hp + heal);
       parts.push(`+${heal} HP`);
     }
     if (item.spPct) {
-      const sp = Math.round((unit.maxSp ?? 0) * item.spPct);
-      unit.sp = Math.min(unit.maxSp ?? unit.sp, (unit.sp ?? 0) + sp);
+      const sp = Math.round((target.maxSp ?? 0) * item.spPct);
+      target.sp = Math.min(target.maxSp ?? target.sp, (target.sp ?? 0) + sp);
       parts.push(`+${sp} SP`);
     }
-    const { x, y } = this.gridToScreen(unit.col, unit.row);
+    const { x, y } = this.gridToScreen(target.col, target.row);
     this.showEffect(x, y + TH2, parts.join('  '), '#44ffaa');
 
     this.hideActionMenu();
     this.redraw();
-    this.finishAbilityTurn(unit);
+    this.finishAbilityTurn(actor);
   }
 
   showItemSubmenu(unit) {
@@ -3127,7 +3129,100 @@ export class BattleScene extends Phaser.Scene {
       z.on('pointerdown', (ptr,lx,ly,evt) => {
         evt.stopPropagation();
         playSfx(this, SFX.battleClick);
-        this.useItemOnUnit(unit, item);
+        this.showItemTargetMenu(unit, item);
+      });
+      con.add(z);
+    });
+  }
+
+  // Ally-target picker for a healing item (2026-08-04) — a list of every
+  // living party member (HP/SP shown per row) rather than routing through
+  // the tile-click ability_targeting phase: items aren't range-limited the
+  // way abilities are, so "click who to use it on" reads clearer as a
+  // straight list than as a board highlight with no real range to show.
+  showItemTargetMenu(actor, item) {
+    this.hideActionMenu();
+    this.phase = 'unit_menu';
+
+    const { width, height } = this.scale;
+    const { x: ux, y: uy } = this.gridToScreen(actor.col, actor.row);
+    const targets = this.playerUnits.filter(u => !u.isDead);
+
+    const IH = 34, PAD = 4;
+    const MW = 210, MH = (targets.length + 1) * IH + PAD * 2;
+    const toRight = ux + 40 + MW < width - 4;
+    const mx = toRight ? ux + 40 : ux - 40 - MW;
+    const my = Math.min(Math.max(uy - MH / 2, 6), height - MH - 6);
+
+    const con = this.add.container(mx, my).setDepth(4000);
+    this.actionMenu = con;
+    const RADIUS = 10;
+
+    const shadow = this.add.graphics();
+    shadow.fillStyle(0x000000, 0.32);
+    shadow.fillRoundedRect(4, 6, MW, MH, RADIUS);
+    con.add(shadow);
+
+    const bg = this.add.graphics();
+    bg.fillStyle(0x0d1428, 0.3);
+    bg.fillRoundedRect(0, 0, MW, MH, RADIUS);
+    bg.lineStyle(1.5, actor.color, 0.75);
+    bg.strokeRoundedRect(0, 0, MW, MH, RADIUS);
+    bg.fillStyle(actor.color, 0.6);
+    bg.fillRoundedRect(0, 0, MW, 3, { tl: RADIUS, tr: RADIUS, bl: 0, br: 0 });
+    con.add(bg);
+    const ax = toRight ? -7 : MW;
+    const ay = MH / 2;
+    const arrowG = this.add.graphics();
+    arrowG.fillStyle(0x0d1428, 0.3);
+    arrowG.fillTriangle(ax, ay - 6, ax, ay + 6, toRight ? ax - 7 : ax + 7, ay);
+    con.add(arrowG);
+
+    // Back button — returns to the item list, not the action menu.
+    const backG = this.add.graphics();
+    const drawBack = (h) => { backG.clear(); if (h) { backG.fillStyle(0x2a4a90, 0.5); backG.fillRoundedRect(2, PAD + 2, MW - 4, IH - 4, 6); } };
+    drawBack(false);
+    con.add(backG);
+    con.add(this.add.text(10, PAD + IH / 2, '← Back', {
+      fontSize:'11px', fontFamily:'monospace', color:'#88aadd', stroke:'#000000', strokeThickness:3,
+    }).setOrigin(0, 0.5));
+    const bz = this.add.zone(MW/2, PAD + IH/2, MW, IH).setInteractive({ useHandCursor:true });
+    bz.on('pointerover', () => drawBack(true)); bz.on('pointerout', () => drawBack(false));
+    bz.on('pointerdown', (ptr,lx,ly,evt) => { evt.stopPropagation(); playSfx(this, SFX.battleClick); this.showItemSubmenu(actor); });
+    con.add(bz);
+
+    targets.forEach((target, i) => {
+      const iy = PAD + (i + 1) * IH;
+      const g = this.add.graphics();
+      const draw = (h) => {
+        g.clear();
+        if (h) {
+          g.fillStyle(0x2a4a90, 0.5);
+          g.fillRoundedRect(2, iy+2, MW-4, IH-4, 6);
+          g.fillStyle(target.color, 0.9);
+          g.fillRoundedRect(2, iy+2, 3, IH-4, 2);
+        }
+      };
+      draw(false);
+      con.add(g);
+
+      const label = target === actor ? `${target.name.split(' ')[0]} (self)` : target.name.split(' ')[0];
+      con.add(this.add.text(10, iy + 9, label, {
+        fontSize:'12px', fontFamily:'monospace', fontStyle:'bold', color:'#ffffff',
+        stroke: '#000000', strokeThickness: 3,
+      }).setOrigin(0, 0.5));
+      const statBits = [`HP ${target.hp}/${target.maxHp}`];
+      if (item.spPct != null && target.maxSp != null) statBits.push(`SP ${target.sp}/${target.maxSp}`);
+      con.add(this.add.text(10, iy + 23, statBits.join('  ·  '), {
+        fontSize:'9px', fontFamily:'monospace', color: target.hp < target.maxHp ? '#66ff88' : '#7799bb',
+      }).setOrigin(0, 0.5));
+
+      const z = this.add.zone(MW/2, iy + IH/2, MW, IH).setInteractive({ useHandCursor:true });
+      z.on('pointerover', () => draw(true)); z.on('pointerout', () => draw(false));
+      z.on('pointerdown', (ptr,lx,ly,evt) => {
+        evt.stopPropagation();
+        playSfx(this, SFX.battleClick);
+        this.useItemOnUnit(actor, target, item);
       });
       con.add(z);
     });
