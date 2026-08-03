@@ -3016,8 +3016,11 @@ export class BattleScene extends Phaser.Scene {
   // Consumes one copy of `item` from inventory and applies its heal/SP
   // restore to `target` — any living party member, picked via
   // showItemTargetMenu (2026-08-04, previously self-only). Ends the ACTING
-  // unit's turn (`actor`, who may differ from `target`) the same way an
-  // ability use does.
+  // unit's turn (`actor`, who may differ from `target`) EXCEPT on Perilous
+  // difficulty, where using an item counts as the unit's full action (its
+  // "no easy outs" identity) — everywhere else (Newbie/Veteran, and the
+  // legacy replay-picker path) an item is free: `actor` can still
+  // Move/Attack/use another item the same turn.
   useItemOnUnit(actor, target, item) {
     const idx = state.inventory.findIndex(i => i.id === item.id);
     if (idx === -1) return;
@@ -3039,6 +3042,11 @@ export class BattleScene extends Phaser.Scene {
 
     this.hideActionMenu();
     this.redraw();
+
+    if (this.difficultyCfg?.key !== 'perilous') {
+      this.showActionMenu(actor);
+      return;
+    }
     this.finishAbilityTurn(actor);
   }
 
