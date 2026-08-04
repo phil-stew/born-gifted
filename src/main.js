@@ -109,6 +109,30 @@ const config = {
 
 window.__game = new Phaser.Game(config);
 
+// ── TEMP diagnostic overlay (2026-08-04) — debugging an asymmetric
+// letterbox bar reported on a real iPhone (all-black gutter on one side,
+// none on the other, which plain FIT+CENTER_BOTH shouldn't produce).
+// Reads back the real numbers instead of guessing from a screenshot.
+// Remove once diagnosed.
+window.addEventListener('load', () => {
+  setTimeout(() => {
+    const c = document.querySelector('canvas');
+    const r = c ? c.getBoundingClientRect() : null;
+    const lines = [
+      `innerW/H: ${window.innerWidth} x ${window.innerHeight}`,
+      `outerW/H: ${window.outerWidth} x ${window.outerHeight}`,
+      `dpr: ${window.devicePixelRatio}`,
+      `game.scale: ${window.__game.scale.width} x ${window.__game.scale.height}`,
+      `canvas rect: L${r ? r.left.toFixed(0) : '?'} T${r ? r.top.toFixed(0) : '?'} W${r ? r.width.toFixed(0) : '?'} H${r ? r.height.toFixed(0) : '?'}`,
+      `body: ${document.body.clientWidth} x ${document.body.clientHeight}`,
+    ];
+    const box = document.createElement('div');
+    box.style.cssText = 'position:fixed;top:0;left:0;z-index:999999;background:rgba(0,0,0,0.85);color:#0f0;font:10px monospace;padding:6px;white-space:pre;pointer-events:none;';
+    box.textContent = lines.join('\n');
+    document.body.appendChild(box);
+  }, 800);
+});
+
 // ── Landscape preference, not a hard lock (2026-07-04, revised again) ──────
 // Mobile game, designed for landscape — but a plain Safari/Chrome tab can't
 // reliably combine true fullscreen with a forced landscape lock (iOS Safari

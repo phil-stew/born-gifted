@@ -14,10 +14,21 @@ body {
   height: 100vh;
 }
 
+/* No flex/centering here (2026-08-04) — Phaser's own autoCenter (see
+   main.js's CENTER_BOTH config) already centers the canvas via a
+   margin-left/margin-top it sets directly on the <canvas> element,
+   computed against #app's box. If #app is ALSO a flex container with its
+   own justify-content/align-items centering, flexbox includes that margin
+   as part of the canvas's item box and re-centers THAT — the two
+   centering mechanisms compound instead of cooperating, pushing the
+   canvas visibly off-center (confirmed: reproducible asymmetric
+   letterbox, ~2x too much gutter on one side). #app just needs to fill
+   the viewport so Phaser's own margin math has the right box to center
+   against; body's flex-centering above is then a no-op (its one child
+   already fills it) and can stay. */
 #app {
-  display: flex;
-  justify-content: center;
-  align-items: center;
+  width: 100vw;
+  height: 100vh;
 }
 
 canvas {
