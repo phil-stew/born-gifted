@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import {
   state, effectiveStats, maxHp as gsMaxHp, elementIcon, currentRoleId, currentDesignations,
-  currentSport, sportById, maxBattlePartySize, getBattleParty, TRIAL_CLASS,
+  currentSport, sportById, maxBattlePartySize, getBattleParty,
   DESIGNATION_BEATS, designationIcon, DESIGNATION_CYCLE, ELEMENT_CYCLE, ELEMENT_BEATS,
 } from '../data/gameState.js';
 import { ATTACK, THROW, ABILITIES, getEquippedSpecialAbilities, getEquippedSkillAbilities, getEquippedPassives } from '../data/abilities.js';
@@ -972,24 +972,27 @@ const MISSION_CONFIGS = {
     ],
   },
 
-  // The Noble Deity's 7 Trials (2026-07-17) — one single strong rival duel
-  // per classGrouping (TRIAL_CLASS in gameState.js), same
-  // tournamentEnemyDef() shape AT1/AT2/GT already use for a "real
-  // hero-shaped opponent," just ONE fixed-class opponent instead of 4
-  // random ones — reads as "a trial," not "a tournament." Level 19/stats
-  // sit a notch above GT's 17 (the hardest content that existed before
-  // this arc) since these are meant to be the last real gear-check before
-  // whatever the Corrupted One rematch turns out to be. No epic gear on
-  // these — the point of the trial is the fight itself, the reward is the
-  // God Tier weapon (see VictoryScene.js's TRIAL_CLASS reward wiring), not
-  // another gear check layered on top of it.
-  'T1': { region: 'Lametus', playerPos: { reno:[1,3], drace:[1,4], sela:[1,2], kael:[1,5], trice:[1,1], zora:[1,0] }, enemyHeroClasses: [TRIAL_CLASS.T1], enemies: () => [tournamentEnemyDef(7, 5, TRIAL_CLASS.T1, 30, { speed:52, strength:98, stamina:68, endurance:62 })] },
-  'T2': { region: 'Lametus', playerPos: { reno:[1,3], drace:[1,4], sela:[1,2], kael:[1,5], trice:[1,1], zora:[1,0] }, enemyHeroClasses: [TRIAL_CLASS.T2], enemies: () => [tournamentEnemyDef(7, 5, TRIAL_CLASS.T2, 30, { speed:52, strength:98, stamina:68, endurance:62 })] },
-  'T3': { region: 'Lametus', playerPos: { reno:[1,3], drace:[1,4], sela:[1,2], kael:[1,5], trice:[1,1], zora:[1,0] }, enemyHeroClasses: [TRIAL_CLASS.T3], enemies: () => [tournamentEnemyDef(7, 5, TRIAL_CLASS.T3, 30, { speed:52, strength:98, stamina:68, endurance:62 })] },
-  'T4': { region: 'Lametus', playerPos: { reno:[1,3], drace:[1,4], sela:[1,2], kael:[1,5], trice:[1,1], zora:[1,0] }, enemyHeroClasses: [TRIAL_CLASS.T4], enemies: () => [tournamentEnemyDef(7, 5, TRIAL_CLASS.T4, 30, { speed:52, strength:98, stamina:68, endurance:62 })] },
-  'T5': { region: 'Lametus', playerPos: { reno:[1,3], drace:[1,4], sela:[1,2], kael:[1,5], trice:[1,1], zora:[1,0] }, enemyHeroClasses: [TRIAL_CLASS.T5], enemies: () => [tournamentEnemyDef(7, 5, TRIAL_CLASS.T5, 30, { speed:52, strength:98, stamina:68, endurance:62 })] },
-  'T6': { region: 'Lametus', playerPos: { reno:[1,3], drace:[1,4], sela:[1,2], kael:[1,5], trice:[1,1], zora:[1,0] }, enemyHeroClasses: [TRIAL_CLASS.T6], enemies: () => [tournamentEnemyDef(7, 5, TRIAL_CLASS.T6, 30, { speed:52, strength:98, stamina:68, endurance:62 })] },
-  'T7': { region: 'Lametus', playerPos: { reno:[1,3], drace:[1,4], sela:[1,2], kael:[1,5], trice:[1,1], zora:[1,0] }, enemyHeroClasses: [TRIAL_CLASS.T7], enemies: () => [tournamentEnemyDef(7, 5, TRIAL_CLASS.T7, 30, { speed:52, strength:98, stamina:68, endurance:62 })] },
+  // The Noble Deity's 7 Trials (2026-07-17, monster-swap 2026-08-04) — one
+  // single strong boss-tier monster per trial, a different species each
+  // (Deer/Lion/Wyvern/Wolf/Boar/Goblin/Dragon — the 7 of the 10 base
+  // species with real art, excluding Golem/Bear/Hawk: Golem's already the
+  // headline monster for TG/FT, Bear/Hawk still have no art or procedural
+  // fallback). Originally a single hero-class rival (tournamentEnemyDef,
+  // same shape as AT1/AT2/GT) — swapped to buildMonster() kind:'boss' at
+  // the same level:30/power level (part of the AT1..FT curve rebalance
+  // earlier this session; TRIAL_CLASS/enemyHeroClasses no longer needed
+  // here since there's no hero-shaped opponent to preload art for). Reward
+  // is still tied to TRIAL_CLASS purely by missionId (see VictoryScene.js
+  // — checks the PLAYER's own classGrouping, entirely independent of what
+  // enemy is fought), so this swap doesn't touch the God Tier drop logic
+  // at all. No epic gear — the point of the trial is the fight itself.
+  'T1': { region: 'Lametus', playerPos: { reno:[1,3], drace:[1,4], sela:[1,2], kael:[1,5], trice:[1,1], zora:[1,0] }, enemies: [{ col:7, row:5, ...buildMonster({ base: 'Deer',   kind: 'boss', statMult: { speed:13,  strength:13,  stamina:13,  endurance:13  } }), level: 30 }] },
+  'T2': { region: 'Lametus', playerPos: { reno:[1,3], drace:[1,4], sela:[1,2], kael:[1,5], trice:[1,1], zora:[1,0] }, enemies: [{ col:7, row:5, ...buildMonster({ base: 'Lion',   kind: 'boss', statMult: { speed:9.6,  strength:9.6,  stamina:9.6,  endurance:9.6  } }), level: 30 }] },
+  'T3': { region: 'Lametus', playerPos: { reno:[1,3], drace:[1,4], sela:[1,2], kael:[1,5], trice:[1,1], zora:[1,0] }, enemies: [{ col:7, row:5, ...buildMonster({ base: 'Wyvern', kind: 'boss', statMult: { speed:9.1,  strength:9.1,  stamina:9.1,  endurance:9.1  } }), level: 30 }] },
+  'T4': { region: 'Lametus', playerPos: { reno:[1,3], drace:[1,4], sela:[1,2], kael:[1,5], trice:[1,1], zora:[1,0] }, enemies: [{ col:7, row:5, ...buildMonster({ base: 'Wolf',   kind: 'boss', statMult: { speed:12,  strength:12,  stamina:12,  endurance:12  } }), level: 30 }] },
+  'T5': { region: 'Lametus', playerPos: { reno:[1,3], drace:[1,4], sela:[1,2], kael:[1,5], trice:[1,1], zora:[1,0] }, enemies: [{ col:7, row:5, ...buildMonster({ base: 'Boar',   kind: 'boss', statMult: { speed:8.7,  strength:8.7,  stamina:8.7,  endurance:8.7  } }), level: 30 }] },
+  'T6': { region: 'Lametus', playerPos: { reno:[1,3], drace:[1,4], sela:[1,2], kael:[1,5], trice:[1,1], zora:[1,0] }, enemies: [{ col:7, row:5, ...buildMonster({ base: 'Goblin', kind: 'boss', statMult: { speed:13,  strength:13,  stamina:13,  endurance:13  } }), level: 30 }] },
+  'T7': { region: 'Lametus', playerPos: { reno:[1,3], drace:[1,4], sela:[1,2], kael:[1,5], trice:[1,1], zora:[1,0] }, enemies: [{ col:7, row:5, ...buildMonster({ base: 'Dragon', kind: 'boss', statMult: { speed:7.1,  strength:7.1,  stamina:7.1,  endurance:7.1  } }), level: 30 }] },
 
   // The Golem Trial (2026-07-18, "North of A3 they will fight the Golems
   // as there last trial") — a real, winnable fight (unlike M7), north of
