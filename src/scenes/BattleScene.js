@@ -843,8 +843,8 @@ const MISSION_CONFIGS = {
     enemies: () => {
       const classes = pickRandomHeroClasses(4);
       const pos = [[7,2],[8,4],[7,6],[8,8]];
-      const stats = { speed:28, strength:48, stamina:35, endurance:32 };
-      return classes.map((c, i) => tournamentEnemyDef(pos[i][0], pos[i][1], c, 33, stats));
+      const stats = { speed:35, strength:64, stamina:46, endurance:42 };
+      return classes.map((c, i) => tournamentEnemyDef(pos[i][0], pos[i][1], c, 30, stats));
     },
   },
   // M5b removed (2026-07-11 fourth follow-up, "need to remove m5b") — Gale
@@ -983,13 +983,13 @@ const MISSION_CONFIGS = {
   // these — the point of the trial is the fight itself, the reward is the
   // God Tier weapon (see VictoryScene.js's TRIAL_CLASS reward wiring), not
   // another gear check layered on top of it.
-  'T1': { region: 'Lametus', playerPos: { reno:[1,3], drace:[1,4], sela:[1,2], kael:[1,5], trice:[1,1], zora:[1,0] }, enemyHeroClasses: [TRIAL_CLASS.T1], enemies: () => [tournamentEnemyDef(7, 5, TRIAL_CLASS.T1, 44, { speed:38, strength:64, stamina:46, endurance:42 })] },
-  'T2': { region: 'Lametus', playerPos: { reno:[1,3], drace:[1,4], sela:[1,2], kael:[1,5], trice:[1,1], zora:[1,0] }, enemyHeroClasses: [TRIAL_CLASS.T2], enemies: () => [tournamentEnemyDef(7, 5, TRIAL_CLASS.T2, 44, { speed:38, strength:64, stamina:46, endurance:42 })] },
-  'T3': { region: 'Lametus', playerPos: { reno:[1,3], drace:[1,4], sela:[1,2], kael:[1,5], trice:[1,1], zora:[1,0] }, enemyHeroClasses: [TRIAL_CLASS.T3], enemies: () => [tournamentEnemyDef(7, 5, TRIAL_CLASS.T3, 44, { speed:38, strength:64, stamina:46, endurance:42 })] },
-  'T4': { region: 'Lametus', playerPos: { reno:[1,3], drace:[1,4], sela:[1,2], kael:[1,5], trice:[1,1], zora:[1,0] }, enemyHeroClasses: [TRIAL_CLASS.T4], enemies: () => [tournamentEnemyDef(7, 5, TRIAL_CLASS.T4, 44, { speed:38, strength:64, stamina:46, endurance:42 })] },
-  'T5': { region: 'Lametus', playerPos: { reno:[1,3], drace:[1,4], sela:[1,2], kael:[1,5], trice:[1,1], zora:[1,0] }, enemyHeroClasses: [TRIAL_CLASS.T5], enemies: () => [tournamentEnemyDef(7, 5, TRIAL_CLASS.T5, 44, { speed:38, strength:64, stamina:46, endurance:42 })] },
-  'T6': { region: 'Lametus', playerPos: { reno:[1,3], drace:[1,4], sela:[1,2], kael:[1,5], trice:[1,1], zora:[1,0] }, enemyHeroClasses: [TRIAL_CLASS.T6], enemies: () => [tournamentEnemyDef(7, 5, TRIAL_CLASS.T6, 44, { speed:38, strength:64, stamina:46, endurance:42 })] },
-  'T7': { region: 'Lametus', playerPos: { reno:[1,3], drace:[1,4], sela:[1,2], kael:[1,5], trice:[1,1], zora:[1,0] }, enemyHeroClasses: [TRIAL_CLASS.T7], enemies: () => [tournamentEnemyDef(7, 5, TRIAL_CLASS.T7, 44, { speed:38, strength:64, stamina:46, endurance:42 })] },
+  'T1': { region: 'Lametus', playerPos: { reno:[1,3], drace:[1,4], sela:[1,2], kael:[1,5], trice:[1,1], zora:[1,0] }, enemyHeroClasses: [TRIAL_CLASS.T1], enemies: () => [tournamentEnemyDef(7, 5, TRIAL_CLASS.T1, 30, { speed:52, strength:98, stamina:68, endurance:62 })] },
+  'T2': { region: 'Lametus', playerPos: { reno:[1,3], drace:[1,4], sela:[1,2], kael:[1,5], trice:[1,1], zora:[1,0] }, enemyHeroClasses: [TRIAL_CLASS.T2], enemies: () => [tournamentEnemyDef(7, 5, TRIAL_CLASS.T2, 30, { speed:52, strength:98, stamina:68, endurance:62 })] },
+  'T3': { region: 'Lametus', playerPos: { reno:[1,3], drace:[1,4], sela:[1,2], kael:[1,5], trice:[1,1], zora:[1,0] }, enemyHeroClasses: [TRIAL_CLASS.T3], enemies: () => [tournamentEnemyDef(7, 5, TRIAL_CLASS.T3, 30, { speed:52, strength:98, stamina:68, endurance:62 })] },
+  'T4': { region: 'Lametus', playerPos: { reno:[1,3], drace:[1,4], sela:[1,2], kael:[1,5], trice:[1,1], zora:[1,0] }, enemyHeroClasses: [TRIAL_CLASS.T4], enemies: () => [tournamentEnemyDef(7, 5, TRIAL_CLASS.T4, 30, { speed:52, strength:98, stamina:68, endurance:62 })] },
+  'T5': { region: 'Lametus', playerPos: { reno:[1,3], drace:[1,4], sela:[1,2], kael:[1,5], trice:[1,1], zora:[1,0] }, enemyHeroClasses: [TRIAL_CLASS.T5], enemies: () => [tournamentEnemyDef(7, 5, TRIAL_CLASS.T5, 30, { speed:52, strength:98, stamina:68, endurance:62 })] },
+  'T6': { region: 'Lametus', playerPos: { reno:[1,3], drace:[1,4], sela:[1,2], kael:[1,5], trice:[1,1], zora:[1,0] }, enemyHeroClasses: [TRIAL_CLASS.T6], enemies: () => [tournamentEnemyDef(7, 5, TRIAL_CLASS.T6, 30, { speed:52, strength:98, stamina:68, endurance:62 })] },
+  'T7': { region: 'Lametus', playerPos: { reno:[1,3], drace:[1,4], sela:[1,2], kael:[1,5], trice:[1,1], zora:[1,0] }, enemyHeroClasses: [TRIAL_CLASS.T7], enemies: () => [tournamentEnemyDef(7, 5, TRIAL_CLASS.T7, 30, { speed:52, strength:98, stamina:68, endurance:62 })] },
 
   // The Golem Trial (2026-07-18, "North of A3 they will fight the Golems
   // as there last trial") — a real, winnable fight (unlike M7), north of
@@ -1005,9 +1005,9 @@ const MISSION_CONFIGS = {
     region: 'Lametus',
     playerPos: { reno:[1,3], drace:[1,4], sela:[1,2], kael:[1,5], trice:[1,1], zora:[1,0] },
     enemies: [
-      { col:5, row:5, ...buildMonster({ base: 'Golem', kind: 'boss', statMult: { speed: 3, strength: 11, stamina: 3.3, endurance: 3.3 } }), level: 40 },
-      { col:7, row:3, ...buildMonster({ base: 'Golem', tier: 3, statMult: { speed: 3, strength: 8, stamina: 3.3, endurance: 3.3 } }), level: 40 },
-      { col:7, row:7, ...buildMonster({ base: 'Golem', tier: 3, statMult: { speed: 3, strength: 8, stamina: 3.3, endurance: 3.3 } }), level: 40 },
+      { col:5, row:5, ...buildMonster({ base: 'Golem', kind: 'boss', statMult: { speed: 4, strength: 16, stamina: 4.4, endurance: 4.4 } }), level: 30 },
+      { col:7, row:3, ...buildMonster({ base: 'Golem', tier: 3, statMult: { speed: 4, strength: 12, stamina: 4.4, endurance: 4.4 } }), level: 30 },
+      { col:7, row:7, ...buildMonster({ base: 'Golem', tier: 3, statMult: { speed: 4, strength: 12, stamina: 4.4, endurance: 4.4 } }), level: 30 },
     ],
   },
 
@@ -1032,10 +1032,10 @@ const MISSION_CONFIGS = {
     region: 'Lametus',
     playerPos: { reno:[1,3], drace:[1,4], sela:[1,2], kael:[1,5], trice:[1,1], zora:[1,0] },
     enemies: [
-      { col:5, row:5, ...buildMonster({ base: 'Dragon', kind: 'boss', name: 'The Corrupted One', statMult: { speed: 4.3, strength: 5.8, stamina: 4.3, endurance: 4.3 } }), level: 40, corrupted: true, isCorruptedOneBoss: true },
-      { col:7, row:2, ...buildMonster({ base: 'Wyvern', kind: 'boss', statMult: { speed: 3.8, strength: 5.2, stamina: 3.8, endurance: 3.8 } }), level: 40, corrupted: true },
-      { col:7, row:8, ...buildMonster({ base: 'Lion', kind: 'boss', statMult: { speed: 3.8, strength: 5.2, stamina: 3.8, endurance: 3.8 } }), level: 40, corrupted: true },
-      { col:8, row:5, ...buildMonster({ base: 'Golem', kind: 'boss', statMult: { speed: 3.8, strength: 13.5, stamina: 4, endurance: 4 } }), level: 40, corrupted: true },
+      { col:5, row:5, ...buildMonster({ base: 'Dragon', kind: 'boss', name: 'The Corrupted One', statMult: { speed: 6.2, strength: 9, stamina: 6.2, endurance: 6.2 } }), level: 30, corrupted: true, isCorruptedOneBoss: true },
+      { col:7, row:2, ...buildMonster({ base: 'Wyvern', kind: 'boss', statMult: { speed: 5.5, strength: 8, stamina: 5.5, endurance: 5.5 } }), level: 30, corrupted: true },
+      { col:7, row:8, ...buildMonster({ base: 'Lion', kind: 'boss', statMult: { speed: 5.5, strength: 8, stamina: 5.5, endurance: 5.5 } }), level: 30, corrupted: true },
+      { col:8, row:5, ...buildMonster({ base: 'Golem', kind: 'boss', statMult: { speed: 5.5, strength: 21, stamina: 5.9, endurance: 5.9 } }), level: 30, corrupted: true },
     ],
   },
 
