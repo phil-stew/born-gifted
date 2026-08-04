@@ -48,7 +48,7 @@ export class GameScene extends Phaser.Scene {
       boxBg.destroy(); bar.destroy(); label.destroy(); pctText.destroy();
     });
 
-    if (!this.textures.exists('titlebg')) this.load.image('titlebg', 'world/title/titlebg.png');
+    if (!this.textures.exists('titlebg')) this.load.image('titlebg', 'world/title/titlebg.webp');
     preloadSfx(this);
     preloadMusic(this);
   }

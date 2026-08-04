@@ -3,7 +3,7 @@ import { stripHeroBackground } from '../data/heroSprites.js';
 
 // Generic dialogue scene. Receives { lines, nextScene, nextSceneData, backdrop } via init().
 // Each line: { speaker, text, color? }
-// backdrop: optional texture key + path, e.g. { key: 'bd-village', path: 'world/Altroesartscene/village.png' }
+// backdrop: optional texture key + path, e.g. { key: 'bd-village', path: 'world/Altroesartscene/village.webp' }
 
 export class StoryScene extends Phaser.Scene {
   constructor() { super({ key: 'StoryScene' }); }

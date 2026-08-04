@@ -118,7 +118,7 @@ export class ShopScene extends Phaser.Scene {
   preload() {
     if (!this.textures.exists('gears'))      this.load.image('gears',      'gears/gearitems.png');
     if (!this.textures.exists('materials'))  this.load.image('materials',  'items/rawmaterials.png');
-    if (!this.textures.exists('bd-castle2')) this.load.image('bd-castle2', 'world/Altroesartscene/castle2.png');
+    if (!this.textures.exists('bd-castle2')) this.load.image('bd-castle2', 'world/Altroesartscene/castle2.webp');
   }
 
   init(data) {

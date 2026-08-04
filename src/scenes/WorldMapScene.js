@@ -452,7 +452,7 @@ export class WorldMapScene extends Phaser.Scene {
   preload() {
     // hero sprites loaded in BattleScene; WorldMap needs none
     if (!this.textures.exists('mapscenery')) this.load.image('mapscenery', 'tiles/mapasset/treesrock.png');
-    if (!this.textures.exists('mapbackg'))   this.load.image('mapbackg', 'world/title/mapbackg.png');
+    if (!this.textures.exists('mapbackg'))   this.load.image('mapbackg', 'world/title/mapbackg.webp');
   }
 
   _registerSceneryFrames() {
