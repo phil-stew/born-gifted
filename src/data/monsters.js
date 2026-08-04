@@ -244,7 +244,15 @@ export function rollUniqueName() {
 const MONSTER_ABILITY_POOL = {
   C:  ['fake_out', 'offside', 'ace', 'counter_hit'],
   Rg: ['tri_throw', 'sharp_throw', 'ranged_plus_range', 'focus'],
-  D:  ['shield', 'stopper'],
+  // jab/inner_focus/power_shot (2026-08-04) fill the gap noted below — all
+  // 3 are existing hero abilities with a real targetType:'enemy' multiplier
+  // (same "reuse the hero catalog" approach every other designation's pool
+  // already uses), so Bear/Golem finally get real attack skills instead of
+  // falling back to a plain basic attack every time. power_shot is renamed
+  // to "Rock Throw" for both species via MONSTER_SKILL_NAME_OVERRIDES below
+  // — same shape (2.2x dmg, range 3, 3 SP), just re-flavored rather than
+  // redefined, matching how every other reused ability gets a species name.
+  D:  ['shield', 'stopper', 'jab', 'inner_focus', 'power_shot'],
 };
 
 // 2026-07-09 ("give all monster enemies one attack skill and one passive
@@ -266,12 +274,11 @@ for (const [designation, pool] of Object.entries(MONSTER_ABILITY_POOL)) {
   MONSTER_SKILL_POOL[designation] = skills;
   MONSTER_PASSIVE_POOL[designation] = passives;
 }
-// KNOWN GAP: Defender (D) has no damage-dealing ability in the pool —
-// Shield is an ally-support skill, so a D monster's "attack skill" slot
-// stays empty and it falls back to a plain basic attack (BattleScene's
-// tryEnemySkill only casts targetType:'enemy' abilities). Not fixed here
-// since no D-designation monster (Bear/Golem) is spawnable yet (see
-// [[project_monster_list_redesign]]) — revisit once one is.
+// Defender (D) gap FIXED 2026-08-04 (was: Shield/Stopper are both
+// ally-support/passive, so a D monster's "attack skill" slot stayed empty
+// and it fell back to a plain basic attack every time) — jab/inner_focus/
+// power_shot added to MONSTER_ABILITY_POOL.D above now give it 3 real
+// targetType:'enemy' options, same as every other designation.
 
 // Species-specific flavor renames — hand-picked (a lookup table, not a
 // generator: the sheet's own resolved examples for skill naming are
@@ -279,11 +286,11 @@ for (const [designation, pool] of Object.entries(MONSTER_ABILITY_POOL)) {
 // back to a generic per-ability rename, then the hero ability's own name.
 const MONSTER_SKILL_NAME_OVERRIDES = {
   Lion:   { counter_hit: 'Savage Reprisal' },
-  Golem:  { shield: 'Stone Hide' },
+  Golem:  { shield: 'Stone Hide', power_shot: 'Rock Throw' },
   Hawk:   { tri_throw: 'Talon Barrage' },
   Dragon: { fake_out: "Wyrm's Feint", offside: 'Wing Gale', sharp_throw: "Dragon's Breath" },
   Wolf:   { fake_out: 'Snarling Lunge', offside: 'Pack Tactics' },
-  Bear:   { stopper: 'Mother Bear' },
+  Bear:   { stopper: 'Mother Bear', power_shot: 'Rock Throw' },
   Boar:   { ace: 'Tusked Fury' },
   Wyvern: { sharp_throw: 'Diving Strike' },
   Goblin: { fake_out: 'Cheap Shot' },
