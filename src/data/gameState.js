@@ -716,25 +716,47 @@ export function getAcademyQuests(nodeId) {
 // XP required to go from `level` to `level+1`
 export function xpToNext(level) { return level * 100; }
 
-// Grant XP to a unit. Returns gain object if leveled up, null otherwise.
-// No-ops once the unit is at LEVEL_CAP.
+// Grant XP to a unit. Returns an accumulated gain object if AT LEAST one
+// level was gained, null otherwise. No-ops once the unit is at LEVEL_CAP.
+// Loops rather than a single if (2026-08-04 fix, "the rebalance's much
+// higher per-kill XP values make it far more noticeable" — a level-5 unit
+// clearing a mission worth several thousand XP used to bank almost all of
+// it silently, dinging up by exactly one level regardless of how much was
+// actually earned) — every level crossed in one grant now applies its own
+// stat gains and its own unlockedSlot/promoted check (a big XP dump can
+// jump straight past a milestone level entirely, so checking only the
+// FINAL level would miss it), with gains summed for the level-up screen.
 export function addXP(unit, amount) {
   if (unit.level >= LEVEL_CAP) return null;
   unit.xp += amount;
-  const needed = xpToNext(unit.level);
-  if (unit.xp < needed) return null;
 
-  unit.xp -= needed;
-  unit.level = Math.min(LEVEL_CAP, unit.level + 1);
-  const gains = levelUpGains(unit);
-  unit.speed      += gains.speed;
-  unit.strength   += gains.strength;
-  unit.stamina    += gains.stamina;
-  unit.endurance  += gains.endurance;
+  const oldLevel = unit.level;
+  const totalGains = { speed: 0, strength: 0, stamina: 0, endurance: 0 };
+  let unlockedSlot = false, promoted = false, leveled = false;
 
-  const unlockedSlot = CLASS_SKILL_SLOT_LEVELS.includes(unit.level);
-  const promoted = unit.level === CLASS_TIER_LEVELS.t2 || unit.level === CLASS_TIER_LEVELS.t3;
-  return { ...gains, newLevel: unit.level, unlockedSlot, promoted };
+  while (unit.level < LEVEL_CAP) {
+    const needed = xpToNext(unit.level);
+    if (unit.xp < needed) break;
+
+    unit.xp -= needed;
+    unit.level += 1;
+    leveled = true;
+    const gains = levelUpGains(unit);
+    unit.speed      += gains.speed;
+    unit.strength   += gains.strength;
+    unit.stamina    += gains.stamina;
+    unit.endurance  += gains.endurance;
+    totalGains.speed      += gains.speed;
+    totalGains.strength   += gains.strength;
+    totalGains.stamina    += gains.stamina;
+    totalGains.endurance  += gains.endurance;
+
+    if (CLASS_SKILL_SLOT_LEVELS.includes(unit.level)) unlockedSlot = true;
+    if (unit.level === CLASS_TIER_LEVELS.t2 || unit.level === CLASS_TIER_LEVELS.t3) promoted = true;
+  }
+
+  if (!leveled) return null;
+  return { ...totalGains, oldLevel, newLevel: unit.level, unlockedSlot, promoted };
 }
 
 // Base per-level growth (before talent doubling) applied to every unit

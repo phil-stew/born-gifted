@@ -83,7 +83,7 @@ export class LevelUpScene extends Phaser.Scene {
       color: '#ffdd44', stroke: '#000000', strokeThickness: 5,
     }).setOrigin(0.5);
 
-    this.add.text(width / 2, 304, `Lv.${lu.gains.newLevel - 1}  →  Lv.${lu.gains.newLevel}`, {
+    this.add.text(width / 2, 304, `Lv.${lu.gains.oldLevel}  →  Lv.${lu.gains.newLevel}`, {
       fontSize: '22px', fontFamily: 'monospace', color: '#ffffff',
     }).setOrigin(0.5);
 
