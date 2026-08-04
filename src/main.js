@@ -109,29 +109,53 @@ const config = {
 
 window.__game = new Phaser.Game(config);
 
+// ── Re-fit on resize/rotation (2026-08-04) — computeGameWidth() above only
+// ran once, at cold boot. Real-device testing turned up a case where iOS
+// Safari's very first window.innerWidth/innerHeight reading after a reload
+// was stale (reporting the phone's PORTRAIT CSS size — 430×932 — even
+// though it was actually held in landscape), so the game permanently
+// locked in the wrong width for that session. Re-checking on 'resize' (iOS
+// Safari fires this once it corrects itself) and 'orientationchange' fixes
+// that stale-read case AND makes an actual mid-session rotation re-fit
+// correctly, neither of which the one-shot boot-time read could do.
+window.addEventListener('resize', () => {
+  const w = computeGameWidth();
+  if (Math.abs(w - window.__game.scale.width) >= 4) {
+    window.__game.scale.resize(w, 600);
+  }
+});
+window.addEventListener('orientationchange', () => {
+  setTimeout(() => window.__game.scale.resize(computeGameWidth(), 600), 300);
+});
+
 // ── TEMP diagnostic overlay (2026-08-04) — debugging an asymmetric
 // letterbox bar reported on a real iPhone (all-black gutter on one side,
 // none on the other, which plain FIT+CENTER_BOTH shouldn't produce).
 // Reads back the real numbers instead of guessing from a screenshot.
 // Remove once diagnosed.
-window.addEventListener('load', () => {
-  setTimeout(() => {
-    const c = document.querySelector('canvas');
-    const r = c ? c.getBoundingClientRect() : null;
-    const lines = [
-      `innerW/H: ${window.innerWidth} x ${window.innerHeight}`,
-      `outerW/H: ${window.outerWidth} x ${window.outerHeight}`,
-      `dpr: ${window.devicePixelRatio}`,
-      `game.scale: ${window.__game.scale.width} x ${window.__game.scale.height}`,
-      `canvas rect: L${r ? r.left.toFixed(0) : '?'} T${r ? r.top.toFixed(0) : '?'} W${r ? r.width.toFixed(0) : '?'} H${r ? r.height.toFixed(0) : '?'}`,
-      `body: ${document.body.clientWidth} x ${document.body.clientHeight}`,
-    ];
-    const box = document.createElement('div');
-    box.style.cssText = 'position:fixed;top:0;left:0;z-index:999999;background:rgba(0,0,0,0.85);color:#0f0;font:10px monospace;padding:6px;white-space:pre;pointer-events:none;';
-    box.textContent = lines.join('\n');
-    document.body.appendChild(box);
-  }, 800);
-});
+let __debugBox = null;
+function __renderDebugOverlay() {
+  const c = document.querySelector('canvas');
+  const r = c ? c.getBoundingClientRect() : null;
+  const lines = [
+    `innerW/H: ${window.innerWidth} x ${window.innerHeight}`,
+    `outerW/H: ${window.outerWidth} x ${window.outerHeight}`,
+    `dpr: ${window.devicePixelRatio}`,
+    `game.scale: ${window.__game.scale.width} x ${window.__game.scale.height}`,
+    `canvas rect: L${r ? r.left.toFixed(0) : '?'} T${r ? r.top.toFixed(0) : '?'} W${r ? r.width.toFixed(0) : '?'} H${r ? r.height.toFixed(0) : '?'}`,
+    `body: ${document.body.clientWidth} x ${document.body.clientHeight}`,
+    `updated: ${new Date().toLocaleTimeString()}`,
+  ];
+  if (!__debugBox) {
+    __debugBox = document.createElement('div');
+    __debugBox.style.cssText = 'position:fixed;top:0;left:0;z-index:999999;background:rgba(0,0,0,0.85);color:#0f0;font:10px monospace;padding:6px;white-space:pre;pointer-events:none;';
+    document.body.appendChild(__debugBox);
+  }
+  __debugBox.textContent = lines.join('\n');
+}
+window.addEventListener('load', () => setTimeout(__renderDebugOverlay, 800));
+window.addEventListener('resize', () => setTimeout(__renderDebugOverlay, 400));
+window.addEventListener('orientationchange', () => setTimeout(__renderDebugOverlay, 500));
 
 // ── Landscape preference, not a hard lock (2026-07-04, revised again) ──────
 // Mobile game, designed for landscape — but a plain Safari/Chrome tab can't
