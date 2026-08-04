@@ -6,7 +6,7 @@ import {
 } from '../data/gameState.js';
 import { ATTACK, THROW, ABILITIES, getEquippedSpecialAbilities, getEquippedSkillAbilities, getEquippedPassives } from '../data/abilities.js';
 import { loadHeroSprites, createHeroAnims, stripHeroBackground, stripBackgroundByKey, trimmedSheetConfig, heroKey, getSpriteInfo, firstFrame, spriteKeyForRole, HERO_SPRITES } from '../data/heroSprites.js';
-import { buildMonster, buildMonsterKit, spriteInfoForBase } from '../data/monsters.js';
+import { buildMonster, buildMonsterKit, spriteInfoForBase, spForLevel } from '../data/monsters.js';
 import { isUsableItem, rollGearItem } from '../data/items.js';
 import { BACKDROPS } from '../data/storyBackdrops.js';
 import { preloadSfx, playSfx, playStinger, SFX } from '../audio/sound.js';
@@ -1663,10 +1663,21 @@ export class BattleScene extends Phaser.Scene {
     // an exact HP pool (15,000, matching "deal 15,000 damage to the rock")
     // regardless of the difficulty picker's stat multiplier.
     const maxHp = d.fixedMaxHp ?? (enemyMaxHp(scaled) + bonusHp);
+    // Monster SP (2026-08-04, "monsters need sp as well") — scales with
+    // level via spForLevel() instead of the old flat 4 (the unmodified
+    // player default), so SP-gated skills (inner_focus's 10 cost, etc.)
+    // are actually reachable at higher levels, not just decorative kit
+    // entries. `diff` bumps it a bit further on the replay-picker's own
+    // Hard/Elite (the same lever every other raw stat already scales by
+    // there); `difficultyCfg.enemySpBonus` bumps it instead on the
+    // Settings-tier system's Veteran/Perilous — the two are mutually
+    // exclusive (see init()'s comment), so only one of these two ever
+    // actually applies on a given battle.
+    const maxSp = Math.round(spForLevel(lv) * diff) + (this.difficultyCfg?.enemySpBonus ?? 0);
     return {
       ...scaled, abilities: skills, passives,
       hp: maxHp, maxHp, isDead: false, debuffs: [], baseMoveSpeed: d.moveSpeed,
-      sp: (scaled.maxSp ?? 0) + bonusSp, skillCooldowns: {}, skillUses: {},
+      sp: maxSp + bonusSp, maxSp, skillCooldowns: {}, skillUses: {},
     };
   }
 

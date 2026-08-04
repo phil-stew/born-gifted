@@ -337,6 +337,24 @@ export function passiveCountForLevel(level) {
   return level >= 20 ? 2 : 1;
 }
 
+// Monster SP (2026-08-04, "monsters need sp as well. Level 0-10 give them
+// 10 [SP]. Level 10-20, 15-20sp. Level 20plus, 20-30") — was a flat 4
+// (BattleScene.js's old MONSTER_MAX_SP), the unmodified player default,
+// which left inner_focus (10 SP) permanently out of reach for every
+// monster. Same 3-band shape as skillCountForLevel/passiveCountForLevel
+// above, but continuous within the 10-19 and 20+ bands (given as ranges,
+// not flat step values) rather than a single number per band — interpolates
+// 15->20 across levels 10-19, then 20->30 across levels 20-30, holding at
+// 30 past that (matches skillCountForLevel's own level-30 cap anchor).
+// Difficulty's own "a bit more SP at higher difficulty" adjustment is
+// layered on top of this by the caller (BattleScene.js's buildEnemyUnit),
+// not here — this function only knows about level.
+export function spForLevel(level) {
+  if (level >= 20) return Math.min(30, 20 + (Math.min(level, 30) - 20));
+  if (level >= 10) return 15 + Math.round((level - 10) * 5 / 9);
+  return 10;
+}
+
 function shuffled(arr) {
   const a = [...arr];
   for (let i = a.length - 1; i > 0; i--) {

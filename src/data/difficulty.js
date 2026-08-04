@@ -17,19 +17,19 @@ export const DIFFICULTIES = [
   {
     key: 'newbie', label: 'Newbie',
     levelFloorOffset: null, disableRepeatScaling: true,
-    enemyDamageMult: 0.8, playerDamageMult: 1.2,
+    enemyDamageMult: 0.8, playerDamageMult: 1.2, enemySpBonus: 0,
     color: '#44cc77', bdr: 0x1e6630, bg0: 0x090e0a,
   },
   {
     key: 'veteran', label: 'Veteran',
     levelFloorOffset: 0, disableRepeatScaling: false,
-    enemyDamageMult: 1.10, playerDamageMult: 1.0,
+    enemyDamageMult: 1.10, playerDamageMult: 1.0, enemySpBonus: 5,
     color: '#ffaa33', bdr: 0x7a4410, bg0: 0x110a04,
   },
   {
     key: 'perilous', label: 'Perilous',
     levelFloorOffset: 2, disableRepeatScaling: false,
-    enemyDamageMult: 1.0, playerDamageMult: 1.0,
+    enemyDamageMult: 1.0, playerDamageMult: 1.0, enemySpBonus: 10,
     color: '#ff4444', bdr: 0x7a1a1a, bg0: 0x110404,
   },
 ];
