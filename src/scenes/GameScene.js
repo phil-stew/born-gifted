@@ -10,6 +10,44 @@ export class GameScene extends Phaser.Scene {
   }
 
   preload() {
+    // Loading bar (2026-08-04, "need a loading screen when the game loads")
+    // — GameScene is the very first scene, and its preload queue here is
+    // the heaviest single load in the whole game (title backdrop + every
+    // SFX + all 4 music tracks, several MB each — see [[project_...]]
+    // asset-weight audit). Without this the player just stares at a blank
+    // dark canvas for however long that download takes. Driven by Phaser's
+    // own load 'progress' event (real bytes-loaded progress, not a fake
+    // timer), and torn down the instant 'complete' fires — on a later
+    // return to this scene (skipCrawl) everything's already cached, so the
+    // queue is empty and this resolves instantly with nothing visible.
+    const { width, height } = this.scale;
+    const cx = width / 2, cy = height / 2;
+    const barW = 280, barH = 16;
+
+    const boxBg = this.add.graphics();
+    boxBg.fillStyle(0x14142a, 1);
+    boxBg.fillRoundedRect(cx - barW / 2 - 3, cy - barH / 2 - 3, barW + 6, barH + 6, 6);
+    boxBg.lineStyle(1.5, 0x334477, 1);
+    boxBg.strokeRoundedRect(cx - barW / 2 - 3, cy - barH / 2 - 3, barW + 6, barH + 6, 6);
+
+    const bar = this.add.graphics();
+    const label = this.add.text(cx, cy - 38, 'LOADING…', {
+      fontSize: '13px', fontFamily: 'monospace', fontStyle: 'bold', color: '#8899cc',
+    }).setOrigin(0.5);
+    const pctText = this.add.text(cx, cy + 32, '0%', {
+      fontSize: '11px', fontFamily: 'monospace', color: '#556688',
+    }).setOrigin(0.5);
+
+    this.load.on('progress', (value) => {
+      bar.clear();
+      bar.fillStyle(0x4488ff, 1);
+      bar.fillRoundedRect(cx - barW / 2, cy - barH / 2, barW * value, barH, 4);
+      pctText.setText(`${Math.round(value * 100)}%`);
+    });
+    this.load.on('complete', () => {
+      boxBg.destroy(); bar.destroy(); label.destroy(); pctText.destroy();
+    });
+
     if (!this.textures.exists('titlebg')) this.load.image('titlebg', 'world/title/titlebg.png');
     preloadSfx(this);
     preloadMusic(this);
