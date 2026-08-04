@@ -47,6 +47,66 @@ const CUTSCENE_AFTER = {
       { speaker:'Reno',      color:'#4488ff', text:'...Lametus. Guess our work in Gale is done. Let\'s go.' },
     ],
   },
+  // The Golem Trial → the Final Tournament (2026-08-03, "rush to the
+  // tournament to expose the imposter... after they expose the imposter
+  // the battle will start"). TG is the tournament's entry requirement (see
+  // BattleScene.js's MISSION_CONFIGS.TG comment), so its victory cutscene
+  // doesn't return to WorldMapScene like every other mission here — it
+  // routes straight into the FT battle instead (see the postCutsceneScene
+  // override in create()). The "imposter" is The Corrupted One himself,
+  // per the user's own clarification ("remember he stole there trial
+  // tokens") — not a new disguised-agent character, and not the loud
+  // open declaration he already made back at M7 ("I'm taking your spot").
+  // This time he tried to slip in quietly, wearing the party's own stolen
+  // trial tokens as his proof of eligibility, and gets unmasked before the
+  // fight instead of announcing himself.
+  TG: {
+    location: 'LAMETUS  ·  THE FINAL TOURNAMENT',
+    backdrop: BACKDROPS.lametusArena,
+    lines: [
+      { speaker:'Narrator',          color:'#888899', text:'Stonewake Pass falls behind, the Golem trial\'s proof in hand. Ahead, the Grand Arena has been rebuilt for the Final Tournament — banners flying again, the crowd already roaring.' },
+      { speaker:'Reno',              color:'#4488ff', text:'One trial cleared. One tournament left. Let\'s go.' },
+      { speaker:'Official',          color:'#ddcc88', text:'Trial proof accepted — you\'re through to the finals. Though the bracket\'s already full. Last slot was filled this morning. Tokens presented and everything.' },
+      { speaker:'Noble Deity',       color:'#ffdd66', text:'...Reno. Those tokens on the registration table. I\'d know that gleam anywhere — that\'s the Trials\' proof. Yours.' },
+      { speaker:'Reno',              color:'#4488ff', text:'We never lost those. Someone took them.' },
+      { speaker:'Narrator',          color:'#888899', text:'The crowd hushes as you march onto the sand and tear the last finalist\'s hood back. For a moment, nothing — then the borrowed face cracks like old paint, dark rot bleeding up through the seams.' },
+      { speaker:'The Corrupted One', color:'#aa44ff', text:'...Sharp eyes. Fine — no sense wearing a stolen face if it won\'t even get me through one tournament quietly.' },
+      { speaker:'Reno',              color:'#4488ff', text:'You used OUR proof to sneak into OUR fight. That\'s the last thing you steal from us.' },
+      { speaker:'The Corrupted One', color:'#aa44ff', text:'Then let\'s finish what the Grand Arena started. My strongest, at my side. Let\'s see if a trial\'s worth of proof was ever going to be enough.' },
+    ],
+  },
+  // The Final Tournament — victory epilogue (2026-08-03, the story's
+  // ending: "declare champion and the goddess show up... changed the rules
+  // so the nation share resources... work together to make sure things
+  // don't happen this way again... used her powers and made it law...
+  // now I will be bored... I'll have to send them more trouble"). "The
+  // Goddess" is read as the same Noble Deity who's been guiding the party
+  // since M7a/the 7 Trials, not an unintroduced new character — she's
+  // already the one divine figure this story has (see BattleScene.js's
+  // M7a rescue). "Reno['s] nation gets to make the rules" = Altroes (the
+  // party's home kingdom, see M1's Sirblanc/Hidden Village) is granted the
+  // authority to set the new law, which Reno then states on the spot. The
+  // closing stinger is written as a stage-directed private aside (no
+  // dialogue-aside engine exists in StoryScene, so a narrator line marks
+  // it) — the joke only works if it reads as NOT meant for the party's ears.
+  FT: {
+    location: 'LAMETUS  ·  THE GRAND ARENA — CHAMPIONS',
+    backdrop: BACKDROPS.lametusArena,
+    lines: [
+      { speaker:'Narrator',    color:'#888899', text:'The rot goes still. Whatever was left of The Corrupted One scatters like ash on the wind, and for the first time in weeks the arena is only the arena again — sand, banners, and a crowd finding its voice.' },
+      { speaker:'Official',    color:'#ddcc88', text:'By right of combat, before every kingdom watching — I declare this team CHAMPION of the Final Tournament!' },
+      { speaker:'Narrator',    color:'#888899', text:'The roar that follows shakes the banners loose. Then, all at once, it dies — because the Noble Deity is no longer just a voice at your shoulder. She is standing on the sand with you, for everyone to see.' },
+      { speaker:'Noble Deity', color:'#ffdd66', text:'Three kingdoms, one trial, one tournament, and still you\'re the ones left standing. That earns more than a title.' },
+      { speaker:'Noble Deity', color:'#ffdd66', text:'By the victor\'s right, Altroes sets the terms this age. Use it well.' },
+      { speaker:'Reno',        color:'#4488ff', text:'Then here\'s the term: no more kingdoms hoarding what the others need. Altroes, Gale, Lametus — we share what keeps each other standing, starting now.' },
+      { speaker:'Drace',       color:'#88cc66', text:'...And we stop looking away when something like him starts growing in the dark. All three kingdoms. Together, this time.' },
+      { speaker:'Noble Deity', color:'#ffdd66', text:'Spoken like people who\'ve earned the right to say it.' },
+      { speaker:'Narrator',    color:'#888899', text:'Gold light gathers in her hand, no bigger than a coin, and settles into the arena stone like a seal pressed into wax. When it fades, the words are simply there, carved into the ground for every kingdom to read. Law now — not just a promise.' },
+      { speaker:'Noble Deity', color:'#ffdd66', text:'Go home. Rest. You\'ve more than earned it.' },
+      { speaker:'Narrator',    color:'#888899', text:'(To herself, as the crowd sweeps you away on their shoulders —)' },
+      { speaker:'Noble Deity', color:'#ffdd66', text:'...Peace. Wonderful. I suppose I\'ll just have to find them something else to do before I die of boredom. Hehe.' },
+    ],
+  },
 };
 
 const MISSION_NAMES = {
@@ -65,6 +125,7 @@ const MISSION_NAMES = {
   T4: 'Trial of Target',    T5: 'Trial of Ball',          T6: 'Trial of Bat & Ball',
   T7: 'Trial of Racquet',
   TG: 'Stonewake Pass',
+  FT: 'The Final Tournament',
 };
 
 // Tytrate rewards on mission clear (2026-07-11, "all the mission should
@@ -83,8 +144,11 @@ const MISSION_NAMES = {
 // standard per-mission stipend every Gale/Lametus battle already gets.
 // TG (350, 2026-07-18) — no God Tier reward riding on this one (see
 // TRIAL_CLASS, which has no 'TG' key), so its Tytrate sits a bit above
-// T1-T7's 250 to compensate, just under M6's 500.
-const MISSION_TYTRATE = { DK: 300, MH: 150, GT: 400, M6: 500, T1: 250, T2: 250, T3: 250, T4: 250, T5: 250, T6: 250, T7: 250, TG: 350 };
+// T1-T7's 250 to compensate, just under M6's 500. FT (1000, 2026-08-03) —
+// the story's actual capstone fight, so it tops every prior reward
+// outright rather than sitting just above the last one the way each
+// earlier step did.
+const MISSION_TYTRATE = { DK: 300, MH: 150, GT: 400, M6: 500, T1: 250, T2: 250, T3: 250, T4: 250, T5: 250, T6: 250, T7: 250, TG: 350, FT: 1000 };
 
 // M12/M15 removed 2026-07-11 ("remove m12", fifth follow-up — M15 went
 // with it, see WorldMapScene.js's NODES comment) — the main chain now ends
@@ -110,9 +174,14 @@ const MISSION_TYTRATE = { DK: 300, MH: 150, GT: 400, M6: 500, T1: 250, T2: 250, 
 // mechanism. M7 itself has no entry here — it never unlocks anything
 // through this table since it never reaches VictoryScene at all (see
 // MISSION_NAMES.M7's comment above).
+// TG:'FT' (2026-08-03) unlocks the Final Tournament node the normal way
+// (for the WorldMap's own state/replay tracking), but TG's own cutscene
+// chain below routes straight into the FT battle rather than waiting for a
+// map click — see the postCutsceneScene override in create().
 const MISSION_NEXT = {
   M2:'M3',
   M6:'M7',
+  TG:'FT',
 };
 
 // Side battles unlock alongside their region's final mission, independent
@@ -233,6 +302,12 @@ export class VictoryScene extends Phaser.Scene {
     const sideUnlock = SIDE_MISSION_UNLOCK[this.missionId];
     if (sideUnlock) completeMission(this.missionId, sideUnlock);
 
+    // TG's cutscene ends with the imposter unmasked and the fight about to
+    // start (2026-08-03) — set the mission BattleScene reads before its
+    // StoryScene chain (built below) ever transitions there, so "Continue"
+    // drops straight into FT instead of back to the world map.
+    if (this.missionId === 'TG' && this.isFirstClear) state.currentMission = 'FT';
+
     // Winning the exam retires the Capital questline (M0-M4 redesign,
     // Phase 4) — nothing left to turn in at M3 after this.
     if (this.missionId === 'M4') state.capitalQuest = 'done';
@@ -293,7 +368,11 @@ export class VictoryScene extends Phaser.Scene {
     // the team" announcement happens right where the story introduces them.
     const cutscene = this.isFirstClear ? CUTSCENE_AFTER[this.missionId] : null;
     const recruits = this.isFirstClear ? RECRUITS_AFTER[this.missionId] : null;
-    const postCutsceneScene = recruits ? 'RecruitClassScene' : 'WorldMapScene';
+    // TG (2026-08-03) is the one mission whose cutscene doesn't end back on
+    // WorldMapScene — it ends with the imposter unmasked and drops straight
+    // into the FT battle (state.currentMission is already set to 'FT' above).
+    const isTgToFt = this.missionId === 'TG' && cutscene;
+    const postCutsceneScene = recruits ? 'RecruitClassScene' : isTgToFt ? 'BattleScene' : 'WorldMapScene';
     const postCutsceneData  = recruits ? { recruitIds: recruits, nextScene: 'WorldMapScene', nextSceneData: {} } : {};
     const afterScene     = cutscene ? 'StoryScene' : postCutsceneScene;
     const afterSceneData = cutscene

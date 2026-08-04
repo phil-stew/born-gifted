@@ -190,6 +190,14 @@ const NODES = [
   // like T1-T7. Unlocked the moment M8's first-visit story plays (see
   // onMissionClick's M8 handler), not a live check.
   { id:'TG',  x:610, y:385, arc:'Lametus', name:'Stonewake Pass',    connectsFrom:'A3' },
+  // The Final Tournament (2026-08-03) — the story's finale, back at the
+  // Grand Arena (same landmark as M7/M7a, arc:'Blight' to match its color
+  // there) now that the tournament is actually happening instead of
+  // cancelled. Unlocked by MISSION_NEXT.TG:'FT' in VictoryScene.js like
+  // any other main-chain step, even though first entry normally happens
+  // automatically through TG's own cutscene rather than a click here — see
+  // NEW_AREA_INTRO.FT above.
+  { id:'FT',  x:680, y:320, arc:'Blight', name:'The Final Tournament', connectsFrom:'TG' },
 ];
 
 const ARC_COLORS = {
@@ -392,6 +400,21 @@ const NEW_AREA_INTRO = {
     lines: [
       { speaker: 'Narrator', color: '#888899', text: 'North of Wrenfield, the road narrows into a boulder-strewn pass — and the boulders are moving.' },
       { speaker: 'Reno',     color: '#4488ff', text: '...Golems. Guess this is our proof.' },
+    ],
+  },
+  // The Final Tournament (2026-08-03) — TG's own victory cutscene routes
+  // straight into this battle on FIRST clear (see VictoryScene.js's
+  // CUTSCENE_AFTER.TG / postCutsceneScene override), bypassing this table
+  // and missionIntroShown entirely that time — the imposter-reveal beat
+  // already played there. This entry only fires if the fight is lost and
+  // the party re-enters through the map afterward, so it's a short
+  // "back in" line rather than a rerun of the reveal.
+  FT: {
+    location: 'LAMETUS  ·  The Grand Arena',
+    backdrop: BACKDROPS.lametusArena,
+    lines: [
+      { speaker: 'Narrator', color: '#888899', text: 'The Grand Arena, sand still scorched from last time. The Corrupted One and his strongest are waiting exactly where you left them.' },
+      { speaker: 'Reno',     color: '#4488ff', text: '...Round two. Let\'s finish it.' },
     ],
   },
 };

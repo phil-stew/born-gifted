@@ -4,7 +4,7 @@ import {
   currentSport, sportById, maxBattlePartySize, getBattleParty, TRIAL_CLASS,
   DESIGNATION_BEATS, designationIcon, DESIGNATION_CYCLE, ELEMENT_CYCLE, ELEMENT_BEATS,
 } from '../data/gameState.js';
-import { ATTACK, THROW, getEquippedSpecialAbilities, getEquippedSkillAbilities, getEquippedPassives } from '../data/abilities.js';
+import { ATTACK, THROW, ABILITIES, getEquippedSpecialAbilities, getEquippedSkillAbilities, getEquippedPassives } from '../data/abilities.js';
 import { loadHeroSprites, createHeroAnims, stripHeroBackground, stripBackgroundByKey, trimmedSheetConfig, heroKey, getSpriteInfo, firstFrame, spriteKeyForRole, HERO_SPRITES } from '../data/heroSprites.js';
 import { buildMonster, buildMonsterKit, spriteInfoForBase } from '../data/monsters.js';
 import { isUsableItem, rollGearItem } from '../data/items.js';
@@ -512,6 +512,25 @@ const STAGE_CONFIGS = {
       return ['004','010','015','020'][v];
     },
   },
+  // The Final Tournament (2026-08-03) — the story's climactic fight, same
+  // sandy-arena tile family as AT1/AT2/GT/M7 (a real tournament crowd venue,
+  // this time with a real winnable fight in it) but the same dark-purple
+  // tint as M6/M7 since it's still the Corrupted One's fight, just brought
+  // into the open this time instead of an ambush/scripted loss.
+  'FT': {
+    tiles: ['000','001','002','003','055','056','057','061','062'],
+    label: 'THE FINAL TOURNAMENT',
+    bgColor: 0x1c0a1c,
+    layout(col, row) {
+      const p = th(col, row);
+      const edge = col === 0 || row === 0 || col === 9 || row === 9;
+      if (edge) return p < 50 ? '061' : '062';
+      const ring = col === 1 || row === 1 || col === 8 || row === 8;
+      if (ring) return p < 40 ? '057' : (p < 70 ? '055' : '056');
+      const v = (col * 3 + row * 7) % 4;
+      return ['000','001','002','003'][v];
+    },
+  },
 };
 
 // Per-mission configuration: player start positions + enemy definitions.
@@ -992,6 +1011,34 @@ const MISSION_CONFIGS = {
     ],
   },
 
+  // The Final Tournament (2026-08-03, "after they expose the imposter the
+  // battle will start, they will fight the strongest monsters yet along
+  // side the corrupt one") — south of TG, gated behind clearing it (see
+  // WorldMapScene's NODES.FT). The Corrupted One HIMSELF fights this time
+  // (isCorruptedOneBoss:true routes his turn through the bespoke
+  // enemyActCorruptedOne() instead of the generic AI — see that method's
+  // comment), not a named proxy like M6/M7's Champion/Herald. "Strongest
+  // monsters yet" reads as every escort being a full kind:'boss' (the same
+  // 3.0x BOSS_STAT_MULT ladder M6's lone Ashveil used) instead of M6's mix
+  // of one boss + tier-3 regulars, at level 23 — one above TG's 21, the
+  // previous ceiling. The Corrupted One's own level:26 and buildMonster's
+  // kind:'boss' Dragon Rg kit (tri_throw/sharp_throw, the same moves M6/M7's
+  // Dragon proxies already carry) are BEFORE his ally-count buff, which is
+  // applied on top at spawn (see create()'s corruptedBoss block) and decays
+  // as these escorts die (recomputeCorruptedOneBuff). Species picked from
+  // the ones with real spawnable art (Dragon/Wyvern/Lion + Golem's
+  // procedural texture) — Bear/Hawk still have neither, see monsters.js.
+  'FT': {
+    region: 'Lametus',
+    playerPos: { reno:[1,3], drace:[1,4], sela:[1,2], kael:[1,5], trice:[1,1], zora:[1,0] },
+    enemies: [
+      { col:5, row:5, ...buildMonster({ base: 'Dragon', kind: 'boss', name: 'The Corrupted One' }), level: 26, corrupted: true, isCorruptedOneBoss: true },
+      { col:7, row:2, ...buildMonster({ base: 'Wyvern', kind: 'boss' }), level: 23, corrupted: true },
+      { col:7, row:8, ...buildMonster({ base: 'Lion', kind: 'boss' }), level: 23, corrupted: true },
+      { col:8, row:5, ...buildMonster({ base: 'Golem', kind: 'boss' }), level: 23, corrupted: true },
+    ],
+  },
+
   // ── Side battles (optional, July 2026) ────────────────────────────────────
   // M13/M14 (off M6/M9) removed 2026-07-11 along with M6/M9 themselves;
   // M15 (off M12) removed the same day too, alongside M12 ("remove m12") —
@@ -1460,6 +1507,15 @@ export class BattleScene extends Phaser.Scene {
     const enemyDefs = typeof missionCfg.enemies === 'function' ? missionCfg.enemies() : missionCfg.enemies;
     this.enemyUnits = enemyDefs.map(d => this.buildEnemyUnit(d));
     for (const e of this.enemyUnits) this.spawnEnemyVisual(e);
+    // The Corrupted One's ally-count buff (FT, 2026-08-03) — captured once,
+    // pre-buff, as the floor recomputeCorruptedOneBuff() scales off; then
+    // applied immediately so he starts the fight already boosted by
+    // whichever allies spawned alongside him.
+    const corruptedBoss = this.enemyUnits.find(e => e.isCorruptedOneBoss);
+    if (corruptedBoss) {
+      corruptedBoss.baseMaxHp = corruptedBoss.maxHp;
+      this.recomputeCorruptedOneBuff();
+    }
 
     // ── UI ────────────────────────────────────────────────────────────────
     // Top HUD bar background
@@ -2451,6 +2507,12 @@ export class BattleScene extends Phaser.Scene {
       this.killsByType[unit.name] = (this.killsByType[unit.name] ?? 0) + 1;
       this.xpEarned += unit.xpValue ?? 40;
     }
+    // The Corrupted One's ally-count buff (FT, 2026-08-03) tracks LIVING
+    // corrupted allies, not a decaying stack — recompute it the instant one
+    // dies so his damage/HP drop immediately, same turn, matching "after
+    // each monster is defeated the buff is reduced." No-op outside FT (no
+    // isCorruptedOneBoss unit on the field) — see recomputeCorruptedOneBuff.
+    if (unit.corrupted && !unit.isCorruptedOneBoss) this.recomputeCorruptedOneBuff();
     this.unregisterUnit(unit);
     if (unit.gfx)     { unit.gfx.clear(); }
     if (unit.label)   { unit.label.setVisible(false); }
@@ -3899,9 +3961,22 @@ export class BattleScene extends Phaser.Scene {
     // skills") — enemies regen on their OWN turn start, same as players do
     // on theirs.
     for (const e of aliveEnemies) {
-      if (e.maxSp != null) e.sp = Math.min(e.maxSp, (e.sp ?? 0) + 1);
+      // isCorruptedOneBoss (FT, 2026-08-03) fully refills instead of +1 —
+      // his rotation is meant to be gated by range/positioning, not SP
+      // starvation (see enemyActCorruptedOne). maxSp:4 already covers both
+      // sharp_throw (4) and tri_throw (3), so this never lets him afford
+      // something he otherwise couldn't.
+      if (e.isCorruptedOneBoss) e.sp = e.maxSp;
+      else if (e.maxSp != null) e.sp = Math.min(e.maxSp, (e.sp ?? 0) + 1);
       for (const id of Object.keys(e.skillCooldowns ?? {})) {
         e.skillCooldowns[id] = Math.max(0, e.skillCooldowns[id] - 1);
+      }
+      // corruptedEmpowerTurns (FT, 2026-08-03) — the Corrupted One's 2x-dmg,
+      // 2-turn buff on an ally that can attack when he can't; ticks down
+      // once per enemy-turn round the same way skill cooldowns do above.
+      if ((e.corruptedEmpowerTurns ?? 0) > 0) {
+        e.corruptedEmpowerTurns--;
+        if (e.corruptedEmpowerTurns <= 0) e.atkBuff = 1.0;
       }
     }
     let i = 0;
@@ -4005,6 +4080,10 @@ export class BattleScene extends Phaser.Scene {
     // noAttack (Ester Academy's "Rock" quest, 2026-07-11) — a stationary
     // punching-bag target that never moves or fights back.
     if (wolf.noAttack) return;
+    // isCorruptedOneBoss (FT, 2026-08-03) — the finale boss gets bespoke
+    // turn logic instead of the generic path below; see
+    // enemyActCorruptedOne's own comment for why.
+    if (wolf.isCorruptedOneBoss) { this.enemyActCorruptedOne(wolf); return; }
     const target = wolf.corrupted ? this.getCorruptedTarget() : this.nearestPlayer(wolf);
     if (!target) return;
 
@@ -4140,6 +4219,72 @@ export class BattleScene extends Phaser.Scene {
     else this.redraw();
   }
 
+  // The Corrupted One's own turn (FT, 2026-08-03, "we can use any skill he
+  // wants every turn a different attack or so skill is used if he can't
+  // attack then he will buff the monster that can"). The generic
+  // enemyAct/tryEnemySkill path always tries the same cheapest usable skill
+  // first turn after turn and has no concept of "buff an ally instead" — so
+  // this is bespoke rather than a tryEnemySkill variant. ROTATION cycles
+  // through his kit (the same tri_throw/sharp_throw a Dragon kind:'boss'
+  // already carries, see buildMonsterKit) plus a plain attack, advancing
+  // one slot every turn so back-to-back turns read as a different move even
+  // when several would be usable; falls through to whichever's actually in
+  // range from his post-move position. If nothing reaches anyone this turn,
+  // he empowers (2x dmg, 2 turns) whichever living ally is closest to the
+  // shared target rather than doing nothing.
+  enemyActCorruptedOne(boss) {
+    const target = this.getCorruptedTarget();
+    if (!target) return;
+
+    const path = this.bfsPath(boss.col, boss.row, target.col, target.row);
+    if (path) {
+      for (let i = 0; i < path.length - 1 && i < boss.moveSpeed; i++) {
+        const { col, row } = path[i];
+        const nk = `${col},${row}`;
+        if (this.unitMap.has(nk)) break;
+        this.unitMap.delete(`${boss.col},${boss.row}`);
+        boss.col = col; boss.row = row;
+        this.unitMap.set(nk, boss);
+      }
+    }
+    if (boss.sprite) {
+      const { x, y } = this.footprintScreenPos(boss);
+      boss.sprite.setPosition(x, y + TH2).setDepth((boss.col + boss.row) * 10 + 5);
+    }
+
+    const ROTATION = ['sharp_throw', 'tri_throw', 'attack'];
+    boss.corruptedRotationIdx = (boss.corruptedRotationIdx ?? -1) + 1;
+    for (let step = 0; step < ROTATION.length; step++) {
+      const id = ROTATION[(boss.corruptedRotationIdx + step) % ROTATION.length];
+      if (id === 'attack') {
+        const targets = this.getAttackTargets(boss);
+        if (!targets.length) continue;
+        const t = targets.find(t => t.col === target.col && t.row === target.row) || targets[0];
+        const enemy = this.unitMap.get(`${t.col},${t.row}`);
+        if (!enemy || enemy.isDead) continue;
+        this.doAttack(boss, enemy);
+        return;
+      }
+      const ab = ABILITIES[id];
+      const range = ab.range ?? 1;
+      const dist = this.distanceToUnit(boss.col, boss.row, target);
+      const reach = ab.atMaxRangeOnly ? dist === range : dist <= range;
+      if (reach) { this.enemySkillAttack(boss, ab, target); return; }
+    }
+
+    // Can't reach anyone this turn — empower the ally best-placed to attack
+    // instead (closest to the shared target), per the spec's fallback.
+    const allies = this.enemyUnits.filter(e => e.corrupted && !e.isCorruptedOneBoss && !e.isDead);
+    if (!allies.length) return;
+    allies.sort((a, b) => this.distanceToUnit(a.col, a.row, target) - this.distanceToUnit(b.col, b.row, target));
+    const ally = allies[0];
+    ally.atkBuff = 2.0;
+    ally.corruptedEmpowerTurns = 2;
+    const { x, y } = this.gridToScreen(ally.col, ally.row);
+    this.showDamage(x, y + TH2 - 22, 'EMPOWERED', '#ff44ff');
+    this.redraw();
+  }
+
   nearestPlayer(wolf) {
     let best = null, bestDist = Infinity;
     for (const p of this.playerUnits) {
@@ -4167,6 +4312,28 @@ export class BattleScene extends Phaser.Scene {
     }
     this.corruptedTarget = best;
     return best;
+  }
+
+  // The Corrupted One's stacking buff (FT, 2026-08-03, "15% damage and Hp
+  // boost for each monster fight along side... after each monster is
+  // defeated the buff is reduced") — recomputed from scratch off the
+  // CURRENT count of living corrupted allies (excluding himself) rather
+  // than an incrementally-tracked stack, so it can only ever reflect who's
+  // actually still standing right now. Damage rides the same atkBuff
+  // multiplier calcAtk() already reads for player self-buffs; HP is a real
+  // maxHp swing off `baseMaxHp` (captured once at spawn before any buff is
+  // applied), clamped down on shrink so his health bar visibly drops the
+  // instant an ally falls rather than floating above the new, lower cap.
+  // No-op if no isCorruptedOneBoss unit is on the field (every other
+  // mission's corrupted:true enemies, e.g. M6/M7).
+  recomputeCorruptedOneBuff() {
+    const boss = this.enemyUnits.find(e => e.isCorruptedOneBoss && !e.isDead);
+    if (!boss) return;
+    const allyCount = this.enemyUnits.filter(e => e.corrupted && !e.isCorruptedOneBoss && !e.isDead).length;
+    const pct = 0.15 * allyCount;
+    boss.atkBuff = 1 + pct;
+    boss.maxHp = Math.round(boss.baseMaxHp * (1 + pct));
+    boss.hp = Math.min(boss.hp, boss.maxHp);
   }
 
   bfsPath(fromCol, fromRow, toCol, toRow) {
