@@ -70,10 +70,27 @@ function showErrorBoundary(detail) {
 window.addEventListener('error', (e) => showErrorBoundary(e.error ?? e.message));
 window.addEventListener('unhandledrejection', (e) => showErrorBoundary(e.reason));
 
+// Dynamic canvas width (2026-08-04, "set it up like that" — reduce FIT-mode
+// letterboxing on real phones without cropping anything). Height stays a
+// fixed 600 — every OTHER scene's layout (menus, battle grid, etc.) already
+// reads this.scale.width/height at runtime rather than hardcoding 800/600,
+// so only WorldMapScene's background-relative art (nodes/labels/scenery)
+// needed to become resolution-independent to make this safe — see mapPt()
+// in WorldMapScene.js. Clamped to [800, 1024]: 800 preserves the original
+// design's minimum, 1024 is the world map background's native pixel width
+// (mapbackg.webp is 1024×1024) — going wider than that would upscale the
+// art past its native resolution and blur it, so 1024 is a real ceiling,
+// not an arbitrary one.
+function computeGameWidth() {
+  const vw = window.innerWidth || 800;
+  const vh = window.innerHeight || 600;
+  return Math.round(Math.min(1024, Math.max(800, 600 * (vw / vh))));
+}
+
 const config = {
   type: Phaser.AUTO,
   pixelArt: true,
-  width: 800,
+  width: computeGameWidth(),
   height: 600,
   backgroundColor: '#0a0a18',
   parent: 'app',

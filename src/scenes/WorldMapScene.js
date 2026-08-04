@@ -8,6 +8,25 @@ import { getItem } from '../data/items.js';
 import { playMusic } from '../audio/music.js';
 import { playSfx, SFX } from '../audio/sound.js';
 
+// Background art (mapbackg.webp, see drawBackground) is a fixed 1024×1024
+// source image, always drawn "cover"-fit against whatever the live canvas
+// size turns out to be (see computeGameWidth in main.js — the canvas widens
+// per-device to cut down on FIT-mode letterboxing). Every map-relative
+// coordinate below (NODES, ARC_LABEL_POS, drawScenery's placements, the 3
+// kingdom-name labels in drawBackground) is defined in that image's own
+// fixed pixel space, NOT screen pixels — mapPt() converts to the live
+// screen position at draw time. This is what makes them resolution-
+// independent: widening/narrowing the canvas never requires re-placing
+// anything by hand, since the same cover-fit math the background image
+// itself uses is inverted here to keep everything pinned to the same spot
+// on the art.
+function mapPt(imgX, imgY, width, height) {
+  const s = Math.max(width / 1024, height / 1024);
+  const offsetX = (width - 1024 * s) / 2;
+  const offsetY = (height - 1024 * s) / 2;
+  return { x: imgX * s + offsetX, y: imgY * s + offsetY };
+}
+
 // `connectsFrom` replaces the old implicit "connect to NODES[i-1]" ordering
 // so the map graph can branch — every node names its own parent explicitly,
 // and a node with `side:true` is an optional bonus battle off the main
@@ -35,17 +54,22 @@ import { playSfx, SFX } from '../audio/sound.js';
 // cleared — see the id's own comment further down and the live check in
 // create(). Unrelated to the M6 described in this paragraph, which no
 // longer exists.
+// Coordinates are in the 1024×1024 background-image space (see mapPt above),
+// not screen pixels — this is a straight image-space re-expression of the
+// original hand-placed 800×600 layout (2026-08-04, "set it up like that" —
+// dynamic canvas width), same visual positions, just resolution-independent
+// now.
 const NODES = [
-  { id:'M0',  x:100, y:180, arc:'Home',    name:'Hidden Village' },
-  { id:'M0a', x:40,  y:120, arc:'Home',    name:'Hidden Cave',    connectsFrom:'M0', side:true },
-  { id:'M0b', x:40,  y:240, arc:'Home',    name:"Wolf's Den",     connectsFrom:'M0', side:true },
-  { id:'M1',  x:175, y:230, arc:'Tutorial',name:'Sirblanc Outskirts', connectsFrom:'M0' },
-  { id:'M2',  x:255, y:185, arc:'Tutorial',name:'Thunder Plains',     connectsFrom:'M1' },
-  { id:'M3',  x:370, y:158, arc:'Capital', name:'The Capital',        connectsFrom:'M2' },
-  { id:'M3a', x:370, y:70,  arc:'Capital', name:'Northern Cave',      connectsFrom:'M3', side:true },
-  { id:'M3b', x:370, y:246, arc:'Capital', name:'Hilbert Low Lands',  connectsFrom:'M3', side:true },
-  { id:'A1',  x:460, y:95,  arc:'Capital', name:'Ester Academy',      connectsFrom:'M3' },
-  { id:'A2',  x:460, y:225, arc:'Capital', name:'Hilbert Academy',    connectsFrom:'M3' },
+  { id:'M0',  x:128, y:358, arc:'Home',    name:'Hidden Village' },
+  { id:'M0a', x:51,  y:282, arc:'Home',    name:'Hidden Cave',    connectsFrom:'M0', side:true },
+  { id:'M0b', x:51,  y:435, arc:'Home',    name:"Wolf's Den",     connectsFrom:'M0', side:true },
+  { id:'M1',  x:224, y:422, arc:'Tutorial',name:'Sirblanc Outskirts', connectsFrom:'M0' },
+  { id:'M2',  x:326, y:365, arc:'Tutorial',name:'Thunder Plains',     connectsFrom:'M1' },
+  { id:'M3',  x:474, y:330, arc:'Capital', name:'The Capital',        connectsFrom:'M2' },
+  { id:'M3a', x:474, y:247, arc:'Capital', name:'Northern Cave',      connectsFrom:'M3', side:true },
+  { id:'M3b', x:474, y:443, arc:'Capital', name:'Hilbert Low Lands',  connectsFrom:'M3', side:true },
+  { id:'A1',  x:589, y:250, arc:'Capital', name:'Ester Academy',      connectsFrom:'M3' },
+  { id:'A2',  x:589, y:416, arc:'Capital', name:'Hilbert Academy',    connectsFrom:'M3' },
   // Ester Academy's 3 quests (2026-07-11) — own nodes off A1, same
   // "distinct from M3a/M3b" treatment Hilbert's A2a/A2b/A2c got. Only 2 get
   // map nodes (Quest 3, "5 party members," is a pure roster-size check with
@@ -55,15 +79,15 @@ const NODES = [
   // base circle (see drawNodes), so they need more clearance around M4's
   // node at (540,158) than two plain circles would — kept at least ~50px
   // from any neighboring node center to avoid the diamond outlines touching.
-  { id:'A1a', x:540, y:25,  arc:'Capital', name:"Dragon's Roost",     connectsFrom:'A1', side:true },
-  { id:'A1b', x:540, y:105, arc:'Capital', name:'The Great Boulder',  connectsFrom:'A1', side:true },
+  { id:'A1a', x:691, y:232, arc:'Capital', name:"Dragon's Roost",     connectsFrom:'A1', side:true },
+  { id:'A1b', x:800, y:280, arc:'Capital', name:'The Great Boulder',  connectsFrom:'A1', side:true },
   // Hilbert Academy's 3 quests (2026-07-11) — own nodes off A2, distinct
   // from M3a/M3b's Capital-trial fights above (see BattleScene.js's
   // MISSION_CONFIGS comment on the same date).
-  { id:'A2a', x:540, y:210, arc:'Capital', name:"Lion's Pride",       connectsFrom:'A2', side:true },
-  { id:'A2b', x:540, y:265, arc:'Capital', name:'Goblin Warcamp',     connectsFrom:'A2', side:true },
-  { id:'A2c', x:540, y:330, arc:'Capital', name:'Cave Depths',        connectsFrom:'A2', side:true },
-  { id:'M4',  x:540, y:158, arc:'Academy', name:'Arena Atlros',       connectsFrom:'M3' },
+  { id:'A2a', x:691, y:397, arc:'Capital', name:"Lion's Pride",       connectsFrom:'A2', side:true },
+  { id:'A2b', x:691, y:467, arc:'Capital', name:'Goblin Warcamp',     connectsFrom:'A2', side:true },
+  { id:'A2c', x:691, y:550, arc:'Capital', name:'Cave Depths',        connectsFrom:'A2', side:true },
+  { id:'M4',  x:691, y:330, arc:'Academy', name:'Arena Atlros',       connectsFrom:'M3' },
   // Altroes Trials + the next school's tournament (2026-07-11) — becomes
   // visible once M4's cleared AND all 6 academy quests are done (see the
   // live check in create() above). Required main-chain steps now, not side
@@ -73,8 +97,8 @@ const NODES = [
   // connector line, rather than trailing off M4/each other. Both unlock
   // together off the same 6-quests-done gate now (order-independent), not
   // sequentially.
-  { id:'AT1', x:460, y:30,  arc:'Tournament', name:'Altroes Trials I',   connectsFrom:'A1' },
-  { id:'AT2', x:460, y:300, arc:'Tournament', name:'Altroes Trials II',  connectsFrom:'A2' },
+  { id:'AT1', x:530, y:234, arc:'Tournament', name:'Altroes Trials I',   connectsFrom:'A1' },
+  { id:'AT2', x:589, y:512, arc:'Tournament', name:'Altroes Trials II',  connectsFrom:'A2' },
   // M5 (2026-07-11 follow-up, "connect m5 to m4... Gale unlocked after
   // beat both trails") — connects straight from M4 instead of AT2, moved
   // toward the Gale side of the map, and gated by a live "AT1 AND AT2 both
@@ -98,7 +122,7 @@ const NODES = [
   // dangling side-battle whose entire premise no longer exists didn't
   // seem worth asking about — flagged in this session's memory in case
   // that reads as the wrong call. The main chain now ends at M5 (Gale).
-  { id:'M5',  x:610, y:190, arc:'Tournament', name:'Gale',               connectsFrom:'M4' },
+  { id:'M5',  x:781, y:371, arc:'Tournament', name:'Gale',               connectsFrom:'M4' },
   // Two more hub cities branching off Gale (2026-07-11 sixth follow-up) —
   // "north of m5... Artfall academy... recruit martial arts units" and
   // "zester to the east... recruit performance class." Same plain-hub
@@ -107,25 +131,25 @@ const NODES = [
   // no quest board/task list invented for either (wasn't asked for, same
   // "minimum viable hub" call Gale got). Both unlock alongside Gale itself
   // (same live "AT1 AND AT2 both completed" check in create()).
-  { id:'AF',  x:670, y:80,  arc:'Tournament', name:'Artfall Academy',    connectsFrom:'M5' },
-  { id:'ZE',  x:700, y:190, arc:'Tournament', name:'Zester',             connectsFrom:'M5' },
+  { id:'AF',  x:858, y:230, arc:'Tournament', name:'Artfall Academy',    connectsFrom:'M5' },
+  { id:'ZE',  x:896, y:371, arc:'Tournament', name:'Zester',             connectsFrom:'M5' },
   // Alpha King Dragon (2026-07-11) — boss node NE of Artfall Academy,
   // "3 times hp and 3 times attack" reads as the game's existing
   // kind:'boss' BOSS_STAT_MULT=3.0 treatment (see buildMonster() in
   // monsters.js) — no new multiplier mechanic needed, just the standard
   // boss-tier ladder with a custom name, same as King Wolf/King Lion/
   // Goblin King. Unlocks alongside AF/ZE/M5 (same live check).
-  { id:'DK',  x:740, y:30,  arc:'Tournament', name:'Alpha King Dragon',  connectsFrom:'AF', side:true },
+  { id:'DK',  x:920, y:232, arc:'Tournament', name:'Alpha King Dragon',  connectsFrom:'AF', side:true },
   // Monster Hunt (2026-07-11) — repeatable score-attack quest NE of Zester,
   // "gale gives out 3 quest[s]... kill as many monster as you can in 6
   // turn[s]." Unlocks alongside AF/ZE/DK/M5 (same live check).
-  { id:'MH',  x:750, y:130, arc:'Tournament', name:'Monster Hunt',       connectsFrom:'ZE', side:true },
+  { id:'MH',  x:960, y:294, arc:'Tournament', name:'Monster Hunt',       connectsFrom:'ZE', side:true },
   // Gale Tournament (2026-07-12, "after clearing the 3 quest[s] the
   // tournament opens North west of Artfall facing other units with epic
   // gears") — capstone battle, unlocked only once ALL 3 of Gale's own
   // quests are done (separate live check from the AF/ZE/DK/M5/MH one,
   // which only needs AT1+AT2 — see allGaleQuestsDone in gameState.js).
-  { id:'GT',  x:590, y:20,  arc:'Tournament', name:'Gale Tournament',    connectsFrom:'AF', side:true },
+  { id:'GT',  x:755, y:232, arc:'Tournament', name:'Gale Tournament',    connectsFrom:'AF', side:true },
   // M6 — The Corrupted One's monsters (2026-07-17, "south east of m5...
   // moving towards new area... it will branch down"). Required main-chain
   // step (not side:true) so it draws a solid connector rather than dashed,
@@ -134,7 +158,7 @@ const NODES = [
   // just the line, the real gate is a separate check" pattern M5/AT1/AT2
   // already use. Placed in the empty space south-east of Gale/Zester with
   // room below it for whatever the new area turns into.
-  { id:'M6',  x:680, y:290, arc:'Blight', name:'Blightreach',        connectsFrom:'M5' },
+  { id:'M6',  x:870, y:499, arc:'Blight', name:'Blightreach',        connectsFrom:'M5' },
   // M7 — the villain's reveal (2026-07-17, "M7 south of m6 the villian
   // will show himself... taking there spot in the tournemnt... the hero
   // should lose them fight no matter what"). Required main-chain step,
@@ -143,7 +167,7 @@ const NODES = [
   // scripted, unwinnable loss (see MISSION_CONFIGS.M7's `scriptedDefeat`
   // in BattleScene.js) — the defeat itself is what chains into M7a/the
   // Noble Deity, not a WorldMapScene unlock check.
-  { id:'M7',  x:680, y:370, arc:'Blight', name:'The Grand Arena',    connectsFrom:'M6' },
+  { id:'M7',  x:870, y:602, arc:'Blight', name:'The Grand Arena',    connectsFrom:'M6' },
   // M7a — the Noble Deity's rescue (2026-07-17, "after the defeat the
   // hero will wake up to the east of M7... encounter the Noble Daity").
   // Not a battle or a real multi-service hub — a landmark for where the
@@ -155,7 +179,7 @@ const NODES = [
   // toast-only handling for it (there's nothing to "enter"). Deliberately
   // has no HUB_CONFIGS entry, so [[feedback_forge_every_hub]]'s "every hub
   // gets forge" rule doesn't apply to it — it was never made a real hub.
-  { id:'M7a', x:755, y:370, arc:'Trial', name:"The Noble Deity",     connectsFrom:'M7' },
+  { id:'M7a', x:966, y:602, arc:'Trial', name:"The Noble Deity",     connectsFrom:'M7' },
   // The 7 Trials (2026-07-17, "7 trail... 1 trial for each weapon class")
   // — one per CLASS_GEAR_LAYOUT/classGrouping key (gameState.js), the same
   // 7 groupings GEAR_CLASS_COL/items.js already treats as authoritative.
@@ -167,13 +191,13 @@ const NODES = [
   // id to its classGrouping string for both the battle's enemy flavor and
   // VictoryScene's reward wiring (rollGodTierClassItem per matching-class
   // party member).
-  { id:'T1',  x:90,  y:510, arc:'Trial', name:'Trial of Athletics',     connectsFrom:'M7a', side:true },
-  { id:'T2',  x:193, y:510, arc:'Trial', name:'Trial of Martial Arts',  connectsFrom:'M7a', side:true },
-  { id:'T3',  x:297, y:510, arc:'Trial', name:'Trial of Performance',   connectsFrom:'M7a', side:true },
-  { id:'T4',  x:400, y:510, arc:'Trial', name:'Trial of Target',        connectsFrom:'M7a', side:true },
-  { id:'T5',  x:503, y:510, arc:'Trial', name:'Trial of Ball',          connectsFrom:'M7a', side:true },
-  { id:'T6',  x:607, y:510, arc:'Trial', name:'Trial of Bat & Ball',    connectsFrom:'M7a', side:true },
-  { id:'T7',  x:710, y:510, arc:'Trial', name:'Trial of Racquet',       connectsFrom:'M7a', side:true },
+  { id:'T1',  x:115, y:781, arc:'Trial', name:'Trial of Athletics',     connectsFrom:'M7a', side:true },
+  { id:'T2',  x:247, y:781, arc:'Trial', name:'Trial of Martial Arts',  connectsFrom:'M7a', side:true },
+  { id:'T3',  x:380, y:781, arc:'Trial', name:'Trial of Performance',   connectsFrom:'M7a', side:true },
+  { id:'T4',  x:512, y:781, arc:'Trial', name:'Trial of Target',        connectsFrom:'M7a', side:true },
+  { id:'T5',  x:644, y:781, arc:'Trial', name:'Trial of Ball',          connectsFrom:'M7a', side:true },
+  { id:'T6',  x:777, y:781, arc:'Trial', name:'Trial of Bat & Ball',    connectsFrom:'M7a', side:true },
+  { id:'T7',  x:909, y:781, arc:'Trial', name:'Trial of Racquet',       connectsFrom:'M7a', side:true },
   // Lametus Capital + its 2 academies (2026-07-17, "after m7a is
   // completed the m8 apears which becomes the lametus capital... one
   // school in the east of M8 and the other west"). Unlocked all at once
@@ -182,15 +206,15 @@ const NODES = [
   // ever added to unlockedMissions, never completedMissions, same as
   // M5/AF/ZE. Sits between M7 and the trial row — checked clearance
   // against T6/T7's diamond markers below it.
-  { id:'M8',  x:680, y:450, arc:'Lametus', name:'Lametus Capital',  connectsFrom:'M7' },
-  { id:'A3',  x:610, y:450, arc:'Lametus', name:'Wrenfield Academy', connectsFrom:'M8' },
-  { id:'A4',  x:750, y:450, arc:'Lametus', name:'Calder Academy',    connectsFrom:'M8' },
+  { id:'M8',  x:870, y:704, arc:'Lametus', name:'Lametus Capital',  connectsFrom:'M7' },
+  { id:'A3',  x:781, y:704, arc:'Lametus', name:'Wrenfield Academy', connectsFrom:'M8' },
+  { id:'A4',  x:960, y:704, arc:'Lametus', name:'Calder Academy',    connectsFrom:'M8' },
   // The Golem Trial (2026-07-18, "North of A3 they will fight the
   // Golems as there last trial") — required (not side:true): it's the
   // Final Tournament's entry requirement, not an optional God Tier grind
   // like T1-T7. Unlocked the moment M8's first-visit story plays (see
   // onMissionClick's M8 handler), not a live check.
-  { id:'TG',  x:610, y:385, arc:'Lametus', name:'Stonewake Pass',    connectsFrom:'A3' },
+  { id:'TG',  x:781, y:621, arc:'Lametus', name:'Stonewake Pass',    connectsFrom:'A3' },
   // The Final Tournament (2026-08-03) — the story's finale, back at the
   // Grand Arena (same landmark as M7/M7a, arc:'Blight' to match its color
   // there) now that the tournament is actually happening instead of
@@ -198,7 +222,7 @@ const NODES = [
   // any other main-chain step, even though first entry normally happens
   // automatically through TG's own cutscene rather than a click here — see
   // NEW_AREA_INTRO.FT above.
-  { id:'FT',  x:680, y:320, arc:'Blight', name:'The Final Tournament', connectsFrom:'TG' },
+  { id:'FT',  x:870, y:538, arc:'Blight', name:'The Final Tournament', connectsFrom:'TG' },
 ];
 
 const ARC_COLORS = {
@@ -420,20 +444,21 @@ const NEW_AREA_INTRO = {
   },
 };
 
+// Also 1024×1024 image-space (see the mapPt comment above NODES).
 const ARC_LABEL_POS = {
-  Home:       { x: 60,  y: 300 },
-  Tutorial:   { x: 240, y: 130 },
-  Capital:    { x: 460, y: 40 },
-  Academy:    { x: 365, y: 305 },
-  Selection:  { x: 690, y: 130 },
-  Tournament: { x: 600, y: 518 },
-  Blight:     { x: 680, y: 335 },
+  Home:       { x: 77,  y: 512 },
+  Tutorial:   { x: 307, y: 294 },
+  Capital:    { x: 370, y: 267 },
+  Academy:    { x: 467, y: 518 },
+  Selection:  { x: 883, y: 294 },
+  Tournament: { x: 768, y: 790 },
+  Blight:     { x: 870, y: 557 },
   // Placed off to the side (not centered over the 7-node row) to dodge
-  // both the LAMETUS kingdom label (x:330-480, y:416-458) and the trial
-  // nodes' own side:true diamond markers (25px radius around each).
-  Trial:      { x: 150, y: 400 },
-  // Shifted from (610,400) to dodge TG's new node at (610,385) — see NODES.
-  Lametus:    { x: 545, y: 465 },
+  // both the LAMETUS kingdom label and the trial nodes' own side:true
+  // diamond markers (25px radius around each).
+  Trial:      { x: 192, y: 640 },
+  // Shifted to dodge TG's node — see NODES.
+  Lametus:    { x: 698, y: 723 },
 };
 
 // tiles/mapasset/treesrock.png — 7 cols × 4 rows of decorative scenery icons
@@ -468,6 +493,11 @@ export class WorldMapScene extends Phaser.Scene {
 
   create() {
     const { width, height } = this.scale;
+
+    // Screen-space working copy, recomputed per-create() so it always
+    // matches the live canvas size (see mapPt above) — NODES itself stays
+    // pure image-space and is never mutated.
+    this.nodes = NODES.map(n => ({ ...n, ...mapPt(n.x, n.y, width, height) }));
 
     playMusic(this, 'world');
 
@@ -538,16 +568,19 @@ export class WorldMapScene extends Phaser.Scene {
   // mission node, arc label, or kingdom name.
   drawScenery() {
     if (!this.textures.exists('mapscenery')) return;
+    const { width, height } = this.scale;
+    // Image-space (see the mapPt comment above NODES), not screen pixels.
     const placements = [
-      { id: 'oak_tree',      x: 46,  y: 540, scale: 0.16 },
-      { id: 'pine_tree',     x: 86,  y: 555, scale: 0.14 },
-      { id: 'willow_tree',   x: 754, y: 545, scale: 0.15 },
-      { id: 'mountain_snow', x: 748, y: 60,  scale: 0.16 },
-      { id: 'pond',          x: 60,  y: 60,  scale: 0.13 },
+      { id: 'oak_tree',      x: 59,  y: 819, scale: 0.16 },
+      { id: 'pine_tree',     x: 110, y: 838, scale: 0.14 },
+      { id: 'willow_tree',   x: 965, y: 826, scale: 0.15 },
+      { id: 'mountain_snow', x: 957, y: 205, scale: 0.16 },
+      { id: 'pond',          x: 77,  y: 205, scale: 0.13 },
     ];
-    for (const { id, x, y, scale } of placements) {
+    for (const { id, x: imgX, y: imgY, scale } of placements) {
       const frame = `scenery_${id}`;
       if (!this.textures.get('mapscenery').has(frame)) continue;
+      const { x, y } = mapPt(imgX, imgY, width, height);
       this.add.image(x, y, 'mapscenery', frame).setScale(scale).setAlpha(0.8).setDepth(1);
     }
   }
@@ -564,16 +597,20 @@ export class WorldMapScene extends Phaser.Scene {
       this.add.rectangle(width / 2, height / 2, width, height, 0x05050a, 0.45).setDepth(0);
     }
 
-    // Kingdom label text — stroked for legibility over the busier art
-    this.add.text(70, 100, 'ALTROES', {
+    // Kingdom label text — stroked for legibility over the busier art.
+    // Positions are image-space (see the mapPt comment above NODES).
+    const altroesPos = mapPt(90, 256, width, height);
+    this.add.text(altroesPos.x, altroesPos.y, 'ALTROES', {
       fontSize: '28px', fontFamily: 'Georgia, serif', color: '#ffddaa',
       stroke: '#000000', strokeThickness: 4,
     }).setAlpha(0.55).setDepth(1);
-    this.add.text(580, 92, 'GALE', {
+    const galePos = mapPt(742, 246, width, height);
+    this.add.text(galePos.x, galePos.y, 'GALE', {
       fontSize: '22px', fontFamily: 'Georgia, serif', color: '#bbddff',
       stroke: '#000000', strokeThickness: 4,
     }).setAlpha(0.55).setDepth(1);
-    this.add.text(330, 430, 'LAMETUS', {
+    const lametusPos = mapPt(422, 678, width, height);
+    this.add.text(lametusPos.x, lametusPos.y, 'LAMETUS', {
       fontSize: '28px', fontFamily: 'Georgia, serif', color: '#aaffbb',
       stroke: '#000000', strokeThickness: 4,
     }).setAlpha(0.55).setDepth(1);
@@ -581,9 +618,9 @@ export class WorldMapScene extends Phaser.Scene {
 
   drawConnections() {
     const gfx = this.add.graphics();
-    for (const b of NODES) {
+    for (const b of this.nodes) {
       if (!b.connectsFrom) continue;
-      const a = NODES.find(n => n.id === b.connectsFrom);
+      const a = this.nodes.find(n => n.id === b.connectsFrom);
       if (!a) continue;
       // Matches drawNodes()' skip: a line into a still-locked node would
       // point at empty space and hint a future node is there, so it's
@@ -615,9 +652,11 @@ export class WorldMapScene extends Phaser.Scene {
   }
 
   drawArcLabels() {
+    const { width, height } = this.scale;
     for (const [arc, pos] of Object.entries(ARC_LABEL_POS)) {
       const hex = '#' + ARC_COLORS[arc].toString(16).padStart(6, '0');
-      this.add.text(pos.x, pos.y, arc.toUpperCase(), {
+      const { x, y } = mapPt(pos.x, pos.y, width, height);
+      this.add.text(x, y, arc.toUpperCase(), {
         fontSize: '9px', fontFamily: 'monospace', color: hex,
       }).setOrigin(0.5).setAlpha(0.5);
     }
@@ -626,8 +665,8 @@ export class WorldMapScene extends Phaser.Scene {
   drawNodes() {
     this.nodeObjects = [];
 
-    for (let i = 0; i < NODES.length; i++) {
-      const node = NODES[i];
+    for (let i = 0; i < this.nodes.length; i++) {
+      const node = this.nodes[i];
       const { id, x, y, arc } = node;
       const color = ARC_COLORS[arc];
       const isCompleted = state.completedMissions.includes(id);
@@ -790,7 +829,7 @@ export class WorldMapScene extends Phaser.Scene {
 
   drawHeroMarker() {
     if (!this.textures.exists('hero-Striker')) return;
-    const home = NODES.find(n => n.id === 'M0');
+    const home = this.nodes.find(n => n.id === 'M0');
     if (!home) return;
     // Small circular portrait clipped above the node
     const size = 28;
@@ -805,8 +844,9 @@ export class WorldMapScene extends Phaser.Scene {
     const status = isCompleted ? 'Completed' : 'Active';
     const kind = node.side ? 'Side Battle' : node.arc;
     const label = `${node.id}: ${node.name}\n${kind}  ·  ${status}`;
-    const tx = Math.min(Math.max(nx, 100), 700);
-    const ty = ny > 300 ? ny - 58 : ny + 30;
+    const { width, height } = this.scale;
+    const tx = Math.min(Math.max(nx, 100), width - 100);
+    const ty = ny > height / 2 ? ny - 58 : ny + 30;
     this.tooltipText = this.add.text(tx, ty, label, {
       fontSize: '11px', fontFamily: 'monospace', color: '#ffffff',
       backgroundColor: '#111122', padding: { x: 10, y: 6 },
