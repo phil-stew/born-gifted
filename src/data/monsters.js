@@ -63,7 +63,25 @@ const SPRITE_INFO = {
   // redesign's Capital test battles — same 1495×1052 canvas as Wolf, so the
   // same fw/fh. Goblin: slower art scale reads well for its stockier flavor;
   // Lion: faster moveSpeed to match its higher speed stat vs Wolf.
-  Goblin: { spriteKey: 'goblin-idle', animKey: 'goblin-idle', file: 'monster/goblin.webp', fw: 249, fh: 175, spriteScale: 0.35, moveSpeed: 2 },
+  // erase (2026-08-04, "goblin sprite... small parts are still crossing")
+  // — a full boundary-by-boundary pixel scan of the whole idle row (the
+  // only row monsters ever actually play — see BattleScene.js's generic
+  // frames:0-5 idle anim, row0 is it) found TWO disconnected weapon-club
+  // fragments, both club-heads bleeding backward into the PREVIOUS cell far
+  // enough to survive clearGridBoundaries' safe band<=5 ceiling: frame 4
+  // (col4) shows a chunk of frame 5's club (raw x=[1219,1245], y=[54,130],
+  // 27px deep) and frame 3 (col3) shows a smaller chunk of frame 4's club
+  // (raw x=[985,996], y=[54,94], 11px deep — small enough to be easy to
+  // miss at a glance, confirmed real via a zoomed isolated-frame render).
+  // The other 3 internal boundaries (cols 1/2/2/3... i.e. frames 0-1, 1-2)
+  // came back clean in the same scan. Both erase rects padded a few px
+  // beyond their measured bbox; neither overlaps either cell's OWN
+  // legitimate art (each frame's real club sits well clear of these
+  // regions, confirmed by inspection).
+  Goblin: {
+    spriteKey: 'goblin-idle', animKey: 'goblin-idle', file: 'monster/goblin.webp', fw: 249, fh: 175, spriteScale: 0.35, moveSpeed: 2,
+    bgErase: [{ x: 1214, y: 48, w: 33, h: 88 }, { x: 980, y: 48, w: 20, h: 50 }],
+  },
   Lion:   { spriteKey: 'lion-idle',   animKey: 'lion-idle',   file: 'monster/lion.webp',   fw: 249, fh: 175, spriteScale: 0.35, moveSpeed: 3 },
   // Wired for Ester Academy's "Defeat 1 dragon and two wyverns" quest
   // (2026-07-11). Same 1536x1024 canvas as Boar, so the same fw/fh (256x170).

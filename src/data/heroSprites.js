@@ -243,7 +243,7 @@ function clearGridBoundaries(d, W, H, cols, rows, bandPx = 3) {
 const DEFAULT_TOL = 30;
 const DEFAULT_BAND = 3;
 const BRIGHTNESS = 1.22;
-export function stripBackgroundByKey(scene, key, { cols, rows, tol, band } = {}) {
+export function stripBackgroundByKey(scene, key, { cols, rows, tol, band, erase } = {}) {
   if (!scene.textures.exists(key)) return;
 
   const src = scene.textures.get(key).source[0];
@@ -334,6 +334,27 @@ export function stripBackgroundByKey(scene, key, { cols, rows, tol, band } = {})
         floodFill(Math.max(0, x1 - inset),     Math.min(H - 1, y0 + inset));
         floodFill(Math.min(W - 1, x0 + inset), Math.max(0, y1 - inset));
         floodFill(Math.max(0, x1 - inset),     Math.max(0, y1 - inset));
+      }
+    }
+  }
+
+  // erase (2026-08-04, Goblin's idle row) — a handful of sheets have a
+  // small piece of a NEIGHBORING pose bleeding across a cell boundary far
+  // enough (confirmed for Goblin: 27px) that clearGridBoundaries' band
+  // can't safely reach it without eating into that cell's own art (the
+  // band>=6 ceiling documented above already caps how far that lever can
+  // go). This is the disconnected-fragment counterpart to King Wolf's
+  // `patch` in BattleScene.js's fixedIdleFrames (which restores alpha in a
+  // rect); this one zeroes it — plain raw-pixel rects, applied AFTER the
+  // flood fill so it can't affect flood-fill seeding/matching, just wipes
+  // out a known-bad region directly.
+  if (erase) {
+    for (const { x: ex, y: ey, w: ew, h: eh } of erase) {
+      for (let y = ey; y < ey + eh; y++) {
+        for (let x = ex; x < ex + ew; x++) {
+          if (x < 0 || x >= W || y < 0 || y >= H) continue;
+          d[(y * W + x) * 4 + 3] = 0;
+        }
       }
     }
   }
