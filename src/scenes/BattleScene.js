@@ -1295,9 +1295,12 @@ export class BattleScene extends Phaser.Scene {
     }
     // Monster sheets are baked with a solid black background (no alpha
     // channel), same as the old critter rigs needed no stripping for but
-    // the new hero-pipeline art does.
-    for (const { spriteKey: key } of monsterSpriteInfos) {
-      stripBackgroundByKey(this, key, { cols: 6, rows: 6 });
+    // the new hero-pipeline art does. bgTol/bgBand (2026-08-04) — same
+    // per-sheet override mechanism stripHeroBackground already reads off
+    // HERO_SPRITES; this loop never threaded it through for monsters at
+    // all until Goblin King's cell-boundary weapon bleed needed one.
+    for (const { spriteKey: key, bgTol, bgBand } of monsterSpriteInfos) {
+      stripBackgroundByKey(this, key, { cols: 6, rows: 6, tol: bgTol, band: bgBand });
     }
     for (const u of battleParty) {
       const className = spriteKeyForRole(currentRoleId(u));

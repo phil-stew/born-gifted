@@ -174,8 +174,19 @@ export function spriteInfoForBase(base) {
 const UNIQUE_SPRITE_INFO = {
   'King Lion': { spriteKey: 'kinglion-idle', animKey: 'kinglion-idle', file: 'monster/kinglion.webp', fw: 249, fh: 175, spriteScale: 0.35, moveSpeed: 3 },
   // Goblin King (A2b) — dedicated art, same 1495x1052/6x6 canvas as King
-  // Lion, single-tile (no size:2 override, unlike King Wolf).
-  'Goblin King': { spriteKey: 'goblinking-idle', animKey: 'goblinking-idle', file: 'monster/goblinking.webp', fw: 249, fh: 175, spriteScale: 0.35, moveSpeed: 2 },
+  // Lion, single-tile (no size:2 override, unlike King Wolf). bgBand:5
+  // (2026-08-04, "goblin sprite... two frames going") — the held mace
+  // overflows its own idle-row cell by a few px on some poses, bleeding a
+  // disconnected weapon-tip fragment into the NEXT cell (confirmed via
+  // direct pixel comparison: present after stripBackgroundByKey, absent in
+  // the raw source cell) — same class of bug as King Wolf's tail overflow,
+  // just small enough that widening clearGridBoundaries' divider-clearing
+  // band (default 3px) is enough to erase it, no custom per-frame crop
+  // needed. Trade-off checked and accepted: band:5 also clips a couple px
+  // off frame 1's own mace shaft (disconnects the head slightly from the
+  // hand) — a much smaller, easy-to-miss defect at this sheet's actual
+  // 0.35 battle scale than the fragment it replaces.
+  'Goblin King': { spriteKey: 'goblinking-idle', animKey: 'goblinking-idle', file: 'monster/goblinking.webp', fw: 249, fh: 175, spriteScale: 0.35, moveSpeed: 2, bgBand: 5 },
   'King Wolf': {
     spriteKey: 'kingwolf-idle', animKey: 'kingwolf-idle', file: 'monster/kingwolf.webp',
     fw: 249, fh: 176, spriteScale: 0.65, moveSpeed: 2,
