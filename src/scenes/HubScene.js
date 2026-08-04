@@ -4,6 +4,7 @@ import { BACKDROPS } from '../data/storyBackdrops.js';
 import { HUB_CONFIGS } from '../data/hubConfigs.js';
 import { drawButton } from '../ui/canvasButton.js';
 import { playMusic } from '../audio/music.js';
+import { playSfx, SFX } from '../audio/sound.js';
 
 // Sirblanc/Hidden Village is Reno's home town — once the player has left it
 // (M1 cleared), revisiting the hub uses a photo backdrop instead of the
@@ -233,6 +234,7 @@ export class HubScene extends Phaser.Scene {
         zone.on('pointerover',  () => draw(true));
         zone.on('pointerout',   () => draw(false));
         zone.on('pointerdown',  () => {
+          playSfx(this, SFX.click);
           this.cameras.main.fadeOut(300, 0, 0, 0);
           this.cameras.main.once('camerafadeoutcomplete', () => {
             if (svc.key === 'Shop')  this.scene.start('ShopScene',  { shopId: this.shopId, hubData: this.hubData });

@@ -3,6 +3,7 @@ import { state, roleDisplayLabel } from '../data/gameState.js';
 import { rarityColor, gearFrameName, materialFrameName, GEAR_SHEET, registerGearFrames, MATERIAL_ICON_FRAME } from '../data/items.js';
 import { stripBackgroundByKey } from '../data/heroSprites.js';
 import { drawButton } from '../ui/canvasButton.js';
+import { playSfx, SFX } from '../audio/sound.js';
 
 const TABS = ['ALL', 'EQUIPMENT', 'MATERIALS'];
 
@@ -79,7 +80,7 @@ export class InventoryScene extends Phaser.Scene {
     }).setOrigin(0, 0.5).setInteractive({ useHandCursor: true });
     back.on('pointerover', () => back.setStyle({ color: '#ffffff' }));
     back.on('pointerout',  () => back.setStyle({ color: '#7777aa' }));
-    back.on('pointerdown', () => this.scene.start('WorldMapScene'));
+    back.on('pointerdown', () => { playSfx(this, SFX.click); this.scene.start('WorldMapScene'); });
 
     const partyBtn = this.add.text(width - 14, height - 22, 'PARTY  ▶', {
       fontSize: '12px', fontFamily: 'monospace', color: '#7799cc',
@@ -87,7 +88,7 @@ export class InventoryScene extends Phaser.Scene {
     }).setOrigin(1, 0.5).setInteractive({ useHandCursor: true });
     partyBtn.on('pointerover', () => partyBtn.setStyle({ color: '#aaccff' }));
     partyBtn.on('pointerout',  () => partyBtn.setStyle({ color: '#7799cc' }));
-    partyBtn.on('pointerdown', () => this.scene.start('PartyScene'));
+    partyBtn.on('pointerdown', () => { playSfx(this, SFX.click); this.scene.start('PartyScene'); });
 
     this.tabCon  = this.add.container(0, 0);
     this.listCon = this.add.container(0, 0);
@@ -136,7 +137,7 @@ export class InventoryScene extends Phaser.Scene {
         const z = this.add.zone(tx + tw / 2, ty + th / 2, tw, th).setInteractive({ useHandCursor: true });
         z.on('pointerover',  () => draw(true));
         z.on('pointerout',   () => draw(false));
-        z.on('pointerdown',  () => { this.tab = t; this.selected = null; this.equipStep = null; this.rebuild(); });
+        z.on('pointerdown',  () => { playSfx(this, SFX.click); this.tab = t; this.selected = null; this.equipStep = null; this.rebuild(); });
         this.tabCon.add(z);
       }
     });
@@ -244,7 +245,7 @@ export class InventoryScene extends Phaser.Scene {
       const z = this.add.zone(lx + lw / 2, iy + 19, lw, 38).setInteractive({ useHandCursor: true });
       z.on('pointerover',  () => { if (!isSelectedIdx) draw(true); });
       z.on('pointerout',   () => { if (!isSelectedIdx) draw(false); });
-      z.on('pointerdown',  () => { this.selected = entry; this.equipStep = null; this.equipUnit = null; this.rebuild(); });
+      z.on('pointerdown',  () => { playSfx(this, SFX.click); this.selected = entry; this.equipStep = null; this.equipUnit = null; this.rebuild(); });
       this.listCon.add(z);
     });
   }
@@ -354,7 +355,7 @@ export class InventoryScene extends Phaser.Scene {
       const z = this.add.zone(cx, y + 18, 160, 36).setInteractive({ useHandCursor: true });
       z.on('pointerover',  () => draw(true));
       z.on('pointerout',   () => draw(false));
-      z.on('pointerdown',  () => { this.equipStep = 'pick_unit'; this.rebuild(); });
+      z.on('pointerdown',  () => { playSfx(this, SFX.click); this.equipStep = 'pick_unit'; this.rebuild(); });
       this.detCon.add(z);
       y += 48;
     }
@@ -380,6 +381,7 @@ export class InventoryScene extends Phaser.Scene {
       z.on('pointerover',  () => draw(true));
       z.on('pointerout',   () => draw(false));
       z.on('pointerdown',  () => {
+        playSfx(this, SFX.coin);
         const idx = entry.indices[0];
         state.inventory.splice(idx, 1);
         state.tytrate += sellVal;
@@ -464,6 +466,7 @@ export class InventoryScene extends Phaser.Scene {
   equipItem(unit) {
     const item = this.selected?.item;
     if (!item?.slot) return;
+    playSfx(this, SFX.click);
     const slot = item.slot;
 
     // Swap: if something is already in that slot, return it to inventory

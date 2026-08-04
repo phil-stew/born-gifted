@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { pendingPromotion, t3SportOptions, sportById, chainById, promoteUnit, roleDisplayLabel } from '../data/gameState.js';
 import { drawButton } from '../ui/canvasButton.js';
-import { playStinger, SFX } from '../audio/sound.js';
+import { playSfx, playStinger, SFX } from '../audio/sound.js';
 
 export class LevelUpScene extends Phaser.Scene {
   constructor() { super({ key: 'LevelUpScene' }); }
@@ -279,6 +279,6 @@ export class LevelUpScene extends Phaser.Scene {
     const z = this.add.zone(x, y, w, h).setInteractive({ useHandCursor: true });
     z.on('pointerover', () => draw(true));
     z.on('pointerout',  () => draw(false));
-    z.on('pointerdown', onClick);
+    z.on('pointerdown', () => { playSfx(this, SFX.click); onClick(); });
   }
 }

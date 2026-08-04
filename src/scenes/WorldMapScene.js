@@ -6,6 +6,7 @@ import { drawButton } from '../ui/canvasButton.js';
 import { HUB_CONFIGS } from '../data/hubConfigs.js';
 import { getItem } from '../data/items.js';
 import { playMusic } from '../audio/music.js';
+import { playSfx, SFX } from '../audio/sound.js';
 
 // `connectsFrom` replaces the old implicit "connect to NODES[i-1]" ordering
 // so the map graph can branch — every node names its own parent explicitly,
@@ -708,7 +709,7 @@ export class WorldMapScene extends Phaser.Scene {
       const hit = this.add.zone(x, y, 52, 52).setInteractive({ useHandCursor: true });
       hit.on('pointerover', () => this.showTooltip(node, x, y));
       hit.on('pointerout',  () => this.hideTooltip());
-      hit.on('pointerdown', () => this.onMissionClick(node));
+      hit.on('pointerdown', () => { playSfx(this, SFX.click); this.onMissionClick(node); });
     }
   }
 
@@ -1183,6 +1184,7 @@ export class WorldMapScene extends Phaser.Scene {
           state.capitalQuest = 'test1_active';
           this.scene.start('StoryScene', {
             location: 'THE CAPITAL  ·  Gates',
+            backdrop: BACKDROPS.capital,
             lines: [
               { speaker: 'Narrator', color: '#888899', text: 'The Northern Cave sits a short march past the Capital gates — the wardens say goblins have been nesting there.' },
               { speaker: 'Reno',     color: '#4488ff', text: '...Ore run. Simple enough.' },
@@ -1213,6 +1215,7 @@ export class WorldMapScene extends Phaser.Scene {
           state.capitalQuest = 'test2_active';
           this.scene.start('StoryScene', {
             location: 'THE CAPITAL  ·  Gates',
+            backdrop: BACKDROPS.capital,
             lines: [
               { speaker: 'Narrator', color: '#888899', text: 'Well done. One more trial — the Hilbert Low Lands to the south have lions prowling the tall grass.' },
               { speaker: 'Reno',     color: '#4488ff', text: '...Lions. Noted.' },
@@ -1241,6 +1244,7 @@ export class WorldMapScene extends Phaser.Scene {
           state.capitalQuest = 'craft_pending';
           this.scene.start('StoryScene', {
             location: 'THE CAPITAL  ·  Gates',
+            backdrop: BACKDROPS.capital,
             lines: [
               { speaker: 'Narrator', color: '#888899', text: 'Both trials cleared. Now go craft some armor — see the forger here in the Capital.' },
               { speaker: 'Reno',     color: '#4488ff', text: '...The forge. Let\'s see what we can make.' },
@@ -1262,6 +1266,7 @@ export class WorldMapScene extends Phaser.Scene {
       state.unlockedMissions.push('A1', 'A2', 'A1a', 'A1b', 'A2a', 'A2b', 'A2c');
       this.scene.start('StoryScene', {
         location: 'THE CAPITAL  ·  Gates',
+        backdrop: BACKDROPS.capital,
         lines: [
           { speaker: 'Narrator', color: '#888899', text: 'The gear is solid work. You\'re almost ready for the exam.' },
           { speaker: 'Reno',     color: '#4488ff', text: '...One more thing, I take it.' },
@@ -1286,6 +1291,7 @@ export class WorldMapScene extends Phaser.Scene {
         onClose: () => {
           this.scene.start('StoryScene', {
             location: 'THE CAPITAL  ·  Gates',
+            backdrop: BACKDROPS.capital,
             lines: [
               { speaker: 'Narrator', color: '#888899', text: 'Your team is set. Now for your exam — meet the instructor at Arena Atlros, east of the Capital.' },
               { speaker: 'Reno',     color: '#4488ff', text: '...Let\'s go.' },
@@ -1313,6 +1319,7 @@ export class WorldMapScene extends Phaser.Scene {
           state.unlockedMissions.push('AT1', 'AT2');
           this.scene.start('StoryScene', {
             location: 'THE CAPITAL  ·  Gates',
+            backdrop: BACKDROPS.capital,
             lines: [
               { speaker: 'Narrator', color: '#888899', text: 'Word spreads fast. Two Trials await — Altroes doesn\'t care which you take first.' },
               { speaker: 'Reno',     color: '#4488ff', text: '...Let\'s find out what we\'re really made of.' },
@@ -1459,6 +1466,7 @@ export class WorldMapScene extends Phaser.Scene {
       z.on('pointerover',  () => draw(true));
       z.on('pointerout',   () => draw(false));
       z.on('pointerdown',  () => {
+        playSfx(this, SFX.click);
         state.currentMission = node.id;
         this.diffPicker.destroy(true); this.diffPicker = null;
         this.scene.start('BattleScene', { difficulty: d.mult });

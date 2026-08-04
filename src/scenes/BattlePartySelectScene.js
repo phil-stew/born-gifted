@@ -2,6 +2,16 @@ import Phaser from 'phaser';
 import { state, maxBattlePartySize, maxHp, roleDisplayLabel, currentRoleId } from '../data/gameState.js';
 import { loadHeroSprites, stripHeroBackground, heroKey, firstFrame, spriteKeyForRole } from '../data/heroSprites.js';
 import { mount, unmount, onClick, spriteFrameDataURL, esc } from '../ui/domUI.js';
+import { BACKDROPS } from '../data/storyBackdrops.js';
+
+// This screen can come up before ANY mission in any of the 3 kingdoms (it's
+// a roster-cap gate, not a story beat — see the class comment below), so
+// there's no single "correct" region photo the way a mission-specific
+// StoryScene/HubScene backdrop has. castle2.png is reused here as the same
+// kind of region-agnostic "just needs SOME backdrop" fallback ShopScene's
+// own _drawFantasyBg already leans on for its generic shops (2026-07-04
+// Shop reskin) — same image, so no extra asset load either.
+const BG_URL = '/' + BACKDROPS.capital.path;
 
 // Roster-bigger-than-battle-cap picker (2026-07-08 feedback) — BattleScene
 // redirects here itself (see the gate at the top of its create()) whenever
@@ -60,7 +70,10 @@ export class BattlePartySelectScene extends Phaser.Scene {
     const full = this.selectedIds.length >= this.cap;
 
     mount(`
-      <div class="ui-screen">
+      <div class="ui-screen" style="background:
+          radial-gradient(ellipse at top, rgba(60,50,90,0.35), transparent 60%),
+          linear-gradient(rgba(8,8,15,0.55), rgba(8,8,15,0.8)),
+          url('${BG_URL}') center/cover;">
         <div class="ui-topbar">
           <button class="ui-navbtn" data-nav="back">◀ Cancel</button>
           <div class="ui-title">CHOOSE YOUR BATTLE PARTY</div>

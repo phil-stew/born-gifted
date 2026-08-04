@@ -3,6 +3,7 @@ import { state, equipItem, unequipSlot, effectiveStats, roleDisplayLabel, gearLa
 import { rarityColor, gearFrameName, materialFrameName, GEAR_SHEET, registerGearFrames, MATERIAL_ICON_FRAME } from '../data/items.js';
 import { stripBackgroundByKey } from '../data/heroSprites.js';
 import { drawButton } from '../ui/canvasButton.js';
+import { playSfx, SFX } from '../audio/sound.js';
 
 // 'weapon' is stored-data's name for what the Gear & Forge redesign calls
 // the Class Item (see gearLayoutForUnit/CLASS_GEAR_LAYOUT in gameState.js —
@@ -142,7 +143,7 @@ export class EquipmentScene extends Phaser.Scene {
       this.partyContainer.add([nameText, lvlText, eqText, statText, statText2]);
 
       const hit = this.add.rectangle(80, y + 43, 152, 86).setInteractive({ useHandCursor: true });
-      hit.on('pointerdown', () => { this.selectedUnitIdx = i; this.selectedSlot = null; this.renderAll(); });
+      hit.on('pointerdown', () => { playSfx(this, SFX.click); this.selectedUnitIdx = i; this.selectedSlot = null; this.renderAll(); });
       this.hitZones.push(hit);
     });
   }
@@ -207,7 +208,7 @@ export class EquipmentScene extends Phaser.Scene {
       }
 
       const hit = this.add.rectangle(sx + sw / 2, y + 32, sw, 64).setInteractive({ useHandCursor: true });
-      hit.on('pointerdown', () => { this.selectedSlot = (this.selectedSlot === slot) ? null : slot; this.renderAll(); });
+      hit.on('pointerdown', () => { playSfx(this, SFX.click); this.selectedSlot = (this.selectedSlot === slot) ? null : slot; this.renderAll(); });
       this.hitZones.push(hit);
       y += 70;
     });
@@ -295,6 +296,7 @@ export class EquipmentScene extends Phaser.Scene {
       hit.on('pointerout',  () => { gfx.clear(); gfx.fillStyle(0x0e0e1e,1); gfx.fillRoundedRect(ix,y,iw,58,6); gfx.lineStyle(1,rColor,0.5); gfx.strokeRoundedRect(ix,y,iw,58,6); });
       hit.on('pointerdown', () => {
         if (item.type === 'material') return;
+        playSfx(this, SFX.click);
         equipItem(unit, item);
         this.selectedSlot = null;
         this.renderAll();

@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { state, effectiveStats, maxHp, xpToNext, currentRoleId, roleDisplayLabel, roleById, elementIcon } from '../data/gameState.js';
 import { loadHeroSprites, stripHeroBackground, heroKey, firstFrame, spriteKeyForRole } from '../data/heroSprites.js';
 import { drawButton } from '../ui/canvasButton.js';
+import { playSfx, SFX } from '../audio/sound.js';
 
 const SLOT_NAMES = ['weapon', 'footwear', 'handwear', 'chest', 'headwear'];
 
@@ -66,7 +67,7 @@ export class StatsScene extends Phaser.Scene {
       // Hit area
       const hit = this.add.rectangle(listX + listW / 2, by + 34, listW - 4, 80)
         .setInteractive({ useHandCursor: true });
-      hit.on('pointerdown', () => { this.selectedIndex = i; this.refreshAll(); });
+      hit.on('pointerdown', () => { playSfx(this, SFX.click); this.selectedIndex = i; this.refreshAll(); });
       hit.on('pointerover', () => {
         if (i !== this.selectedIndex) { btn.clear(); this.drawUnitCard(btn, unit, by, false, true); }
       });
