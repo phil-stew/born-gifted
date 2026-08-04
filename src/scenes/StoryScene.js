@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { stripHeroBackground } from '../data/heroSprites.js';
+import { state } from '../data/gameState.js';
 
 // Generic dialogue scene. Receives { lines, nextScene, nextSceneData, backdrop } via init().
 // Each line: { speaker, text, color? }
@@ -15,10 +16,25 @@ export class StoryScene extends Phaser.Scene {
   }
 
   init(data) {
-    this.lines         = data.lines         ?? [];
+    // Protagonist name substitution (2026-08-04, "let the player pick the
+    // name of the protagonist") — all story content was written hardcoded
+    // to 'Reno', both as a speaker label AND inline within other
+    // characters' dialogue text ("Reno, what's the date?"). Rather than
+    // editing every one of those lines across every scene, every line
+    // passes through here (StoryScene is the single rendering choke point
+    // for all dialogue), so substituting once here covers all of them —
+    // including nested nextScene:'StoryScene' cutscene chains, since each
+    // hop re-runs init(). Falls back to 'Reno' if the protagonist unit
+    // (id:'reno') isn't in the active party for some reason (e.g.
+    // dismissed via PartyScene) so old saves/edge cases never show 'undefined'.
+    const protagonist = state.party?.find(u => u.id === 'reno');
+    this.renoName = protagonist ? protagonist.name.split(' ')[0] : 'Reno';
+    const sub = (s) => typeof s === 'string' ? s.replace(/\bReno\b/g, this.renoName) : s;
+
+    this.lines         = (data.lines ?? []).map(line => ({ ...line, speaker: sub(line.speaker), text: sub(line.text) }));
     this.nextScene     = data.nextScene     ?? 'WorldMapScene';
     this.nextSceneData = data.nextSceneData ?? {};
-    this.location      = data.location      ?? 'SIRBLANC  ·  Reno\'s Home';
+    this.location      = sub(data.location ?? 'SIRBLANC  ·  Reno\'s Home');
     this.backdrop      = data.backdrop      ?? null;
     this.lineIndex     = 0;
   }
@@ -160,7 +176,7 @@ export class StoryScene extends Phaser.Scene {
     }
 
     if (this.renoPortrait) {
-      const targetAlpha = speaker === 'Reno' ? 1 : 0.25;
+      const targetAlpha = speaker === this.renoName ? 1 : 0.25;
       this.tweens.add({ targets: this.renoPortrait, alpha: targetAlpha, duration: 250 });
     }
   }

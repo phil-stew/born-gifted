@@ -1,17 +1,27 @@
 import Phaser from 'phaser';
 import { STARTING_SPORTS, sportById, TALENTS, ELEMENTS, createStarterUnit, newGame } from '../data/gameState.js';
+import { DIFFICULTIES, setDifficultyKey } from '../data/difficulty.js';
 import { playSfx, SFX } from '../audio/sound.js';
+import { mount, unmount, onClick, esc } from '../ui/domUI.js';
 
-// New-game flow: pick a starting sport, then a role in it (if the sport has
-// 2+ roles), then an element, then pick 2 talents (repeats allowed). Each
-// talent pick doubles that stat's level-up growth — picking the same talent
-// twice quadruples it.
+const DEFAULT_NAME = 'Reno Sirblanc';
+
+// New-game flow: name the protagonist, pick a starting sport, then a role in
+// it (if the sport has 2+ roles), then an element, then pick 2 talents
+// (repeats allowed) — each doubles that stat's level-up growth, picking the
+// same one twice quadruples it — then a difficulty tier before the run
+// actually begins (2026-08-04: name + difficulty steps added; difficulty
+// reuses the same Newbie/Veteran/Perilous tiers as Settings' "default
+// difficulty" picker in data/difficulty.js — this IS that same global
+// preference, just surfaced up front too, so a fresh player isn't left on
+// whatever the default happens to be without ever seeing the choice).
 export class CharacterCreationScene extends Phaser.Scene {
   constructor() { super({ key: 'CharacterCreationScene' }); }
 
   init(data) {
     this.slot = data?.slot ?? 1;
-    this.step = 'sport'; // 'sport' | 'role' | 'element' | 'talent1' | 'talent2' | 'confirm'
+    this.step = 'name'; // 'name' | 'sport' | 'role' | 'element' | 'talent1' | 'talent2' | 'confirm' | 'difficulty'
+    this.chosenName = '';
     this.chosenSport = null;
     this.chosenRole = null;
     this.chosenElement = null;
@@ -36,17 +46,46 @@ export class CharacterCreationScene extends Phaser.Scene {
 
     this.con = this.add.container(0, 0);
     this.cameras.main.fadeIn(300, 0, 0, 0);
+    this.events.once('shutdown', unmount);
     this.render();
   }
 
   render() {
     this.con.removeAll(true);
-    if (this.step === 'sport')   this.renderSportStep();
-    if (this.step === 'role')    this.renderRoleStep();
-    if (this.step === 'element') this.renderElementStep();
-    if (this.step === 'talent1') this.renderTalentStep(1);
-    if (this.step === 'talent2') this.renderTalentStep(2);
-    if (this.step === 'confirm') this.renderConfirmStep();
+    if (this.step === 'name') { this.renderNameStep(); return; }
+    unmount();
+    if (this.step === 'sport')      this.renderSportStep();
+    if (this.step === 'role')       this.renderRoleStep();
+    if (this.step === 'element')    this.renderElementStep();
+    if (this.step === 'talent1')    this.renderTalentStep(1);
+    if (this.step === 'talent2')    this.renderTalentStep(2);
+    if (this.step === 'confirm')    this.renderConfirmStep();
+    if (this.step === 'difficulty') this.renderDifficultyStep();
+  }
+
+  renderNameStep() {
+    mount(`
+      <div class="ui-screen" style="align-items:center; justify-content:center;">
+        <div class="ui-modal">
+          <div class="ui-modal-title">WHO ARE YOU?</div>
+          <div class="ui-modal-sub">Name your protagonist — this is who the story follows.</div>
+          <input id="hero-name-input" class="ui-text-input" type="text" maxlength="18"
+            placeholder="${esc(DEFAULT_NAME)}" value="${esc(this.chosenName)}" />
+          <div class="ui-modal-actions">
+            <button class="ui-btn ui-btn-primary" data-name-confirm="1">Continue</button>
+          </div>
+        </div>
+      </div>
+    `);
+    const input = document.getElementById('hero-name-input');
+    input?.focus();
+    const submit = () => {
+      this.chosenName = (input?.value.trim()) || DEFAULT_NAME;
+      this.step = 'sport';
+      this.render();
+    };
+    onClick('[data-name-confirm]', submit);
+    input?.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); submit(); } });
   }
 
   makeButton(x, y, w, h, label, sub, onClick) {
@@ -105,6 +144,14 @@ export class CharacterCreationScene extends Phaser.Scene {
         this.render();
       });
     });
+
+    this.con.add(this.add.text(20, 16, '◀ back', {
+      fontSize: '11px', fontFamily: 'monospace', color: '#556688',
+    }).setInteractive({ useHandCursor: true }).on('pointerdown', () => {
+      playSfx(this, SFX.click);
+      this.step = 'name';
+      this.render();
+    }));
   }
 
   renderRoleStep() {
@@ -222,14 +269,9 @@ export class CharacterCreationScene extends Phaser.Scene {
       y += 26;
     }
 
-    this.makeButton(this.W / 2, y + 50, 220, 46, 'BEGIN', null, () => {
-      const starter = createStarterUnit({
-        t1Sport: this.chosenSport, t1Role: this.chosenRole,
-        talents: this.chosenTalents, element: this.chosenElement,
-      });
-      newGame(starter, this.slot);
-      this.cameras.main.fadeOut(500, 0, 0, 0);
-      this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start('WorldMapScene'));
+    this.makeButton(this.W / 2, y + 50, 220, 46, 'NEXT', null, () => {
+      this.step = 'difficulty';
+      this.render();
     });
 
     this.con.add(this.add.text(20, 16, '◀ back', {
@@ -237,6 +279,43 @@ export class CharacterCreationScene extends Phaser.Scene {
     }).setInteractive({ useHandCursor: true }).on('pointerdown', () => {
       playSfx(this, SFX.click);
       this.step = 'talent2';
+      this.render();
+    }));
+  }
+
+  renderDifficultyStep() {
+    this.headerText.setText('CHOOSE YOUR DIFFICULTY');
+    this.subText.setText('You can change this anytime from Settings on the title screen.');
+
+    const DESC = {
+      newbie:   'Softer enemies, extra damage — a relaxed pace',
+      veteran:  'Balanced — enemies scale to match your level',
+      perilous: 'Enemies scale up further, full strength — no safety net',
+    };
+
+    const bw = 360, bh = 66, gap = 16;
+    const startY = this.H / 2 - (DIFFICULTIES.length * (bh + gap) - gap) / 2;
+
+    DIFFICULTIES.forEach((d, i) => {
+      const y = startY + i * (bh + gap);
+      this.makeButton(this.W / 2, y, bw, bh, d.label, DESC[d.key] ?? '', () => {
+        const starter = createStarterUnit({
+          t1Sport: this.chosenSport, t1Role: this.chosenRole,
+          talents: this.chosenTalents, element: this.chosenElement,
+          name: this.chosenName,
+        });
+        setDifficultyKey(d.key);
+        newGame(starter, this.slot);
+        this.cameras.main.fadeOut(500, 0, 0, 0);
+        this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start('WorldMapScene'));
+      });
+    });
+
+    this.con.add(this.add.text(20, 16, '◀ back', {
+      fontSize: '11px', fontFamily: 'monospace', color: '#556688',
+    }).setInteractive({ useHandCursor: true }).on('pointerdown', () => {
+      playSfx(this, SFX.click);
+      this.step = 'confirm';
       this.render();
     }));
   }

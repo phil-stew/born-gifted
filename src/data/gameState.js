@@ -1194,16 +1194,18 @@ export function loadGame(slot) {
 const STARTER_LEVEL = 5;
 
 // Build a fresh protagonist from character-creation choices (starting sport
-// + starting role + element + 2 talents). The protagonist's identity
-// (id/name/portrait) is fixed as Reno Sirblanc, since the story's dialogue is
-// written around that character — only his sport chain, role, element, and
-// stat growth are chosen by the player. T2/T3 are left unset (pending
+// + starting role + element + 2 talents, plus an optional player-typed
+// name — 2026-08-04). The protagonist's internal id/portrait/initials stay
+// fixed as 'reno'/'RE' regardless of the chosen name — those are just
+// bookkeeping keys, never shown to the player (see StoryScene's dialogue
+// substitution for how the display name reaches story text). Falls back to
+// the original 'Reno Sirblanc' if left blank. T2/T3 are left unset (pending
 // promotion, chosen later in play) — STARTER_LEVEL (5) is under the T2
 // threshold (10) anyway, so this never leaves a starter mid-tier.
-export function createStarterUnit({ t1Sport, t1Role, talents, element }) {
+export function createStarterUnit({ t1Sport, t1Role, talents, element, name }) {
   const chain = getChainForT1Sport(t1Sport);
   const unit = {
-    id: 'reno', name: 'Reno Sirblanc', initials: 'RE', color: 0x4488ff, element: element ?? 'Lightning',
+    id: 'reno', name: (name && name.trim()) || 'Reno Sirblanc', initials: 'RE', color: 0x4488ff, element: element ?? 'Lightning',
     chainId: chain?.id ?? null,
     t1Sport, t1Role, t2Sport: null, t2Role: null, t3Sport: null, t3Role: null,
     level: 1, xp: 0,
