@@ -34,8 +34,8 @@ export const HERO_SPRITES = {
   'Long Jumper':      { file:'heroes/t2/AltheticsJumper.webp',   cols:6, rows:6, fw:248, fh:175 },
   'High Jumper':      { file:'heroes/t2/athlticJumperhigh.webp', cols:6, rows:6, fw:249, fh:175 },
   'Speed Skater':     { file:'heroes/t2/skaterspeed.webp',       cols:6, rows:6, fw:248, fh:175 },
-  'Black Belt':       { file:'heroes/t2/karatewado.webp',        cols:6, rows:6, fw:249, fh:175 },
-  'Kyokushin':        { file:'heroes/t2/karatekyokushin.webp',   cols:6, rows:6, fw:249, fh:175 },
+  'Black Belt':       { file:'heroes/t2/karatewado.webp',        cols:6, rows:6, fw:249, fh:175, bgErase: [{ x:114, y:458, w:62, h:63 }, { x:279, y:458, w:67, h:63 }, { x:263, y:461, w:61, h:44 }, { x:322, y:381, w:48, h:25 }, { x:502, y:456, w:111, h:68 }, { x:503, y:471, w:35, h:26 }, { x:500, y:456, w:23, h:31 }, { x:821, y:374, w:119, h:147 }, { x:970, y:420, w:25, h:42 }, { x:971, y:464, w:24, h:48 }, { x:1207, y:420, w:37, h:91 }, { x:1038, y:383, w:47, h:23 }, { x:1228, y:389, w:16, h:32 }, { x:1301, y:460, w:68, h:61 }, { x:1290, y:384, w:47, h:28 }, { x:500, y:354, w:225, h:100, onlyColor:[0,0,0] }, { x:620, y:435, w:100, h:90, onlyColor:[0,0,0] }, { x:540, y:480, w:75, h:45, onlyColor:[0,0,0] }, { x:598, y:440, w:70, h:35, onlyColor:[0,0,0] }, { x:478, y:350, w:24, h:180 }, { x:938, y:350, w:24, h:180 }, { x:748, y:182, w:210, h:170, onlyColor:[0,0,0] }, { x:997, y:182, w:250, h:170, onlyColor:[0,0,0] }] },
+  'Kyokushin':        { file:'heroes/t2/karatekyokushin.webp',   cols:6, rows:6, fw:249, fh:175, bgErase: [{ x:45, y:366, w:90, h:84 }, { x:284, y:365, w:88, h:84 }, { x:521, y:381, w:86, h:68 }, { x:529, y:365, w:45, h:27 }, { x:749, y:381, w:73, h:69 }, { x:974, y:394, w:21, h:56 }, { x:749, y:365, w:40, h:27 }, { x:1201, y:451, w:43, h:50 }, { x:1411, y:425, w:73, h:86 }, { x:914, y:378, w:41, h:52, onlyColor:[0,0,0] }, { x:993, y:354, w:201, h:82, onlyColor:[0,0,0] }, { x:993, y:444, w:35, h:74, onlyColor:[0,0,0] }, { x:748, y:182, w:250, h:170, onlyColor:[0,0,0] }, { x:1180, y:182, w:70, h:170, onlyColor:[0,0,0] }, { x:1245, y:230, w:55, h:80, onlyColor:[0,0,0] }] },
   // bgTol: 8 — both paintball sheets use very dark tactical/camo colors
   // close to pure black; the default TOL=30 flood-fill leaks from the
   // background into that dark gear and eats holes in the character
@@ -71,14 +71,14 @@ export const HERO_SPRITES = {
   'MMA':                { file:'heroes/t3/mmaheavyweight.webp',     cols:6, rows:6, fw:249, fh:175 },
   'MMA Lightweight':    { file:'heroes/t3/mmalightweight.webp',     cols:6, rows:6, fw:249, fh:175 },
   'Kendo':              { file:'heroes/t3/masterkendo.webp',        cols:6, rows:6, fw:249, fh:175 },
-  'Archer':             { file:'heroes/t3/archer.webp',             cols:6, rows:6, fw:249, fh:175 },
+  'Archer':             { file:'heroes/t3/archer.webp',             cols:6, rows:6, fw:249, fh:175, bgErase: [{ x:69, y:462, w:29, h:31 }, { x:295, y:474, w:25, h:19 }, { x:894, y:362, w:101, h:44 }, { x:1156, y:364, w:88, h:39 }, { x:1018, y:462, w:30, h:31 }, { x:1247, y:369, w:19, h:31 }, { x:1361, y:494, w:27, h:30 }, { x:115, y:352, w:90, h:38, onlyColor:[0,0,0] }, { x:344, y:352, w:88, h:38, onlyColor:[0,0,0] }, { x:806, y:352, w:85, h:34, onlyColor:[0,0,0] }, { x:1066, y:352, w:84, h:37, onlyColor:[0,0,0] }, { x:838, y:876, w:38, h:30, onlyColor:[0,0,0] }] },
   'Aerial Fitness':     { file:'heroes/t3/airfitness.webp',         cols:6, rows:6, fw:248, fh:175 },
-  'Baller':             { file:'heroes/t3/basketballaceforward.webp',cols:6, rows:6, fw:249, fh:175 },
+  'Baller':             { file:'heroes/t3/basketballaceforward.webp',cols:6, rows:6, fw:249, fh:175, bgErase: [{ x:124, y:334, w:30, h:15 }, { x:330, y:317, w:49, h:32 }, { x:629, y:325, w:39, h:24 }, { x:553, y:329, w:80, h:20 }, { x:864, y:325, w:53, h:24 }, { x:780, y:325, w:41, h:24 }, { x:776, y:279, w:30, h:26 }, { x:1036, y:325, w:132, h:24 }, { x:1020, y:325, w:21, h:24 }, { x:1392, y:325, w:32, h:24 }, { x:1420, y:325, w:20, h:24 }, { x:1359, y:325, w:21, h:24 }, { x:1294, y:335, w:36, h:14 }] },
   // 'Parkour' dropped — no role ever mapped to it and the old art file is gone.
   'Baseball Player':    { file:'heroes/t3/baseballbatter.webp',     cols:6, rows:6, fw:256, fh:170 },
   'Baseball Pitcher':   { file:'heroes/t3/baseballpitcher.webp',    cols:6, rows:6, fw:248, fh:175 },
-  'Golfer':             { file:'heroes/t3/gulfer.webp',             cols:6, rows:6, fw:249, fh:175 },
-  'Figure Skater':      { file:'heroes/t3/figureskater.webp',       cols:6, rows:6, fw:247, fh:176 },
+  'Golfer':             { file:'heroes/t3/gulfer.webp',             cols:6, rows:6, fw:249, fh:175, bgErase: [{ x:971, y:396, w:24, h:24 }, { x:1052, y:354, w:147, h:57 }, { x:998, y:373, w:35, h:120, onlyColor:[0,0,0] }, { x:95, y:60, w:90, h:120, onlyColor:[0,0,0] }, { x:338, y:110, w:30, h:70, onlyColor:[0,0,0] }, { x:570, y:65, w:65, h:115, onlyColor:[0,0,0] }, { x:808, y:70, w:65, h:110, onlyColor:[0,0,0] }, { x:1050, y:65, w:70, h:115, onlyColor:[0,0,0] }, { x:1285, y:60, w:70, h:120, onlyColor:[0,0,0] }, { x:818, y:875, w:70, h:22, onlyColor:[0,0,0] }, { x:1060, y:875, w:65, h:22, onlyColor:[0,0,0] }, { x:1297, y:875, w:70, h:22, onlyColor:[0,0,0] }] },
+  'Figure Skater':      { file:'heroes/t3/figureskater.webp',       cols:6, rows:6, fw:247, fh:176, bgErase: [{ x:112, y:448, w:39, h:38 }, { x:135, y:485, w:31, h:29 }, { x:594, y:451, w:31, h:39 }, { x:603, y:483, w:37, h:31 }, { x:618, y:456, w:19, h:33 }, { x:836, y:444, w:57, h:34 }, { x:892, y:436, w:33, h:30 }, { x:1148, y:444, w:32, h:32 }, { x:1294, y:484, w:29, h:30 }, { x:1356, y:354, w:84, h:32, onlyColor:[0,0,0] }] },
 };
 
 // Role id → existing HERO_SPRITES key (unchanged old class-name strings —
@@ -185,7 +185,7 @@ export function loadHeroSprites(scene, classNames) {
 export function stripHeroBackground(scene, className) {
   const info = HERO_SPRITES[className];
   if (!info) return;
-  stripBackgroundByKey(scene, heroKey(className), { cols: info.cols, rows: info.rows, tol: info.bgTol, band: info.bgBand });
+  stripBackgroundByKey(scene, heroKey(className), { cols: info.cols, rows: info.rows, tol: info.bgTol, band: info.bgBand, erase: info.bgErase });
 }
 
 // Some sheets (a subset of the 2026-07-03 batch, e.g. amfootballdefender.png,
@@ -348,12 +348,30 @@ export function stripBackgroundByKey(scene, key, { cols, rows, tol, band, erase 
   // rect); this one zeroes it — plain raw-pixel rects, applied AFTER the
   // flood fill so it can't affect flood-fill seeding/matching, just wipes
   // out a known-bad region directly.
+  //
+  // `onlyColor`/`colorTol` (2026-08-04, several attack-row VFX frames —
+  // Black Belt/Archer/Kyokushin/Figure Skater) — some sheets have a chunk
+  // of unstripped near-black BACKGROUND sitting directly behind/around the
+  // character (a bright glow effect walls it off from every flood-fill
+  // seed), but the bad region overlaps the character's own bounding box
+  // (interleaved with their black belt/hair/gi shadow, not a clean
+  // separate area) — a blind rect erase here would punch a hole in the
+  // character too (confirmed the hard way: first attempt erased most of
+  // Black Belt's torso). Making the rect conditional on color — only
+  // erase pixels that ALSO match near-black — lets the rect safely
+  // overlap the character's bounding box, since only the actually-black
+  // pixels within it get zeroed.
   if (erase) {
-    for (const { x: ex, y: ey, w: ew, h: eh } of erase) {
+    for (const { x: ex, y: ey, w: ew, h: eh, onlyColor, colorTol } of erase) {
       for (let y = ey; y < ey + eh; y++) {
         for (let x = ex; x < ex + ew; x++) {
           if (x < 0 || x >= W || y < 0 || y >= H) continue;
-          d[(y * W + x) * 4 + 3] = 0;
+          const pi = (y * W + x) * 4;
+          if (onlyColor) {
+            const ct = colorTol ?? 12;
+            if (Math.abs(d[pi] - onlyColor[0]) >= ct || Math.abs(d[pi+1] - onlyColor[1]) >= ct || Math.abs(d[pi+2] - onlyColor[2]) >= ct) continue;
+          }
+          d[pi + 3] = 0;
         }
       }
     }
