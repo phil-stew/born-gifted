@@ -26,6 +26,50 @@ import { VillageQuestListScene } from './scenes/VillageQuestListScene.js';
 import { IndexScene } from './scenes/IndexScene.js';
 import { SettingsScene } from './scenes/SettingsScene.js';
 
+// ── Global error boundary (2026-08-04, pre-launch audit: "no global error
+// boundary... an uncaught exception in any scene just freezes silently, no
+// reload prompt") — registered before Phaser.Game() so it also catches
+// boot-time failures, not just in-scene ones. Plain DOM, styled inline and
+// appended straight to <body> rather than #app/#ui-root — those live inside
+// Phaser's own DOM tree and the whole point is this still works when Phaser
+// itself is the thing that broke. Fires on genuinely UNCAUGHT errors only
+// (window 'error'/'unhandledrejection'), so it never interferes with
+// anything already handled elsewhere (try/catch, .catch(), etc.) — this is
+// strictly the "nothing else caught this" fallback. Guarded to show once;
+// a cascade of secondary errors after the first shouldn't stack overlays.
+let errorBoundaryShown = false;
+function showErrorBoundary(detail) {
+  if (errorBoundaryShown) return;
+  errorBoundaryShown = true;
+  console.error('[error boundary]', detail);
+
+  const overlay = document.createElement('div');
+  overlay.style.cssText = `
+    position: fixed; inset: 0; z-index: 999999;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    background: rgba(5, 5, 12, 0.94); color: #f1f1f6;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    text-align: center; padding: 24px;
+  `;
+  overlay.innerHTML = `
+    <div style="font-size: 17px; font-weight: 700; margin-bottom: 10px;">Something went wrong</div>
+    <div style="font-size: 13px; color: #9393ab; max-width: 420px; margin-bottom: 22px;">
+      The game hit an unexpected error and can't continue safely. Your progress is saved
+      automatically as you play, so reloading should pick back up close to where you left off.
+    </div>
+    <button id="error-boundary-reload" style="
+      appearance: none; border: 1px solid rgba(255,255,255,0.16); border-radius: 8px;
+      background: #ffaa44; color: #1a1408; font-weight: 700; font-size: 14px;
+      padding: 10px 22px; cursor: pointer;
+    ">Reload</button>
+  `;
+  document.body.appendChild(overlay);
+  document.getElementById('error-boundary-reload').addEventListener('click', () => location.reload());
+}
+
+window.addEventListener('error', (e) => showErrorBoundary(e.error ?? e.message));
+window.addEventListener('unhandledrejection', (e) => showErrorBoundary(e.reason));
+
 const config = {
   type: Phaser.AUTO,
   pixelArt: true,
