@@ -5,11 +5,11 @@
 export const HERO_SPRITES = {
   // ── T1 ────────────────────────────────────────────────────────────────────
   // New art as of 2026-07-02 — grids measured by eye per file, not uniform.
-  'Runner':             { file:'heroes/t1/runnerboy.png',         cols:6, rows:6, fw:249, fh:175 },
-  'Ice Skater':         { file:'heroes/t1/iceskatergirl.png',      cols:6, rows:6, fw:249, fh:175 },
-  'Boxer':              { file:'heroes/t1/boxerlightweight.png',  cols:6, rows:6, fw:249, fh:175 },
-  'Boxer Heavyweight':  { file:'heroes/t1/boxerheavyweight.png',  cols:6, rows:6, fw:249, fh:175 },
-  'Dart Player':        { file:'heroes/t1/Dartarrowchucker.png',  cols:6, rows:6, fw:249, fh:175 },
+  'Runner':             { file:'heroes/t1/runnerboy.webp',         cols:6, rows:6, fw:249, fh:175 },
+  'Ice Skater':         { file:'heroes/t1/iceskatergirl.webp',      cols:6, rows:6, fw:249, fh:175 },
+  'Boxer':              { file:'heroes/t1/boxerlightweight.webp',  cols:6, rows:6, fw:249, fh:175 },
+  'Boxer Heavyweight':  { file:'heroes/t1/boxerheavyweight.webp',  cols:6, rows:6, fw:249, fh:175 },
+  'Dart Player':        { file:'heroes/t1/Dartarrowchucker.webp',  cols:6, rows:6, fw:249, fh:175 },
   // Re-supplied 2026-07-08 — a full replacement sheet, 7 cols x 6 rows
   // (1416x1111, ~202x185/cell; the old 8-col Dancerdance.png this was tuned
   // against — overflowing run poses, runEnd:4, noMoveAnim — no longer
@@ -18,24 +18,24 @@ export const HERO_SPRITES = {
   // fully contained in their cell with no overflow, so none of the old
   // workarounds apply here. skip:0 — column 0 is a real pose every row
   // (confirmed by eye), not a blank label column.
-  'Dancer':             { file:'heroes/t1/Dancerdance.png',       cols:7, rows:6, fw:202, fh:185, skip:0 },
-  'Netballer':          { file:'heroes/t1/netGoalattack.png',     cols:6, rows:6, fw:249, fh:175 },
-  'Netballer Defence':  { file:'heroes/t1/netGaoldefence.png',    cols:6, rows:6, fw:249, fh:175 },
-  'Lacrosse Player':    { file:'heroes/t1/lacrosseAceattacker.png', cols:6, rows:6, fw:249, fh:175 },
-  'Lacrosse Goalkeeper':{ file:'heroes/t1/LacrosseGoalkeeper.png', cols:6, rows:6, fw:249, fh:175 },
-  'Softball Batter':    { file:'heroes/t1/softbatter.png',        cols:6, rows:6, fw:249, fh:175 },
-  'Softball Pitcher':   { file:'heroes/t1/softpitcher.png',       cols:6, rows:6, fw:249, fh:175 },
+  'Dancer':             { file:'heroes/t1/Dancerdance.webp',       cols:7, rows:6, fw:202, fh:185, skip:0 },
+  'Netballer':          { file:'heroes/t1/netGoalattack.webp',     cols:6, rows:6, fw:249, fh:175 },
+  'Netballer Defence':  { file:'heroes/t1/netGaoldefence.webp',    cols:6, rows:6, fw:249, fh:175 },
+  'Lacrosse Player':    { file:'heroes/t1/lacrosseAceattacker.webp', cols:6, rows:6, fw:249, fh:175 },
+  'Lacrosse Goalkeeper':{ file:'heroes/t1/LacrosseGoalkeeper.webp', cols:6, rows:6, fw:249, fh:175 },
+  'Softball Batter':    { file:'heroes/t1/softbatter.webp',        cols:6, rows:6, fw:249, fh:175 },
+  'Softball Pitcher':   { file:'heroes/t1/softpitcher.webp',       cols:6, rows:6, fw:249, fh:175 },
 
   // ── T2 ────────────────────────────────────────────────────────────────────
   // New art as of 2026-07-03 — same 6x6-grid pipeline as T1, grids measured
   // per file (canvas dims aren't perfectly uniform, ~1491-1496 x 1050-1055).
-  'Striker':          { file:'heroes/t2/footballsoccerstrikerboy.png', cols:6, rows:6, fw:249, fh:175 },
-  'Soccer Goalkeeper':{ file:'heroes/t2/footballsoccergaolkeepboy.png',cols:6, rows:6, fw:249, fh:175 },
-  'Long Jumper':      { file:'heroes/t2/AltheticsJumper.png',   cols:6, rows:6, fw:248, fh:175 },
-  'High Jumper':      { file:'heroes/t2/athlticJumperhigh.png', cols:6, rows:6, fw:249, fh:175 },
-  'Speed Skater':     { file:'heroes/t2/skaterspeed.png',       cols:6, rows:6, fw:248, fh:175 },
-  'Black Belt':       { file:'heroes/t2/karatewado.png',        cols:6, rows:6, fw:249, fh:175 },
-  'Kyokushin':        { file:'heroes/t2/karatekyokushin.png',   cols:6, rows:6, fw:249, fh:175 },
+  'Striker':          { file:'heroes/t2/footballsoccerstrikerboy.webp', cols:6, rows:6, fw:249, fh:175 },
+  'Soccer Goalkeeper':{ file:'heroes/t2/footballsoccergaolkeepboy.webp',cols:6, rows:6, fw:249, fh:175 },
+  'Long Jumper':      { file:'heroes/t2/AltheticsJumper.webp',   cols:6, rows:6, fw:248, fh:175 },
+  'High Jumper':      { file:'heroes/t2/athlticJumperhigh.webp', cols:6, rows:6, fw:249, fh:175 },
+  'Speed Skater':     { file:'heroes/t2/skaterspeed.webp',       cols:6, rows:6, fw:248, fh:175 },
+  'Black Belt':       { file:'heroes/t2/karatewado.webp',        cols:6, rows:6, fw:249, fh:175 },
+  'Kyokushin':        { file:'heroes/t2/karatekyokushin.webp',   cols:6, rows:6, fw:249, fh:175 },
   // bgTol: 8 — both paintball sheets use very dark tactical/camo colors
   // close to pure black; the default TOL=30 flood-fill leaks from the
   // background into that dark gear and eats holes in the character
@@ -47,38 +47,38 @@ export const HERO_SPRITES = {
   // At TOL=8 that no longer happens, leaving a visible thin divider line
   // (2026-07-07 feedback: "now we have that dark vertical line"). band:4
   // fixes it without exceeding the corner-seed inset (see stripBackgroundByKey).
-  'Paintballer':      { file:'heroes/t2/paintballsinper.png',   cols:6, rows:6, fw:248, fh:175, bgTol:8, bgBand:4 },
-  'Frontman':         { file:'heroes/t2/paintballfrontman.png', cols:6, rows:6, fw:248, fh:175, bgTol:8, bgBand:4 },
-  'Gymnast':          { file:'heroes/t2/Gymnatsic.png',         cols:6, rows:6, fw:248, fh:175 },
-  'Spiker':           { file:'heroes/t2/volleyballspiker.png',  cols:6, rows:6, fw:248, fh:175 },
-  'Setter':           { file:'heroes/t2/volleyballsetter.png',  cols:6, rows:6, fw:248, fh:175 },
+  'Paintballer':      { file:'heroes/t2/paintballsinper.webp',   cols:6, rows:6, fw:248, fh:175, bgTol:8, bgBand:4 },
+  'Frontman':         { file:'heroes/t2/paintballfrontman.webp', cols:6, rows:6, fw:248, fh:175, bgTol:8, bgBand:4 },
+  'Gymnast':          { file:'heroes/t2/Gymnatsic.webp',         cols:6, rows:6, fw:248, fh:175 },
+  'Spiker':           { file:'heroes/t2/volleyballspiker.webp',  cols:6, rows:6, fw:248, fh:175 },
+  'Setter':           { file:'heroes/t2/volleyballsetter.webp',  cols:6, rows:6, fw:248, fh:175 },
   // 'Skate Boarder' dropped — no role ever mapped to it and the old art file is gone.
-  'Cricket Player':   { file:'heroes/t2/cricketbatter.png',     cols:6, rows:6, fw:249, fh:175 },
-  'Cricket Pitcher':  { file:'heroes/t2/criketpitcher.png',     cols:6, rows:6, fw:249, fh:175 },
-  'Tennis Player':    { file:'heroes/t2/tennissigles.png',      cols:6, rows:6, fw:248, fh:175 },
-  'Tennis Doubles':   { file:'heroes/t2/tennisdoubles.png',     cols:6, rows:6, fw:248, fh:175 },
-  'Cheerleader':      { file:'heroes/t2/cheerleader.png',       cols:6, rows:6, fw:248, fh:175 },
+  'Cricket Player':   { file:'heroes/t2/cricketbatter.webp',     cols:6, rows:6, fw:249, fh:175 },
+  'Cricket Pitcher':  { file:'heroes/t2/criketpitcher.webp',     cols:6, rows:6, fw:249, fh:175 },
+  'Tennis Player':    { file:'heroes/t2/tennissigles.webp',      cols:6, rows:6, fw:248, fh:175 },
+  'Tennis Doubles':   { file:'heroes/t2/tennisdoubles.webp',     cols:6, rows:6, fw:248, fh:175 },
+  'Cheerleader':      { file:'heroes/t2/cheerleader.webp',       cols:6, rows:6, fw:248, fh:175 },
 
   // ── T3 ────────────────────────────────────────────────────────────────────
-  'Rugger':             { file:'heroes/t3/rugbyaceforward.png',    cols:6, rows:6, fw:248, fh:175 },
-  'Rugby Defender':     { file:'heroes/t3/rugbyacedefender.png',   cols:6, rows:6, fw:249, fh:175 },
-  'Quarterback':        { file:'heroes/t3/amfootballqb.png',       cols:6, rows:6, fw:249, fh:175 },
-  'Am Football Defender':{ file:'heroes/t3/amfootballdefender.png',cols:6, rows:6, fw:249, fh:175 },
-  'Sprinter':           { file:'heroes/t3/sprinter starter.png',   cols:6, rows:6, fw:249, fh:175 },
-  'Sprinter Anchor':    { file:'heroes/t3/sprinterachor.png',      cols:6, rows:6, fw:249, fh:175 },
-  'Hockey Player':      { file:'heroes/t3/hockeyaceforward.png',   cols:6, rows:6, fw:249, fh:175 },
-  'Hockey Goalie':      { file:'heroes/t3/hockegoalie.png',        cols:6, rows:6, fw:249, fh:175 },
-  'MMA':                { file:'heroes/t3/mmaheavyweight.png',     cols:6, rows:6, fw:249, fh:175 },
-  'MMA Lightweight':    { file:'heroes/t3/mmalightweight.png',     cols:6, rows:6, fw:249, fh:175 },
-  'Kendo':              { file:'heroes/t3/masterkendo.png',        cols:6, rows:6, fw:249, fh:175 },
-  'Archer':             { file:'heroes/t3/archer.png',             cols:6, rows:6, fw:249, fh:175 },
-  'Aerial Fitness':     { file:'heroes/t3/airfitness.png',         cols:6, rows:6, fw:248, fh:175 },
-  'Baller':             { file:'heroes/t3/basketballaceforward.png',cols:6, rows:6, fw:249, fh:175 },
+  'Rugger':             { file:'heroes/t3/rugbyaceforward.webp',    cols:6, rows:6, fw:248, fh:175 },
+  'Rugby Defender':     { file:'heroes/t3/rugbyacedefender.webp',   cols:6, rows:6, fw:249, fh:175 },
+  'Quarterback':        { file:'heroes/t3/amfootballqb.webp',       cols:6, rows:6, fw:249, fh:175 },
+  'Am Football Defender':{ file:'heroes/t3/amfootballdefender.webp',cols:6, rows:6, fw:249, fh:175 },
+  'Sprinter':           { file:'heroes/t3/sprinter starter.webp',   cols:6, rows:6, fw:249, fh:175 },
+  'Sprinter Anchor':    { file:'heroes/t3/sprinterachor.webp',      cols:6, rows:6, fw:249, fh:175 },
+  'Hockey Player':      { file:'heroes/t3/hockeyaceforward.webp',   cols:6, rows:6, fw:249, fh:175 },
+  'Hockey Goalie':      { file:'heroes/t3/hockegoalie.webp',        cols:6, rows:6, fw:249, fh:175 },
+  'MMA':                { file:'heroes/t3/mmaheavyweight.webp',     cols:6, rows:6, fw:249, fh:175 },
+  'MMA Lightweight':    { file:'heroes/t3/mmalightweight.webp',     cols:6, rows:6, fw:249, fh:175 },
+  'Kendo':              { file:'heroes/t3/masterkendo.webp',        cols:6, rows:6, fw:249, fh:175 },
+  'Archer':             { file:'heroes/t3/archer.webp',             cols:6, rows:6, fw:249, fh:175 },
+  'Aerial Fitness':     { file:'heroes/t3/airfitness.webp',         cols:6, rows:6, fw:248, fh:175 },
+  'Baller':             { file:'heroes/t3/basketballaceforward.webp',cols:6, rows:6, fw:249, fh:175 },
   // 'Parkour' dropped — no role ever mapped to it and the old art file is gone.
-  'Baseball Player':    { file:'heroes/t3/baseballbatter.png',     cols:6, rows:6, fw:256, fh:170 },
-  'Baseball Pitcher':   { file:'heroes/t3/baseballpitcher.png',    cols:6, rows:6, fw:248, fh:175 },
-  'Golfer':             { file:'heroes/t3/gulfer.png',             cols:6, rows:6, fw:249, fh:175 },
-  'Figure Skater':      { file:'heroes/t3/figureskater.png',       cols:6, rows:6, fw:247, fh:176 },
+  'Baseball Player':    { file:'heroes/t3/baseballbatter.webp',     cols:6, rows:6, fw:256, fh:170 },
+  'Baseball Pitcher':   { file:'heroes/t3/baseballpitcher.webp',    cols:6, rows:6, fw:248, fh:175 },
+  'Golfer':             { file:'heroes/t3/gulfer.webp',             cols:6, rows:6, fw:249, fh:175 },
+  'Figure Skater':      { file:'heroes/t3/figureskater.webp',       cols:6, rows:6, fw:247, fh:176 },
 };
 
 // Role id → existing HERO_SPRITES key (unchanged old class-name strings —

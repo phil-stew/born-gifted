@@ -56,19 +56,19 @@ export const MONSTER_BASE_STATS = {
 // Only Wolf/Boar/Deer are wired into BattleScene's loader today; the other
 // 7 files exist on disk but aren't loaded anywhere yet.
 const SPRITE_INFO = {
-  Wolf:   { spriteKey: 'wolf-idle',   animKey: 'wolf-idle',   file: 'monster/wolf.png',   fw: 249, fh: 175, spriteScale: 0.35, moveSpeed: 2 },
-  Boar:   { spriteKey: 'boar-idle',   animKey: 'boar-idle',   file: 'monster/boar.png',   fw: 256, fh: 170, spriteScale: 0.35, moveSpeed: 2 },
-  Deer:   { spriteKey: 'deer-idle',   animKey: 'deer-idle',   file: 'monster/deer.png',   fw: 248, fh: 175, spriteScale: 0.3,  moveSpeed: 3 },
+  Wolf:   { spriteKey: 'wolf-idle',   animKey: 'wolf-idle',   file: 'monster/wolf.webp',   fw: 249, fh: 175, spriteScale: 0.35, moveSpeed: 2 },
+  Boar:   { spriteKey: 'boar-idle',   animKey: 'boar-idle',   file: 'monster/boar.webp',   fw: 256, fh: 170, spriteScale: 0.35, moveSpeed: 2 },
+  Deer:   { spriteKey: 'deer-idle',   animKey: 'deer-idle',   file: 'monster/deer.webp',   fw: 248, fh: 175, spriteScale: 0.3,  moveSpeed: 3 },
   // Wired up for M3a (Northern Cave)/M3b (Hilbert Low Lands), the M0-M4
   // redesign's Capital test battles — same 1495×1052 canvas as Wolf, so the
   // same fw/fh. Goblin: slower art scale reads well for its stockier flavor;
   // Lion: faster moveSpeed to match its higher speed stat vs Wolf.
-  Goblin: { spriteKey: 'goblin-idle', animKey: 'goblin-idle', file: 'monster/goblin.png', fw: 249, fh: 175, spriteScale: 0.35, moveSpeed: 2 },
-  Lion:   { spriteKey: 'lion-idle',   animKey: 'lion-idle',   file: 'monster/lion.png',   fw: 249, fh: 175, spriteScale: 0.35, moveSpeed: 3 },
+  Goblin: { spriteKey: 'goblin-idle', animKey: 'goblin-idle', file: 'monster/goblin.webp', fw: 249, fh: 175, spriteScale: 0.35, moveSpeed: 2 },
+  Lion:   { spriteKey: 'lion-idle',   animKey: 'lion-idle',   file: 'monster/lion.webp',   fw: 249, fh: 175, spriteScale: 0.35, moveSpeed: 3 },
   // Wired for Ester Academy's "Defeat 1 dragon and two wyverns" quest
   // (2026-07-11). Same 1536x1024 canvas as Boar, so the same fw/fh (256x170).
-  Dragon: { spriteKey: 'dragon-idle', animKey: 'dragon-idle', file: 'monster/dragon.png', fw: 256, fh: 170, spriteScale: 0.4,  moveSpeed: 2 },
-  Wyvern: { spriteKey: 'wyven-idle',  animKey: 'wyven-idle',  file: 'monster/wyven.png',  fw: 256, fh: 170, spriteScale: 0.35, moveSpeed: 3 },
+  Dragon: { spriteKey: 'dragon-idle', animKey: 'dragon-idle', file: 'monster/dragon.webp', fw: 256, fh: 170, spriteScale: 0.4,  moveSpeed: 2 },
+  Wyvern: { spriteKey: 'wyven-idle',  animKey: 'wyven-idle',  file: 'monster/wyven.webp',  fw: 256, fh: 170, spriteScale: 0.35, moveSpeed: 3 },
   // Golem (2026-07-18, "North of A3 they will fight the Golems as their
   // last trial") — no Golem art exists on disk (still one of the 7
   // "data first" species from the original monster redesign). No `file`
@@ -98,7 +98,7 @@ export function spriteInfoForBase(base) {
 // footprint (`size: 2` on the M0b enemy entry) — BattleScene.js's
 // occupiedTiles/registerUnit generalize movement/targeting/collision for it.
 // `fixedIdleFrames` (2026-07-08, after 3 iterations on this same sprite) —
-// kingwolf.png's idle row has TWO separate defects on every one of its 6
+// kingwolf.webp's idle row has TWO separate defects on every one of its 6
 // poses, confirmed by direct raw-pixel analysis, not guesswork:
 //  1. The tail is painted wider than its own ~249px cell on frames 0-5 (a
 //     connected-component flood fill from each frame's own torso, seeded
@@ -172,12 +172,12 @@ export function spriteInfoForBase(base) {
 // no-op for anything without a `.portrait`), so this idle loop is the only
 // animation King Wolf ever needs.
 const UNIQUE_SPRITE_INFO = {
-  'King Lion': { spriteKey: 'kinglion-idle', animKey: 'kinglion-idle', file: 'monster/kinglion.png', fw: 249, fh: 175, spriteScale: 0.35, moveSpeed: 3 },
+  'King Lion': { spriteKey: 'kinglion-idle', animKey: 'kinglion-idle', file: 'monster/kinglion.webp', fw: 249, fh: 175, spriteScale: 0.35, moveSpeed: 3 },
   // Goblin King (A2b) — dedicated art, same 1495x1052/6x6 canvas as King
   // Lion, single-tile (no size:2 override, unlike King Wolf).
-  'Goblin King': { spriteKey: 'goblinking-idle', animKey: 'goblinking-idle', file: 'monster/goblinking.png', fw: 249, fh: 175, spriteScale: 0.35, moveSpeed: 2 },
+  'Goblin King': { spriteKey: 'goblinking-idle', animKey: 'goblinking-idle', file: 'monster/goblinking.webp', fw: 249, fh: 175, spriteScale: 0.35, moveSpeed: 2 },
   'King Wolf': {
-    spriteKey: 'kingwolf-idle', animKey: 'kingwolf-idle', file: 'monster/kingwolf.png',
+    spriteKey: 'kingwolf-idle', animKey: 'kingwolf-idle', file: 'monster/kingwolf.webp',
     fw: 249, fh: 176, spriteScale: 0.65, moveSpeed: 2,
     fixedIdleOriginX: 0.55,
     fixedIdleFrames: [
