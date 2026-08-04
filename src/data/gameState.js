@@ -917,6 +917,27 @@ export function equipPassive(unit, slotIndex, passiveId) {
   unit.classSkills[slotIndex] = passiveId;
 }
 
+// Kael/Trice never got a working recruit path after M5/M6 were removed
+// (2026-07-11, "going to rewrite"), but a few story cutscenes still had
+// lines hard-attributed to them by name — reading as a stranger speaking
+// on the player's behalf for anyone who never had either in the party
+// (2026-08-04 fix). Drace has the same problem despite being recruitable:
+// recruiting Drace is optional, and PartyScene allows dismissing anyone
+// after. Resolved dynamically instead of hardcoded — a cutscene's `lines`
+// mark a placeholder speaker as `__PARTY_2__`/`__PARTY_3__` (1-indexed,
+// matching "2nd/3rd party member"), and this swaps in whoever's ACTUALLY
+// in that roster slot at cutscene time, or drops the line entirely if the
+// party's smaller than that slot.
+export function resolvePartyLines(lines) {
+  return lines.map(line => {
+    const m = /^__PARTY_(\d)__$/.exec(line.speaker);
+    if (!m) return line;
+    const unit = state.party[Number(m[1]) - 1];
+    if (!unit) return null;
+    return { ...line, speaker: unit.name.split(' ')[0], color: '#' + unit.color.toString(16).padStart(6, '0') };
+  }).filter(Boolean);
+}
+
 // Complete a mission and unlock the next one.
 export function completeMission(missionId, nextMissionId) {
   if (!state.completedMissions.includes(missionId)) {

@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { state, saveGame, allAcademyQuestsDone, allGaleQuestsDone } from '../data/gameState.js';
+import { state, saveGame, allAcademyQuestsDone, allGaleQuestsDone, resolvePartyLines } from '../data/gameState.js';
 import { stripBackgroundByKey } from '../data/heroSprites.js';
 import { BACKDROPS } from '../data/storyBackdrops.js';
 import { drawButton } from '../ui/canvasButton.js';
@@ -313,10 +313,10 @@ const NEW_AREA_INTRO = {
     backdrop: BACKDROPS.lametusWilds,
     lines: [
       { speaker: 'Narrator', color: '#888899', text: 'Lametus\'s trial grounds sit past a stretch of wilds gone strangely quiet — no birds, no wind through the grass, just a sour taste in the air.' },
-      { speaker: 'Drace',    color: '#88cc66', text: '...This is where we\'re supposed to prove ourselves?' },
+      { speaker: '__PARTY_2__', text: '...This is where we\'re supposed to prove ourselves?' },
       { speaker: 'Reno',     color: '#4488ff', text: 'Something\'s not right with those monsters up ahead. Look how still they\'re standing. That glow around them isn\'t natural.' },
-      { speaker: 'Kael',     color: '#ffaa44', text: 'You think someone\'s controll—' },
-      { speaker: 'Narrator', color: '#888899', text: 'Before he can finish, the monsters move as one — and the trial begins without them.' },
+      { speaker: '__PARTY_3__', text: 'You think someone\'s controll—' },
+      { speaker: 'Narrator', color: '#888899', text: 'Before anyone can finish that thought, the monsters move as one — and the trial begins without them.' },
     ],
   },
   // M7 — the villain's reveal (2026-07-17, "the villian will show himself
@@ -1114,13 +1114,13 @@ export class WorldMapScene extends Phaser.Scene {
         this.scene.start('StoryScene', {
           location: 'LAMETUS CAPITAL',
           backdrop: BACKDROPS.lametusTown,
-          lines: [
+          lines: resolvePartyLines([
             { speaker: 'Narrator', color: '#888899', text: 'The capital gates open onto a city buzzing with banners and crowds — something big is happening today.' },
-            { speaker: 'Drace',    color: '#88cc66', text: '...Reno, what\'s the date?' },
+            { speaker: '__PARTY_2__', text: '...Reno, what\'s the date?' },
             { speaker: 'Reno',     color: '#4488ff', text: '...I don\'t— wait.' },
             { speaker: 'Narrator', color: '#888899', text: 'It\'s been almost three weeks since the arena. A passing official confirms it: today is the day of the Final Tournament — entry requires proof of clearing at least one trial.' },
-            { speaker: 'Kael',     color: '#ffaa44', text: '...Then we don\'t have time to waste. There\'s one just north of here. Let\'s go.' },
-          ],
+            { speaker: '__PARTY_3__', text: '...Then we don\'t have time to waste. There\'s one just north of here. Let\'s go.' },
+          ]),
           nextScene: 'WorldMapScene', nextSceneData: {},
         });
         return;
@@ -1151,7 +1151,7 @@ export class WorldMapScene extends Phaser.Scene {
         this.scene.start('StoryScene', {
           location: intro.location,
           backdrop: intro.backdrop,
-          lines: intro.lines,
+          lines: resolvePartyLines(intro.lines),
           nextScene: 'BattleScene', nextSceneData: {},
         });
       } else {

@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { state, addXP, xpToNext, completeMission, gearLayoutForUnit, roleDisplayLabel, TRIAL_CLASS, sportById, currentSport } from '../data/gameState.js';
+import { state, addXP, xpToNext, completeMission, gearLayoutForUnit, roleDisplayLabel, TRIAL_CLASS, sportById, currentSport, resolvePartyLines } from '../data/gameState.js';
 import { getMissionMaterials, getKillDrops, rollHealHerbDrop, rollBracketedDrop, rollGodTierClassItem } from '../data/items.js';
 import { BACKDROPS } from '../data/storyBackdrops.js';
 import { drawButton } from '../ui/canvasButton.js';
@@ -99,7 +99,7 @@ const CUTSCENE_AFTER = {
       { speaker:'Noble Deity', color:'#ffdd66', text:'Three kingdoms, one trial, one tournament, and still you\'re the ones left standing. That earns more than a title.' },
       { speaker:'Noble Deity', color:'#ffdd66', text:'By the victor\'s right, Altroes sets the terms this age. Use it well.' },
       { speaker:'Reno',        color:'#4488ff', text:'Then here\'s the term: no more kingdoms hoarding what the others need. Altroes, Gale, Lametus — we share what keeps each other standing, starting now.' },
-      { speaker:'Drace',       color:'#88cc66', text:'...And we stop looking away when something like him starts growing in the dark. All three kingdoms. Together, this time.' },
+      { speaker:'__PARTY_2__', text:'...And we stop looking away when something like him starts growing in the dark. All three kingdoms. Together, this time.' },
       { speaker:'Noble Deity', color:'#ffdd66', text:'Spoken like people who\'ve earned the right to say it.' },
       { speaker:'Narrator',    color:'#888899', text:'Gold light gathers in her hand, no bigger than a coin, and settles into the arena stone like a seal pressed into wax. When it fades, the words are simply there, carved into the ground for every kingdom to read. Law now — not just a promise.' },
       { speaker:'Noble Deity', color:'#ffdd66', text:'Go home. Rest. You\'ve more than earned it.' },
@@ -376,7 +376,7 @@ export class VictoryScene extends Phaser.Scene {
     const postCutsceneData  = recruits ? { recruitIds: recruits, nextScene: 'WorldMapScene', nextSceneData: {} } : {};
     const afterScene     = cutscene ? 'StoryScene' : postCutsceneScene;
     const afterSceneData = cutscene
-      ? { lines: cutscene.lines, location: cutscene.location, backdrop: cutscene.backdrop, nextScene: postCutsceneScene, nextSceneData: postCutsceneData }
+      ? { lines: resolvePartyLines(cutscene.lines), location: cutscene.location, backdrop: cutscene.backdrop, nextScene: postCutsceneScene, nextSceneData: postCutsceneData }
       : postCutsceneData;
 
     // Loot now gets its own screen (2026-07-08 feedback: the inline grid
