@@ -292,8 +292,15 @@ export class GameScene extends Phaser.Scene {
 
   // Three independent save slots — each row loads/continues if occupied, or
   // starts a new game in that slot if empty. An occupied slot also gets a
-  // small "NEW" reset control (tap-twice-to-confirm, same pattern the old
-  // single NEW GAME button used) to wipe just that slot and start over.
+  // small "DELETE" control (tap-twice-to-confirm, same arm/confirm pattern
+  // the old single NEW GAME button used) that just clears the slot and
+  // returns to the title screen showing it empty — 2026-08-04, "we don't
+  // have a way to delete a saved game": this control already existed but
+  // was labeled "NEW" and force-chained straight into character creation
+  // for that slot after deleting, which reads as "start a new game"
+  // rather than "delete" — not the same thing, and not what was asked
+  // for. Deleting now just deletes; starting fresh is the normal
+  // tap-the-empty-slot flow every empty slot already has.
   showSlotPicker(cx, cy) {
     this.armedResetSlot = null;
     this.resetLabels = {};
@@ -370,7 +377,7 @@ export class GameScene extends Phaser.Scene {
 
     if (occupied) {
       const rx = cx + w / 2 - resetW / 2 - 6;
-      const resetLabel = this.add.text(rx, y + h / 2, 'NEW', {
+      const resetLabel = this.add.text(rx, y + h / 2, 'DELETE', {
         fontSize: '10px', fontFamily: 'monospace', fontStyle: 'bold', color: '#885555',
       }).setOrigin(0.5);
       this.resetLabels[slot] = resetLabel;
@@ -384,9 +391,9 @@ export class GameScene extends Phaser.Scene {
         playSfx(this, SFX.click);
         if (this.armedResetSlot === slot) {
           deleteSave(slot);
-          this.startCrawl(slot);
+          this.scene.start('GameScene', { skipCrawl: true });
         } else {
-          if (this.armedResetSlot != null) this.resetLabels[this.armedResetSlot]?.setText('NEW').setColor('#885555');
+          if (this.armedResetSlot != null) this.resetLabels[this.armedResetSlot]?.setText('DELETE').setColor('#885555');
           this.armedResetSlot = slot;
           resetLabel.setText('CONFIRM?').setColor('#ff6666');
         }
