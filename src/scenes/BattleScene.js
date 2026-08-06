@@ -13,6 +13,22 @@ import { preloadSfx, playSfx, playStinger, SFX } from '../audio/sound.js';
 import { preloadMusic, playMusic } from '../audio/music.js';
 import { getDifficultyConfig } from '../data/difficulty.js';
 
+// M1 first-time control tutorial (2026-08-06, "some people struggle to
+// know how to move and attack") — shown once ever (a plain localStorage
+// flag, not tied to a save slot — same "have they ever seen this"
+// semantics difficulty.js's own preference uses), walking a brand-new
+// player through select → move → attack live on M1's actual battlefield
+// rather than a separate mock-up scene. See create()'s tutorialActive
+// setup, selectUnit/the move+attack click-handler branches, and
+// updateTutorialOverlay/createTutorialUI/completeTutorial below.
+const M1_TUTORIAL_KEY = 'born-gifted-m1-tutorial-done';
+function isM1TutorialDone() {
+  try { return localStorage.getItem(M1_TUTORIAL_KEY) === '1'; } catch { return true; }
+}
+function markM1TutorialDone() {
+  try { localStorage.setItem(M1_TUTORIAL_KEY, '1'); } catch { /* private mode etc. — just don't persist */ }
+}
+
 const COLS = 10, ROWS = 10;
 // Bigger isometric tiles (2026-07-07 feedback) — was 64×32 at .setScale(2)
 // (native tile art is 32×32, so scale = TILE_W/32 keeps tiles seamless with
@@ -1265,6 +1281,11 @@ export class BattleScene extends Phaser.Scene {
     // threading it through every call — 2026-07-11 ("Goblin King"/"Cave
     // Depths" quests, see spawnReinforcements/isVictory below).
     this.missionCfg = missionCfg;
+    this.missionId = missionId;
+
+    // See the M1_TUTORIAL_KEY comment up top. 'select' -> 'move' -> 'attack' -> null (done).
+    this.tutorialActive = missionId === 'M1' && !isM1TutorialDone();
+    this.tutorialStep = 'select';
 
     // phase: 'player_turn' | 'unit_menu' | 'unit_selected' | 'ability_targeting' | 'enemy_turn' | 'victory' | 'defeat'
     this.phase = 'player_turn';
@@ -1537,6 +1558,8 @@ export class BattleScene extends Phaser.Scene {
     hintBg.fillRect(0, height - 26, width, 26);
     hintBg.lineStyle(2, 0x2a3a6a, 1);
     hintBg.lineBetween(0, height - 26, width, height - 26);
+
+    if (this.tutorialActive) this.createTutorialUI();
 
     // Selected-unit info — centred in header
     this.infoText = this.add.text(width / 2, 6, '', {
@@ -1968,6 +1991,7 @@ export class BattleScene extends Phaser.Scene {
         this.selectUnit(occupant);
       } else if (this.moveRange.has(key) && !occupant) {
         this.moveUnit(this.selectedUnit, t.col, t.row);
+        if (this.tutorialActive && this.tutorialStep === 'move') this.tutorialStep = 'attack';
         if (this.selectedUnit.hasActed) {
           this.endUnitTurn(this.selectedUnit);
         } else {
@@ -1982,7 +2006,10 @@ export class BattleScene extends Phaser.Scene {
       const u    = this.selectedUnit;
       const dist = Math.abs(t.col - u.col) + Math.abs(t.row - u.row);
       if (this.abilityRangeMatches(u, this.activeAbility, dist) && occupant?.team === this.activeAbility.targetType) {
+        const wasTutorialAttack = this.tutorialActive && this.tutorialStep === 'attack'
+          && (this.activeAbility === ATTACK || this.activeAbility === THROW);
         this.executeAbility(this.activeAbility, u, occupant);
+        if (wasTutorialAttack) this.completeTutorial();
       } else {
         // Cancel targeting — reopen the menu
         this.activeAbility = null;
@@ -2024,6 +2051,7 @@ export class BattleScene extends Phaser.Scene {
   selectUnit(unit) {
     this.selectedUnit = unit;
     this.moveRange    = this.getReachableTiles(unit);
+    if (this.tutorialActive && this.tutorialStep === 'select') this.tutorialStep = 'move';
     this.showActionMenu(unit);
   }
 
@@ -2852,6 +2880,18 @@ export class BattleScene extends Phaser.Scene {
         z.on('pointerdown',  (ptr, lx, ly, evt) => { evt.stopPropagation(); playSfx(this, SFX.battleClick); action(); });
         con.add(z);
       }
+
+      // M1 tutorial (2026-08-06) — pulsing outline on whichever row the
+      // current step wants tapped next, so "choose an action" isn't a guess.
+      if (this.tutorialActive &&
+          ((this.tutorialStep === 'move' && label === 'Move') ||
+           (this.tutorialStep === 'attack' && label === 'Playbook'))) {
+        const hl = this.add.graphics();
+        hl.lineStyle(2, 0xffee88, 0.95);
+        hl.strokeRoundedRect(2, iy + 3, MW - 4, IH - 5, 6);
+        con.add(hl);
+        this.tweens.add({ targets: hl, alpha: 0.25, duration: 500, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+      }
     });
   }
 
@@ -3073,6 +3113,17 @@ export class BattleScene extends Phaser.Scene {
           else this.startTargeting(ab);
         });
         con.add(z);
+
+        // M1 tutorial (2026-08-06) — see the ITEMS.forEach highlight above;
+        // same idea one level deeper, on whichever of the two universal
+        // baseline moves (Attack/Throw) is actually usable right now.
+        if (this.tutorialActive && this.tutorialStep === 'attack' && (ab === ATTACK || ab === THROW)) {
+          const hl = this.add.graphics();
+          hl.lineStyle(2, 0xffee88, 0.95);
+          hl.strokeRoundedRect(2, iy + 2, MW - 4, IH - 4, 6);
+          con.add(hl);
+          this.tweens.add({ targets: hl, alpha: 0.25, duration: 500, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+        }
       }
     });
   }
@@ -3447,6 +3498,99 @@ export class BattleScene extends Phaser.Scene {
     this.time.delayedCall(3000, () => {
       if (this.statusPopup === con) { con.destroy(true); this.statusPopup = null; }
     });
+  }
+
+  // M1 tutorial UI (2026-08-06) — see the M1_TUTORIAL_KEY comment up top.
+  // Built once in create(); updateTutorialOverlay() (called from redraw())
+  // just repositions/re-texts these each frame rather than rebuilding them.
+  createTutorialUI() {
+    const { width } = this.scale;
+
+    this.tutorialBannerText = this.add.text(width / 2, 40, '', {
+      fontSize: '13px', fontFamily: 'monospace', fontStyle: 'bold', color: '#ffee88',
+      stroke: '#000000', strokeThickness: 4, align: 'center',
+      wordWrap: { width: width - 140 },
+    }).setOrigin(0.5).setDepth(5001);
+
+    // Left-aligned under RETREAT, not top-right — drawReferenceHud's
+    // designation/element cheat-sheet panel already owns that whole corner
+    // (px..width-6, y 34-98).
+    this.tutorialSkipBtn = this.add.text(10, 34, 'Skip tutorial ✕', {
+      fontSize: '10px', fontFamily: 'monospace', color: '#8899bb',
+    }).setOrigin(0, 0).setDepth(5001).setInteractive({ useHandCursor: true });
+    this.tutorialSkipBtn.on('pointerover', () => this.tutorialSkipBtn.setColor('#ffffff'));
+    this.tutorialSkipBtn.on('pointerout',  () => this.tutorialSkipBtn.setColor('#8899bb'));
+    this.tutorialSkipBtn.on('pointerdown', (ptr, lx, ly, evt) => {
+      evt?.stopPropagation();
+      playSfx(this, SFX.click);
+      this.completeTutorial(true);
+    });
+
+    // Pulsing ring pointing at whichever unit the player should tap first —
+    // same fading-expand technique WorldMapScene's node markers use.
+    this.tutorialPulse = this.add.circle(0, 0, 22, 0xffee88, 0)
+      .setStrokeStyle(3, 0xffee88, 0.95).setDepth(4999).setVisible(false);
+    this.tweens.add({
+      targets: this.tutorialPulse, scaleX: 1.6, scaleY: 1.6, alpha: 0,
+      duration: 900, repeat: -1, ease: 'Sine.easeOut',
+    });
+  }
+
+  // Called from redraw() every frame the tutorial is active. Cheap no-op
+  // reposition/re-text, not a rebuild — the persistent objects live for
+  // the tutorial's whole lifetime (see createTutorialUI/completeTutorial).
+  updateTutorialOverlay() {
+    if (!this.tutorialActive) return;
+
+    // A deselect (tapping empty space away from the highlighted tiles)
+    // clears selectedUnit without regressing tutorialStep — reusing the
+    // 'select' visuals here rather than tracking a separate "reselecting"
+    // state covers that case for free.
+    if (this.tutorialStep === 'select' || (this.tutorialStep === 'move' && !this.selectedUnit)) {
+      this.tutorialBannerText.setText('👉 TAP YOUR HERO TO SELECT THEM');
+      const unit = this.playerUnits.find(u => !u.isDead);
+      if (unit) {
+        const { x, y } = this.gridToScreen(unit.col, unit.row);
+        this.tutorialPulse.setPosition(x, y).setVisible(true);
+      }
+      return;
+    }
+    this.tutorialPulse.setVisible(false);
+
+    if (this.tutorialStep === 'move') {
+      this.tutorialBannerText.setText('👉 TAP MOVE, THEN TAP A GLOWING TILE TO GET CLOSER');
+      return;
+    }
+
+    if (this.tutorialStep === 'attack') {
+      // M2 is a couple turns' march away from M1's enemies at the start —
+      // rather than nag every turn while still closing the distance, the
+      // banner only speaks up once the equipped Attack/Throw could
+      // actually reach someone (Throw's range 4 is the more permissive of
+      // the two universal baseline moves — see abilities.js's ATTACK/THROW).
+      const u = this.selectedUnit;
+      const inRange = u && this.enemyUnits.some(e =>
+        !e.isDead && Math.abs(e.col - u.col) + Math.abs(e.row - u.row) <= 4);
+      this.tutorialBannerText.setText(inRange ? '👉 TAP PLAYBOOK, THEN ATTACK TO STRIKE THE ENEMY' : '');
+    }
+  }
+
+  // skipped=true from the "Skip tutorial" button; false from actually
+  // completing the attack step. Either way it's marked done forever —
+  // this never nags a player who explicitly opted out.
+  completeTutorial(skipped = false) {
+    if (!this.tutorialActive) return;
+    this.tutorialActive = false;
+    this.tutorialStep = null;
+    markM1TutorialDone();
+    this.tutorialPulse?.setVisible(false);
+    this.tutorialSkipBtn?.setVisible(false);
+    if (skipped) {
+      this.tutorialBannerText?.setText('');
+    } else {
+      this.tutorialBannerText?.setText('Nice — you\'ve got the basics!');
+      this.time.delayedCall(2200, () => this.tutorialBannerText?.setText(''));
+    }
   }
 
   hideActionMenu() {
@@ -4792,5 +4936,7 @@ export class BattleScene extends Phaser.Scene {
 
     // Clear any pooled highlight graphics left over from a frame that used more tiles
     for (let i = this.hlPoolIndex; i < this.hlPool.length; i++) this.hlPool[i].clear();
+
+    this.updateTutorialOverlay();
   }
 }
