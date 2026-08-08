@@ -109,6 +109,15 @@ const config = {
 
 window.__game = new Phaser.Game(config);
 
+// manifest.json's "Settings" home-screen shortcut (2026-08-08) launches to
+// /?shortcut=settings — jump straight past the title/splash once GameScene
+// has actually booted (its own preload/create needs to run first either way).
+if (new URLSearchParams(location.search).get('shortcut') === 'settings') {
+  window.__game.events.once('ready', () => {
+    window.__game.scene.start('SettingsScene', { returnScene: 'GameScene', returnData: { skipCrawl: true } });
+  });
+}
+
 // ── Re-fit on resize/rotation (2026-08-04) — computeGameWidth() above only
 // ran once, at cold boot. Real-device testing turned up a case where iOS
 // Safari's very first window.innerWidth/innerHeight reading after a reload
@@ -140,4 +149,16 @@ window.addEventListener('orientationchange', () => {
 // mode (see below) handles that gracefully without cropping anything.
 if (screen.orientation?.lock) {
   screen.orientation.lock('landscape').catch(() => {});
+}
+
+// ── Service worker (2026-08-08, PWA/Android-packaging pass) — see sw.js's
+// own header comment for the caching strategy and why it's deliberately
+// not cache-first. Registered after 'load' so it never competes with the
+// initial page/game bundle for bandwidth. './sw.js' (relative), matching
+// vite.config.js's relative base — resolves correctly whether the site
+// ends up served from a domain root (Vercel) or a nested path.
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js').catch(() => {});
+  });
 }

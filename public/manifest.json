@@ -1,15 +1,28 @@
 {
+  "id": "/",
   "name": "Fantasy Sports Tactics",
   "short_name": "FS Tactics",
+  "description": "A sports-fantasy tactics RPG — recruit Gifted athletes, promote them through 3 class tiers, and battle across three kingdoms in isometric grid combat on the road to the Grand Tournament.",
   "start_url": "/",
+  "scope": "/",
   "display": "fullscreen",
   "orientation": "landscape",
   "background_color": "#0a0a18",
   "theme_color": "#0a0a18",
+  "lang": "en",
+  "dir": "ltr",
+  "categories": ["games", "entertainment"],
   "icons": [
     { "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
     { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
     { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
     { "src": "/icon-512-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "screenshots": [
+    { "src": "/screenshot-worldmap.png", "sizes": "1024x600", "type": "image/png", "form_factor": "wide", "label": "World map — three kingdoms to explore" },
+    { "src": "/screenshot-battle.png", "sizes": "1024x600", "type": "image/png", "form_factor": "wide", "label": "Isometric grid combat" }
+  ],
+  "shortcuts": [
+    { "name": "Settings", "url": "/?shortcut=settings" }
   ]
 }
