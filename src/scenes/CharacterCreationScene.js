@@ -20,6 +20,11 @@ export class CharacterCreationScene extends Phaser.Scene {
 
   init(data) {
     this.slot = data?.slot ?? 1;
+    // New Game+ (2026-08-13) — non-empty only when this run was launched
+    // from a beaten slot's "NEW GAME+" button (see GameScene.js), carrying
+    // every piece of gear that save ever owned. Threaded straight into
+    // newGame() at the end of the difficulty step.
+    this.ngPlusGear = data?.ngPlusGear ?? [];
     this.step = 'name'; // 'name' | 'sport' | 'role' | 'element' | 'talent1' | 'talent2' | 'confirm' | 'difficulty'
     this.chosenName = '';
     this.chosenSport = null;
@@ -285,7 +290,11 @@ export class CharacterCreationScene extends Phaser.Scene {
 
   renderDifficultyStep() {
     this.headerText.setText('CHOOSE YOUR DIFFICULTY');
-    this.subText.setText('You can change this anytime from Settings on the title screen.');
+    this.subText.setText(
+      this.ngPlusGear.length
+        ? `You can change this anytime from Settings.  ✦ New Game+: ${this.ngPlusGear.length} gear piece${this.ngPlusGear.length === 1 ? '' : 's'} carrying over.`
+        : 'You can change this anytime from Settings on the title screen.'
+    );
 
     const DESC = {
       newbie:   'Softer enemies, extra damage — a relaxed pace',
@@ -305,7 +314,7 @@ export class CharacterCreationScene extends Phaser.Scene {
           name: this.chosenName,
         });
         setDifficultyKey(d.key);
-        newGame(starter, this.slot);
+        newGame(starter, this.slot, this.ngPlusGear);
         this.cameras.main.fadeOut(500, 0, 0, 0);
         this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start('WorldMapScene'));
       });

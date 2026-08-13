@@ -1009,6 +1009,11 @@ export function getSaveSummary(slot) {
       partySize: data.party?.length ?? 1,
       missionsCompleted: data.completedMissions?.length ?? 0,
       savedAt: data.savedAt ?? null,
+      // FT (the Final Tournament) is the story's terminal mission — no
+      // MISSION_NEXT entry in VictoryScene.js chains anywhere past it —
+      // so its completion is exactly "this save has beaten the game."
+      // Drives New Game+'s title-screen button (2026-08-13).
+      beaten: data.completedMissions?.includes('FT') ?? false,
     };
   } catch (e) {
     return null;
@@ -1018,6 +1023,27 @@ export function getSaveSummary(slot) {
 
 export function deleteSave(slot) {
   localStorage.removeItem(slotKey(slot));
+}
+
+// New Game+ (2026-08-13, "carry over all gear but levels will be reset to
+// one") — gathers every piece of actual equipment (type:'equipment';
+// excludes materials/consumables like ore or heal herbs, which "gear"
+// doesn't refer to in this game's own vocabulary — see items.js) a
+// completed save ever owned: both sitting loose in inventory AND equipped
+// on any party member, past or present. Reads the slot's raw localStorage
+// data directly rather than live `state`, since the title screen calls
+// this before that slot has ever been loaded into `state`.
+export function collectAllGear(slot) {
+  try {
+    const raw = localStorage.getItem(slotKey(slot));
+    if (!raw) return [];
+    const data = JSON.parse(raw);
+    const fromInventory = (data.inventory ?? []).filter(i => i.type === 'equipment');
+    const fromParty = (data.party ?? []).flatMap(u => Object.values(u.equip ?? {}).filter(Boolean));
+    return [...fromInventory, ...fromParty];
+  } catch (e) {
+    return [];
+  }
 }
 
 export function saveGame(slot = state.activeSlot ?? 1) {
@@ -1229,9 +1255,14 @@ export function createStarterUnit({ t1Sport, t1Role, talents, element, name }) {
 // Start a new game in the given slot. Pass the unit built by the
 // character-creation flow (createStarterUnit); falls back to the default
 // roster lead if omitted.
-export function newGame(starterUnit, slot) {
+export function newGame(starterUnit, slot, carryOverGear = []) {
   state.party             = [ starterUnit ?? { ...FULL_ROSTER[0], equip: mkEquip(), sp: 4, maxSp: 4, classSkills: [] } ];
-  state.inventory         = [];
+  // New Game+ gear carryover (see collectAllGear) — starts unequipped in
+  // inventory rather than pre-slotted onto the fresh unit, since a NG+
+  // playthrough can pick a different sport/role than last time, and
+  // gearLayoutForUnit's slot layout is class-dependent (a Performance
+  // unit's 5 slots don't line up with, say, a weapon-only ranged class).
+  state.inventory         = [...carryOverGear];
   state.tytrate           = 150;
   state.completedMissions = [];
   state.unlockedMissions  = ['M0'];

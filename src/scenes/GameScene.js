@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { loadGame, getSaveSummary, deleteSave, SAVE_SLOTS } from '../data/gameState.js';
+import { loadGame, getSaveSummary, deleteSave, collectAllGear, SAVE_SLOTS } from '../data/gameState.js';
 import { drawButton } from '../ui/canvasButton.js';
 import { preloadSfx, playSfx, SFX } from '../audio/sound.js';
 import { preloadMusic, playMusic } from '../audio/music.js';
@@ -215,8 +215,9 @@ export class GameScene extends Phaser.Scene {
   // Crawl now plays after New Game is chosen (not before the title screen).
   // Clears the title-screen visuals, then runs the same line-by-line crawl
   // before handing off to CharacterCreationScene.
-  startCrawl(slot) {
+  startCrawl(slot, ngPlusGear = []) {
     this.pendingSlot = slot;
+    this.pendingNgPlusGear = ngPlusGear;
     this.cameras.main.fadeOut(400, 0, 0, 0);
     this.cameras.main.once('camerafadeoutcomplete', () => {
       this.titleElements.forEach(o => o.destroy());
@@ -261,7 +262,7 @@ export class GameScene extends Phaser.Scene {
         if (this.lineIndex < this.lines.length) {
           this.showLine();
         } else {
-          this.goToCreation(this.pendingSlot);
+          this.goToCreation(this.pendingSlot, this.pendingNgPlusGear);
         }
       },
     });
@@ -304,19 +305,30 @@ export class GameScene extends Phaser.Scene {
   showSlotPicker(cx, cy) {
     this.armedResetSlot = null;
     this.resetLabels = {};
+    this.armedNgPlusSlot = null;
+    this.ngPlusLabels = {};
 
-    const rowW = 340, rowH = 64, gap = 12;
+    const rowW = 340, rowH = 64, ngPlusExtraH = 30, gap = 12;
+    // Row heights vary per-slot now (a beaten slot grows to fit the New
+    // Game+ button strip), so slots are stacked with a running total
+    // rather than a fixed rowH + gap step.
+    const heights = SAVE_SLOTS.map(slot => getSaveSummary(slot)?.beaten ? rowH + ngPlusExtraH : rowH);
     let y = cy + 20;
 
-    for (const slot of SAVE_SLOTS) {
-      this.drawSlotRow(cx, y, rowW, rowH, slot);
-      y += rowH + gap;
-    }
+    SAVE_SLOTS.forEach((slot, i) => {
+      this.drawSlotRow(cx, y, rowW, heights[i], slot);
+      y += heights[i] + gap;
+    });
   }
 
   drawSlotRow(cx, y, w, h, slot) {
     const summary = getSaveSummary(slot);
     const occupied = !!summary;
+    // Main row content (name/level/Delete/continue) always lives in this
+    // fixed-height top band; a beaten slot's extra height (see
+    // showSlotPicker) is used below it for the New Game+ strip, so none
+    // of that existing layout needs to shift.
+    const topH = 64;
 
     const shadow = this.add.graphics();
     shadow.fillStyle(0x000000, 0.3);
@@ -332,7 +344,7 @@ export class GameScene extends Phaser.Scene {
       g.strokeRoundedRect(cx - w / 2, y, w, h, 8);
       if (hover) {
         g.fillStyle(occupied ? 0x44cc66 : 0x4488ff, 0.9);
-        g.fillRoundedRect(cx - w / 2, y, 4, h, 2);
+        g.fillRoundedRect(cx - w / 2, y, 4, topH, 2);
       }
     };
     drawBg(false);
@@ -352,10 +364,10 @@ export class GameScene extends Phaser.Scene {
         fontSize: '10px', fontFamily: 'monospace', color: '#667788',
       }));
     } else {
-      this.titleElements.push(this.add.text(cx - w / 2 + 14, y + h / 2 - 7, '— empty —', {
+      this.titleElements.push(this.add.text(cx - w / 2 + 14, y + topH / 2 - 7, '— empty —', {
         fontSize: '13px', fontFamily: 'monospace', color: '#556688',
       }));
-      this.titleElements.push(this.add.text(cx - w / 2 + 14, y + h / 2 + 9, 'tap to start a new game', {
+      this.titleElements.push(this.add.text(cx - w / 2 + 14, y + topH / 2 + 9, 'tap to start a new game', {
         fontSize: '9px', fontFamily: 'monospace', color: '#445566',
       }));
     }
@@ -365,7 +377,7 @@ export class GameScene extends Phaser.Scene {
     const resetW = 64;
     const mainW  = occupied ? w - resetW : w;
     const mainCx = occupied ? cx - resetW / 2 : cx;
-    const zone = this.add.zone(mainCx, y + h / 2, mainW, h).setInteractive({ useHandCursor: true });
+    const zone = this.add.zone(mainCx, y + topH / 2, mainW, topH).setInteractive({ useHandCursor: true });
     zone.on('pointerover', () => drawBg(true));
     zone.on('pointerout',  () => drawBg(false));
     zone.on('pointerdown', () => {
@@ -377,13 +389,13 @@ export class GameScene extends Phaser.Scene {
 
     if (occupied) {
       const rx = cx + w / 2 - resetW / 2 - 6;
-      const resetLabel = this.add.text(rx, y + h / 2, 'DELETE', {
+      const resetLabel = this.add.text(rx, y + topH / 2, 'DELETE', {
         fontSize: '10px', fontFamily: 'monospace', fontStyle: 'bold', color: '#885555',
       }).setOrigin(0.5);
       this.resetLabels[slot] = resetLabel;
       this.titleElements.push(resetLabel);
 
-      const rz = this.add.zone(rx, y + h / 2, resetW - 8, h).setInteractive({ useHandCursor: true });
+      const rz = this.add.zone(rx, y + topH / 2, resetW - 8, topH).setInteractive({ useHandCursor: true });
       rz.on('pointerover', () => resetLabel.setColor('#ff6666'));
       rz.on('pointerout',  () => resetLabel.setColor(this.armedResetSlot === slot ? '#ff6666' : '#885555'));
       rz.on('pointerdown', (pointer, lx, ly, event) => {
@@ -400,6 +412,50 @@ export class GameScene extends Phaser.Scene {
       });
       this.titleElements.push(rz);
     }
+
+    // New Game+ (2026-08-13) — only once this slot has actually beaten the
+    // game (see getSaveSummary's `beaten` flag, keyed off FT completion).
+    // Same tap-twice arm/confirm pattern as DELETE, since it overwrites
+    // this slot's completed save. Carries every piece of gear this save
+    // ever owned into the fresh run's inventory (collectAllGear) and
+    // resets progress/levels the same as any other new game — see
+    // newGame()'s carryOverGear param and CharacterCreationScene's
+    // ngPlusGear threading.
+    if (summary?.beaten) {
+      const stripCy = y + topH + (h - topH) / 2;
+      const ngLabel = this.add.text(cx, stripCy - 7, '✦ NEW GAME+', {
+        fontSize: '11px', fontFamily: 'monospace', fontStyle: 'bold', color: '#ffc72c',
+      }).setOrigin(0.5);
+      const ngSub = this.add.text(cx, stripCy + 8, 'carry over all gear · levels reset to 1', {
+        fontSize: '8px', fontFamily: 'monospace', color: '#a68a3a',
+      }).setOrigin(0.5);
+      this.ngPlusLabels[slot] = { main: ngLabel, sub: ngSub };
+      this.titleElements.push(ngLabel, ngSub);
+
+      const nz = this.add.zone(cx, stripCy, w - 12, h - topH - 4).setInteractive({ useHandCursor: true });
+      const setArmed = (armed) => {
+        ngLabel.setText(armed ? 'TAP AGAIN TO CONFIRM' : '✦ NEW GAME+').setColor(armed ? '#ffe08a' : '#ffc72c');
+        ngSub.setText(armed ? 'this overwrites the save above' : 'carry over all gear · levels reset to 1');
+      };
+      nz.on('pointerover', () => ngLabel.setColor('#ffe08a'));
+      nz.on('pointerout',  () => ngLabel.setColor(this.armedNgPlusSlot === slot ? '#ffe08a' : '#ffc72c'));
+      nz.on('pointerdown', (pointer, lx, ly, event) => {
+        event?.stopPropagation();
+        playSfx(this, SFX.click);
+        if (this.armedNgPlusSlot === slot) {
+          this.startCrawl(slot, collectAllGear(slot));
+        } else {
+          if (this.armedNgPlusSlot != null) {
+            const prev = this.ngPlusLabels[this.armedNgPlusSlot];
+            prev?.main.setText('✦ NEW GAME+').setColor('#ffc72c');
+            prev?.sub.setText('carry over all gear · levels reset to 1').setColor('#a68a3a');
+          }
+          this.armedNgPlusSlot = slot;
+          setArmed(true);
+        }
+      });
+      this.titleElements.push(nz);
+    }
   }
 
   goToMap() {
@@ -408,10 +464,10 @@ export class GameScene extends Phaser.Scene {
     this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start('WorldMapScene'));
   }
 
-  goToCreation(slot) {
+  goToCreation(slot, ngPlusGear = []) {
     this.phase = 'done';
     this.cameras.main.fadeOut(600, 0, 0, 0);
-    this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start('CharacterCreationScene', { slot }));
+    this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start('CharacterCreationScene', { slot, ngPlusGear }));
   }
 
   handleTap() {
