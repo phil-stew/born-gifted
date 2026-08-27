@@ -70,21 +70,25 @@ function showErrorBoundary(detail) {
 window.addEventListener('error', (e) => showErrorBoundary(e.error ?? e.message));
 window.addEventListener('unhandledrejection', (e) => showErrorBoundary(e.reason));
 
-// Dynamic canvas width (2026-08-04, "set it up like that" — reduce FIT-mode
-// letterboxing on real phones without cropping anything). Height stays a
-// fixed 600 — every OTHER scene's layout (menus, battle grid, etc.) already
-// reads this.scale.width/height at runtime rather than hardcoding 800/600,
-// so only WorldMapScene's background-relative art (nodes/labels/scenery)
-// needed to become resolution-independent to make this safe — see mapPt()
-// in WorldMapScene.js. Clamped to [800, 1024]: 800 preserves the original
-// design's minimum, 1024 is the world map background's native pixel width
-// (mapbackg.webp is 1024×1024) — going wider than that would upscale the
-// art past its native resolution and blur it, so 1024 is a real ceiling,
-// not an arbitrary one.
+// Dynamic canvas width (2026-08-04, "set it up like that"; uncapped
+// 2026-08-27 — "game doesn't use most of the screen on mobile"). Height
+// stays a fixed 600 — every OTHER scene's layout (menus, battle grid, etc.)
+// already reads this.scale.width/height at runtime rather than hardcoding
+// 800/600, so only WorldMapScene's background-relative art (nodes/labels/
+// scenery) needed to become resolution-independent to make this safe — see
+// mapPt() in WorldMapScene.js. This formula targets the LIVE viewport's own
+// aspect ratio, so FIT-mode letterboxing is ~0 on any screen once the width
+// isn't clamped. Previously capped at 1024 (mapbackg.webp's native pixel
+// width) to avoid upscaling the world map background past native res, but
+// that cap meant real phone aspect ratios (landscape phones run much wider
+// than 1024:600) always left big black bars down both sides — worse than
+// the mild softness of a stretched background. mapPt()'s cover-fit math
+// already handles any canvas width correctly, so only the clamp needed to
+// go; 800 stays as a floor for the original design's minimum.
 function computeGameWidth() {
   const vw = window.innerWidth || 800;
   const vh = window.innerHeight || 600;
-  return Math.round(Math.min(1024, Math.max(800, 600 * (vw / vh))));
+  return Math.round(Math.max(800, 600 * (vw / vh)));
 }
 
 const config = {
