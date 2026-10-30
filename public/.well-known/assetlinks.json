@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.flexjamstudio.fantasysportstactics",
+      "sha256_cert_fingerprints": [
+        "12:4E:5D:42:3D:96:FF:C1:91:89:49:02:AE:56:E2:26:BC:55:4B:15:D6:65:B1:9B:9D:CB:0B:E8:4B:1D:53:4A"
+      ]
+    }
+  }
+]
