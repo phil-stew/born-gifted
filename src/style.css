@@ -27,8 +27,11 @@ body {
    against; body's flex-centering above is then a no-op (its one child
    already fills it) and can stay. */
 #app {
-  width: 100vw;
-  height: 100vh;
+  /* Same inset on both sides keeps the game centered and clear of a
+     landscape notch; both match window size when there's no cutout. */
+  --side-inset: max(env(safe-area-inset-left, 0px), env(safe-area-inset-right, 0px));
+  position: fixed;
+  inset: 0 var(--side-inset);
 }
 
 canvas {

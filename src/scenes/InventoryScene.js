@@ -166,11 +166,10 @@ export class InventoryScene extends Phaser.Scene {
     return result;
   }
 
-  // Wide (phone-shaped) canvases get a two-column list with larger rows;
-  // the left inset clears a landscape notch.
+  // Wide (phone-shaped) canvases get a two-column list with larger rows.
   listLayout() {
     const big = this.W >= 1100;
-    const lx = big ? 44 : 8, lw = big ? Math.round(this.W * 0.56) : 230;
+    const lx = 8, lw = big ? Math.round(this.W * 0.56) : 230;
     const cols = big ? 2 : 1, rowH = big ? 66 : 44, boxH = rowH - 6;
     return { lx, lw, cols, rowH, boxH, rowW: (lw - 4) / cols, big };
   }

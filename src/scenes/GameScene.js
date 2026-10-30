@@ -147,28 +147,8 @@ export class GameScene extends Phaser.Scene {
     this.input.on('pointerdown', () => this.handleTap());
     this.input.keyboard?.on('keydown', () => this.handleTap());
 
-    // Fullscreen API request, on a real user gesture — progressive
-    // enhancement only. iOS Safari doesn't support requestFullscreen() on
-    // arbitrary DOM elements at all (that's what Add to Home Screen +
-    // manifest.json/apple-mobile-web-app-capable in index.html are for
-    // instead), so this button just doesn't render there. Mainly helps
-    // Android Chrome / desktop players who'd rather not install the PWA.
-    if (document.fullscreenEnabled) {
-      const fsBtn = drawButton(this, {
-        x: width - 60, y: 24, w: 100, h: 32, label: '⛶ FULLSCREEN',
-        fontSize: '10px', radius: 6,
-        bg: 0x14142a, bgHover: 0x1e1e3a, border: 0x334477, accent: 0xaaaaff,
-        textColor: '#8899cc', depth: 50,
-        onClick: () => {
-          if (document.fullscreenElement) document.exitFullscreen();
-          else document.documentElement.requestFullscreen().catch(() => {});
-        },
-      });
-      this.titleElements.push(fsBtn.container);
-    }
-
     const settingsBtn = drawButton(this, {
-      x: width - 60, y: document.fullscreenEnabled ? 64 : 24, w: 100, h: 32, label: '⚙ SETTINGS',
+      x: width - 60, y: 24, w: 100, h: 32, label: '⚙ SETTINGS',
       fontSize: '10px', radius: 6,
       bg: 0x14142a, bgHover: 0x1e1e3a, border: 0x334477, accent: 0xaaaaff,
       textColor: '#8899cc', depth: 50,

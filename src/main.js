@@ -85,8 +85,10 @@ window.addEventListener('unhandledrejection', (e) => showErrorBoundary(e.reason)
 // already handles any canvas width correctly, so only the clamp needed to
 // go; 800 stays as a floor for the original design's minimum.
 function computeGameWidth() {
-  const vw = window.innerWidth || 800;
-  const vh = window.innerHeight || 600;
+  // #app, not the window: it excludes the notch's safe area.
+  const box = document.getElementById('app').getBoundingClientRect();
+  const vw = box.width || window.innerWidth || 800;
+  const vh = box.height || window.innerHeight || 600;
   return Math.round(Math.max(800, 600 * (vw / vh)));
 }
 
