@@ -3,9 +3,9 @@
     "relation": ["delegate_permission/common.handle_all_urls"],
     "target": {
       "namespace": "android_app",
-      "package_name": "com.flexjamstudio.fantasysportstactics",
+      "package_name": "com.fluxjamstudio.fantasysportstactics",
       "sha256_cert_fingerprints": [
-        "12:4E:5D:42:3D:96:FF:C1:91:89:49:02:AE:56:E2:26:BC:55:4B:15:D6:65:B1:9B:9D:CB:0B:E8:4B:1D:53:4A"
+        "56:7F:AF:1E:E7:AB:CE:71:0C:F8:DA:8D:D5:B3:56:87:8E:B7:6C:7F:09:BD:3D:B8:52:B0:DA:49:A8:43:EE:4F"
       ]
     }
   }
