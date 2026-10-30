@@ -1999,7 +1999,14 @@ export class BattleScene extends Phaser.Scene {
     const rawKey  = `${rawTile.col},${rawTile.row}`;
     const rawIsActionableTile = (this.phase === 'unit_selected' || this.phase === 'duo_targeting')
       && this.moveRange.has(rawKey) && !this.unitMap.has(rawKey);
-    const t = rawIsActionableTile ? rawTile : this.snapToNearbyUnit(sx, sy, rawTile);
+    let t = rawIsActionableTile ? rawTile : this.snapToNearbyUnit(sx, sy, rawTile);
+    // A near-miss here would otherwise cancel the whole move/attack, so a
+    // tap just outside a valid choice counts as hitting it.
+    if (this.phase === 'unit_selected' || this.phase === 'duo_targeting') {
+      if (!this.unitMap.has(`${t.col},${t.row}`)) t = this.snapToNearbyMoveTile(sx, sy, t);
+    } else if (this.phase === 'ability_targeting') {
+      t = this.snapToNearbyTarget(sx, sy, t);
+    }
     if (!this.inBounds(t)) return;
 
     const key      = `${t.col},${t.row}`;
@@ -4725,7 +4732,11 @@ export class BattleScene extends Phaser.Scene {
   }
 
   screenToGrid(sx, sy) {
-    const rx = sx - this.originX, ry = sy - this.originY;
+    // Same offset drawDiamond() applies — without it every tile's tap area
+    // sat 8px above its visible highlight, so ~1/3 of a highlighted tile
+    // resolved to a neighbor. A mouse could correct for this by watching the
+    // hover highlight; a finger can't.
+    const rx = sx - this.originX, ry = sy - this.originY - (TILE_Y_OFFSET + HL_Y_ADJUST);
     return {
       col: Math.floor((rx / TW2 + ry / TH2) / 2),
       row: Math.floor((ry / TH2 - rx / TW2) / 2),
@@ -4764,6 +4775,46 @@ export class BattleScene extends Phaser.Scene {
       if (d < bestDist) { bestDist = d; best = u; }
     }
     return best ? { col: best.col, row: best.row } : rawTile;
+  }
+
+  // Screen position of a tile's visible center (matches drawDiamond()).
+  tileCenter(col, row) {
+    const { x, y } = this.gridToScreen(col, row);
+    return { x, y: y + TILE_Y_OFFSET + HL_Y_ADJUST + TH2 };
+  }
+
+  // Nearest highlighted empty tile to a tap that missed every one of them.
+  // 34px reaches just past a tile's own diamond without crossing most of
+  // the next one (adjacent tile centers are ~45px apart).
+  snapToNearbyMoveTile(sx, sy, tile) {
+    const key = `${tile.col},${tile.row}`;
+    if (this.moveRange.has(key)) return tile;
+    let best = tile, bestDist = 34;
+    for (const k of this.moveRange) {
+      if (this.unitMap.has(k)) continue;
+      const [col, row] = k.split(',').map(Number);
+      const { x, y } = this.tileCenter(col, row);
+      const d = Math.hypot(sx - x, sy - y);
+      if (d < bestDist) { bestDist = d; best = { col, row }; }
+    }
+    return best;
+  }
+
+  // Same idea for targeted abilities: prefers a valid target near the tap
+  // over an invalid unit that happens to be closer.
+  snapToNearbyTarget(sx, sy, tile) {
+    const u = this.selectedUnit, ability = this.activeAbility;
+    const isValid = (o) => !!o && !o.isDead && o.team === ability.targetType
+      && this.abilityRangeMatches(u, ability, Math.abs(o.col - u.col) + Math.abs(o.row - u.row));
+    if (isValid(this.unitMap.get(`${tile.col},${tile.row}`))) return tile;
+    let best = tile, bestDist = 40;
+    for (const o of [...this.playerUnits, ...this.enemyUnits]) {
+      if (!isValid(o)) continue;
+      const { x, y } = this.gridToScreen(o.col, o.row);
+      const d = Math.hypot(sx - x, sy - (y + TH2 - 15));
+      if (d < bestDist) { bestDist = d; best = { col: o.col, row: o.row }; }
+    }
+    return best;
   }
 
   // ── Draw ──────────────────────────────────────────────────────────────────
