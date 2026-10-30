@@ -20,11 +20,22 @@ import { playSfx, SFX } from '../audio/sound.js';
 // anything by hand, since the same cover-fit math the background image
 // itself uses is inverted here to keep everything pinned to the same spot
 // on the art.
+const MAP_BAND_TOP = 200, MAP_BAND_BOTTOM = 790;
+
 function mapPt(imgX, imgY, width, height) {
   const s = Math.max(width / 1024, height / 1024);
   const offsetX = (width - 1024 * s) / 2;
   const offsetY = (height - 1024 * s) / 2;
-  return { x: imgX * s + offsetX, y: imgY * s + offsetY };
+  // On wide phones the cover-fit crops the art's top and bottom, which used
+  // to push about half the nodes off-screen. X keeps tracking the art; Y
+  // squeezes the band everything is placed in so it fits above the button
+  // bar. The band is image-space, the top/bottom margins are screen pixels.
+  const top = 46, bottom = height - 62;
+  const yFull = imgY * s + offsetY;
+  const bandTop = MAP_BAND_TOP * s + offsetY, bandBottom = MAP_BAND_BOTTOM * s + offsetY;
+  if (bandTop >= top && bandBottom <= bottom) return { x: imgX * s + offsetX, y: yFull };
+  const t = Phaser.Math.Clamp((imgY - MAP_BAND_TOP) / (MAP_BAND_BOTTOM - MAP_BAND_TOP), 0, 1);
+  return { x: imgX * s + offsetX, y: top + t * (bottom - top) };
 }
 
 // `connectsFrom` replaces the old implicit "connect to NODES[i-1]" ordering
@@ -657,8 +668,9 @@ export class WorldMapScene extends Phaser.Scene {
       const hex = '#' + ARC_COLORS[arc].toString(16).padStart(6, '0');
       const { x, y } = mapPt(pos.x, pos.y, width, height);
       this.add.text(x, y, arc.toUpperCase(), {
-        fontSize: '9px', fontFamily: 'monospace', color: hex,
-      }).setOrigin(0.5).setAlpha(0.5);
+        fontSize: '15px', fontFamily: 'monospace', fontStyle: 'bold', color: hex,
+        stroke: '#000000', strokeThickness: 4,
+      }).setOrigin(0.5);
     }
   }
 

@@ -1446,7 +1446,7 @@ export class BattleScene extends Phaser.Scene {
       // Lazy-inits gs.equippedSpecials/equippedSkills on the PERSISTENT unit
       // (state.party), not just this battle's copy, if this is the unit's
       // very first battle — so a fresh recruit isn't stuck with zero usable
-      // abilities before ever visiting LoadoutScene, and the default sticks
+      // abilities before ever visiting the Skills tab, and the default sticks
       // for next time too rather than re-rolling every battle.
       getEquippedSpecialAbilities(gs); getEquippedSkillAbilities(gs);
       return {
@@ -2821,7 +2821,7 @@ export class BattleScene extends Phaser.Scene {
     // Only the player-selected battle loadout, not every known ability — see
     // getEquippedSpecialAbilities/getEquippedSkillAbilities in abilities.js
     // (2026-07-07: capped at MAX_EQUIPPED_SPECIALS/MAX_EQUIPPED_SKILLS,
-    // selected via LoadoutScene).
+    // selected via PartyScene's Skills tab).
     const specials = getEquippedSpecialAbilities(unit).filter(Boolean);
     const skills   = getEquippedSkillAbilities(unit).filter(Boolean);
 

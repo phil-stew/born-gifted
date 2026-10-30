@@ -48,7 +48,7 @@ export function classSkillSlotCount(level) {
 // Battle loadout — a unit can KNOW far more Special Attacks/Skills than it
 // can bring into a single fight (2026-07-07 feedback: previously every known
 // Special/Skill was auto-usable in battle with no cap or selection; now
-// capped and player-selected via LoadoutScene, mirroring how Class Skills
+// capped and player-selected via PartyScene's Skills tab, mirroring how Class Skills
 // already work). Not level-gated like CLASS_SKILL_SLOT_LEVELS — always this
 // many slots, some may just be empty if the unit doesn't know enough yet.
 export const MAX_EQUIPPED_SPECIALS = 4;

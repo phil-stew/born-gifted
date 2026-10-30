@@ -873,7 +873,7 @@ export function getUnitSpecials(unit) {
   // actually persisted on a real gameState unit (only BattleScene's
   // ephemeral playerUnit copy sets it, as a cache of this same function).
   // Reading the raw field directly silently returned [] for every call from
-  // LoadoutScene/PartyScene (and, since 2026-07-07's equip-cap lazy-init
+  // PartyScene (and, since 2026-07-07's equip-cap lazy-init
   // runs against the raw persisted unit, from the battle-loadout defaulting
   // too) — any Ranged-designation-only special like Tri-Throw was
   // unreachable outside of battles fought before the cap existed. Bug
@@ -943,7 +943,7 @@ export function getUnitSkills(unit) {
 // arrays of ability ids sized MAX_EQUIPPED_SPECIALS/MAX_EQUIPPED_SKILLS,
 // mutated via equipSpecialSlot/equipSkillSlot in gameState.js). The first
 // time either array is read (equippedSpecials/equippedSkills still null —
-// never visited LoadoutScene, or a freshly recruited/created unit), it's
+// never visited the Skills tab, or a freshly recruited/created unit), it's
 // lazily initialized to that unit's first known abilities so a unit is never
 // stuck with zero battle options out of the box. After that first init it's
 // real persisted data — the player can freely empty slots without it ever
@@ -958,7 +958,7 @@ function ensureEquippedAbilities(unit) {
 }
 
 // Fixed-length (MAX_EQUIPPED_SPECIALS) array of ability objects or null for
-// empty/invalid slots — shaped for LoadoutScene's per-slot UI. Iterates a
+// empty/invalid slots — shaped for the Skills tab's per-slot UI. Iterates a
 // fixed 0..MAX-1 range rather than mapping unit.equippedSpecials directly,
 // since the lazy-init above can leave that array SHORTER than MAX (e.g. a
 // unit who only knows 2 Specials gets a 2-element array) — without this,

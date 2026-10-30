@@ -3,7 +3,7 @@
 // language established for BattleScene's action menu and ShopScene's panels
 // (July 2026), generalized here so every canvas scene's buttons share one
 // implementation instead of each hand-rolling flat, square fillRect buttons.
-// Not used by PartyScene/LoadoutScene — those are DOM/CSS UI with their own
+// Not used by PartyScene — those are DOM/CSS UI with their own
 // already-modern (rounded/shadowed) styling, a separate system entirely.
 
 import { playSfx, SFX } from '../audio/sound.js';

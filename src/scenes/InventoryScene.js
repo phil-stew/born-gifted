@@ -113,7 +113,7 @@ export class InventoryScene extends Phaser.Scene {
 
   buildTabs() {
     TABS.forEach((t, i) => {
-      const tx = 8 + i * 90, ty = 44, tw = 82, th = 24;
+      const tx = this.listLayout().lx + i * 90, ty = 44, tw = 82, th = 24;
       const active = this.tab === t;
       const g = this.add.graphics();
       const draw = (h) => {
@@ -166,9 +166,19 @@ export class InventoryScene extends Phaser.Scene {
     return result;
   }
 
+  // Wide (phone-shaped) canvases get a two-column list with larger rows;
+  // the left inset clears a landscape notch.
+  listLayout() {
+    const big = this.W >= 1100;
+    const lx = big ? 44 : 8, lw = big ? Math.round(this.W * 0.56) : 230;
+    const cols = big ? 2 : 1, rowH = big ? 66 : 44, boxH = rowH - 6;
+    return { lx, lw, cols, rowH, boxH, rowW: (lw - 4) / cols, big };
+  }
+
   buildList() {
     const entries = this.getEntries();
-    const lx = 8, lw = 230, startY = 72;
+    const { lx, lw, cols, rowH, boxH, rowW, big } = this.listLayout();
+    const startY = 72;
     const panH = this.H - startY - 38;
 
     const shadow = this.add.graphics();
@@ -194,55 +204,58 @@ export class InventoryScene extends Phaser.Scene {
 
     entries.forEach((entry, i) => {
       const { item, count } = entry;
-      const iy = startY + 4 + i * 44;
+      const col = i % cols;
+      const iy = startY + 4 + Math.floor(i / cols) * rowH;
+      const rx = lx + 2 + col * rowW;
       const isSelectedIdx = this.selected?.indices?.[0] === entry.indices[0];
 
       const g = this.add.graphics();
       const draw = (h) => {
         g.clear();
         g.fillStyle(isSelectedIdx ? 0x16162e : (h ? 0x101028 : 0x0b0b18), 1);
-        g.fillRoundedRect(lx + 2, iy, lw - 4, 38, 6);
+        g.fillRoundedRect(rx, iy, rowW - 2, boxH, 6);
         if (isSelectedIdx) {
           g.lineStyle(1.5, 0x4455bb, 0.7);
-          g.strokeRoundedRect(lx + 2, iy, lw - 4, 38, 6);
+          g.strokeRoundedRect(rx, iy, rowW - 2, boxH, 6);
           g.fillStyle(0x4455bb, 0.9);
-          g.fillRoundedRect(lx + 2, iy, 3, 38, 2);
+          g.fillRoundedRect(rx, iy, 3, boxH, 2);
         }
       };
       draw(false);
       this.listCon.add(g);
 
-      const icon = this._itemIcon(lx + 18, iy + 19, item, 30, 30);
+      const iconSize = big ? 46 : 30;
+      const icon = this._itemIcon(rx + 16 + (iconSize - 30) / 2, iy + boxH / 2, item, iconSize, iconSize);
       if (icon) {
         this.listCon.add(icon);
       } else {
         const dot = this.add.graphics();
         dot.fillStyle(rarityColor(item.rarity), 1);
-        dot.fillCircle(lx + 14, iy + 14, 5);
+        dot.fillCircle(rx + 12, iy + 14, 5);
         this.listCon.add(dot);
       }
-      const textLx = icon ? lx + 38 : lx + 26;
+      const textLx = rx + (icon ? iconSize + 8 : 24);
 
       const rlvl = item.reinforceLevel ?? 0;
       const nameStr = item.name + (rlvl ? ` ✦${rlvl}` : '') + (count > 1 ? ` ×${count}` : '');
       this.listCon.add(this.add.text(textLx, iy + 5, nameStr, {
-        fontSize: '11px', fontFamily: 'monospace', color: rlvl ? '#ffaa44' : '#ccccdd',
+        fontSize: big ? '17px' : '11px', fontFamily: 'monospace', color: rlvl ? '#ffaa44' : '#ccccdd',
       }));
       const subStr = item.type === 'material' ? 'MATERIAL' : (item.slot?.toUpperCase() ?? '') + (item.forClass ? ` · ${item.forClass}` : '');
-      this.listCon.add(this.add.text(textLx, iy + 22, subStr, {
-        fontSize: '9px', fontFamily: 'monospace', color: item.type === 'material' ? '#557733' : '#445577',
+      this.listCon.add(this.add.text(textLx, iy + (big ? 32 : 22), subStr, {
+        fontSize: big ? '13px' : '9px', fontFamily: 'monospace', color: item.type === 'material' ? '#557733' : '#445577',
       }));
 
       // Stat mini-summary
       const stats = Object.entries(item.stats ?? {});
       if (stats.length) {
         const statStr = stats.map(([k, v]) => `+${v}${k[0].toUpperCase()}`).join(' ');
-        this.listCon.add(this.add.text(lx + lw - 8, iy + 5, statStr, {
-          fontSize: '10px', fontFamily: 'monospace', color: '#4488aa',
+        this.listCon.add(this.add.text(rx + rowW - 10, big ? iy + 33 : iy + 5, statStr, {
+          fontSize: big ? '13px' : '10px', fontFamily: 'monospace', color: '#4488aa',
         }).setOrigin(1, 0));
       }
 
-      const z = this.add.zone(lx + lw / 2, iy + 19, lw, 38).setInteractive({ useHandCursor: true });
+      const z = this.add.zone(rx + rowW / 2, iy + boxH / 2, rowW, boxH).setInteractive({ useHandCursor: true });
       z.on('pointerover',  () => { if (!isSelectedIdx) draw(true); });
       z.on('pointerout',   () => { if (!isSelectedIdx) draw(false); });
       z.on('pointerdown',  () => { playSfx(this, SFX.click); this.selected = entry; this.equipStep = null; this.equipUnit = null; this.rebuild(); });
@@ -251,7 +264,8 @@ export class InventoryScene extends Phaser.Scene {
   }
 
   buildDetail() {
-    const dx = 246, dw = this.W - dx - 8, startY = 72;
+    const { lx, lw } = this.listLayout();
+    const dx = lx + lw + 8, dw = this.W - dx - 8, startY = 72;
     const panH = this.H - startY - 38;
     const cx = dx + dw / 2;
 

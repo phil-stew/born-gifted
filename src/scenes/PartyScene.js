@@ -3,12 +3,11 @@ import {
   state, FULL_ROSTER, effectiveStats, maxHp, xpToNext, classSkillSlotCount, elementIcon,
   roleDisplayLabel, currentRoleId, roleById, pendingPromotion, chainById,
   sportById, t3SportOptions, promoteUnit, gearLayoutForUnit, equipItem, dismissUnit,
-  MAX_EQUIPPED_SPECIALS, MAX_EQUIPPED_SKILLS,
 } from '../data/gameState.js';
-import { getEquippedSpecialAbilities, getEquippedSkillAbilities } from '../data/abilities.js';
 import { rarityColor, gearFrameName, registerGearFrames, GEAR_SHEET } from '../data/items.js';
 import { loadHeroSprites, stripHeroBackground, heroKey, firstFrame, spriteKeyForRole, stripBackgroundByKey } from '../data/heroSprites.js';
 import { mount, unmount, onClick, spriteFrameDataURL, iconDataURL, esc } from '../ui/domUI.js';
+import { loadoutSectionsHTML, loadoutPickerHTML, wireLoadoutEvents } from '../ui/loadoutPanel.js';
 
 const SLOT_LABEL = { weapon: 'Class Item', footwear: 'Shoes', handwear: 'Gloves', chest: 'Chest', headwear: 'Headgear' };
 // Fallback glyph for gear with no per-item art (universal items, or a sport
@@ -17,6 +16,9 @@ const SLOT_LABEL = { weapon: 'Class Item', footwear: 'Shoes', handwear: 'Gloves'
 // nothing to snapshot from the sheet, so every slot/row still gets an icon.
 const SLOT_ICON = { weapon: '🏆', footwear: '👟', handwear: '🧤', chest: '🛡', headwear: '⛑' };
 const GEAR_ICON_SIZE = 22;
+const DETAIL_TABS = [
+  { id: 'stats', label: 'Stats' }, { id: 'equipment', label: 'Equipment' }, { id: 'skills', label: 'Skills' },
+];
 const STAT_DEFS = [
   { key: 'speed', label: 'Speed' }, { key: 'strength', label: 'Strength' },
   { key: 'stamina', label: 'Stamina' }, { key: 'endurance', label: 'Endurance' },
@@ -39,6 +41,9 @@ export class PartyScene extends Phaser.Scene {
 
   init(data) {
     this.selId = data?.selId ?? state.party[0]?.id ?? null;
+    this.detailTab = 'stats';
+    this.expandedAbility = null;
+    this.picker = null;
     this.promoStep = null;   // null | 'prompt' | 'sport' | 'role'
     this.promoTier = null;
     this.promoSport = null;
@@ -103,10 +108,11 @@ export class PartyScene extends Phaser.Scene {
         </div>
         <div class="ui-body">
           <div class="ui-panel ui-list-panel" data-scroll-id="party-list">${listHTML}</div>
-          <div class="ui-panel" data-scroll-id="party-detail-${unit?.id ?? 'none'}">${detailHTML}</div>
+          <div class="ui-panel" data-scroll-id="party-detail-${unit?.id ?? 'none'}-${this.detailTab}">${detailHTML}</div>
         </div>
       </div>
-      ${unit && this.promoStep ? this.promoModalHTML(unit)
+      ${unit && this.picker ? loadoutPickerHTML(this, unit)
+        : unit && this.promoStep ? this.promoModalHTML(unit)
         : unit && this.equipSlot ? this.equipPickerHTML(unit, this.equipSlot)
         : unit && this.confirmDismiss ? this.dismissModalHTML(unit) : ''}
     `);
@@ -204,14 +210,30 @@ export class PartyScene extends Phaser.Scene {
         </div>`;
     }).join('');
 
-    // Equipped (battle-loadout) counts, not total known — matches the
-    // Class Skills subtitle's existing "X/Y equipped" shape (2026-07-07:
-    // Specials/Skills are now capped/selected the same way, see LoadoutScene).
-    const equippedSpecialsCount = getEquippedSpecialAbilities(unit).filter(Boolean).length;
-    const equippedSkillsCount = getEquippedSkillAbilities(unit).filter(Boolean).length;
-    if (!unit.classSkills) unit.classSkills = [];
-    const slotCount = classSkillSlotCount(unit.level);
-    const equippedCount = unit.classSkills.slice(0, slotCount).filter(Boolean).length;
+    const tabsHTML = DETAIL_TABS.map(t => `
+      <button class="ui-detail-tab ${t.id === this.detailTab ? 'active' : ''}" data-detail-tab="${t.id}">${t.label}</button>
+    `).join('');
+
+    const statsTabHTML = `
+      <div class="ui-section">
+        <div class="ui-stat-grid">${statsHTML}</div>
+        <div class="ui-hpsp-row" style="margin-top:14px;">
+          <span style="color:#4ecc6e">HP ${maxHp(unit)}</span>
+          <span style="color:#4d9dff">SP ${unit.sp ?? 4} / ${unit.maxSp ?? 4}</span>
+        </div>
+      </div>
+      ${state.party.length > 1 ? `
+        <button class="ui-btn ui-btn-danger" style="margin-top:10px;width:100%;" data-dismiss-start="${unit.id}">Dismiss from Roster</button>
+      ` : ''}`;
+
+    const equipmentTabHTML = `
+      <div class="ui-section">
+        <div class="ui-section-label">Tap a slot to change</div>
+        <div class="ui-slot-grid">${slotsHTML}</div>
+      </div>`;
+
+    const tabHTML = this.detailTab === 'skills' ? loadoutSectionsHTML(this, unit)
+      : this.detailTab === 'equipment' ? equipmentTabHTML : statsTabHTML;
 
     return `
       <div class="ui-detail-panel">
@@ -232,28 +254,8 @@ export class PartyScene extends Phaser.Scene {
 
         ${pending ? `<button class="ui-promo-btn" data-promo-start="${pending}">🏆 TIER ${pending === 't3' ? '3' : '2'} PROMOTION AVAILABLE</button>` : ''}
 
-        <div class="ui-section">
-          <div class="ui-section-label">Stats</div>
-          <div class="ui-stat-grid">${statsHTML}</div>
-          <div class="ui-hpsp-row" style="margin-top:14px;">
-            <span style="color:#4ecc6e">HP ${maxHp(unit)}</span>
-            <span style="color:#4d9dff">SP ${unit.sp ?? 4} / ${unit.maxSp ?? 4}</span>
-          </div>
-        </div>
-
-        <div class="ui-section">
-          <div class="ui-section-label">Equipment</div>
-          <div class="ui-slot-grid">${slotsHTML}</div>
-        </div>
-
-        <button class="ui-loadout-btn" data-nav-loadout="${unit.id}">
-          <span>🎯 Loadout</span>
-          <span class="ui-loadout-btn-sub">${equippedSpecialsCount}/${MAX_EQUIPPED_SPECIALS} Specials &middot; ${equippedSkillsCount}/${MAX_EQUIPPED_SKILLS} Skills &middot; ${equippedCount}/${slotCount} Class Skills &nbsp;&rarr;</span>
-        </button>
-
-        ${state.party.length > 1 ? `
-          <button class="ui-btn ui-btn-danger" style="margin-top:10px;width:100%;" data-dismiss-start="${unit.id}">Dismiss from Roster</button>
-        ` : ''}
+        <div class="ui-detail-tabs">${tabsHTML}</div>
+        ${tabHTML}
       </div>
     `;
   }
@@ -366,9 +368,13 @@ export class PartyScene extends Phaser.Scene {
       this.render();
     });
 
-    onClick('[data-nav-loadout]', (e, node) => {
-      this.scene.start('LoadoutScene', { unitId: node.dataset.navLoadout });
+    onClick('[data-detail-tab]', (e, node) => {
+      this.detailTab = node.dataset.detailTab;
+      this.render();
     });
+
+    const selected = state.party.find(u => u.id === this.selId);
+    if (selected) wireLoadoutEvents(this, selected);
 
     onClick('[data-unequip]', (e, node) => {
       e.stopPropagation();
