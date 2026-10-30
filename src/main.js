@@ -131,15 +131,19 @@ if (new URLSearchParams(location.search).get('shortcut') === 'settings') {
 // Safari fires this once it corrects itself) and 'orientationchange' fixes
 // that stale-read case AND makes an actual mid-session rotation re-fit
 // correctly, neither of which the one-shot boot-time read could do.
-window.addEventListener('resize', () => {
+// scale.resize() alone isn't enough under FIT: displaySize keeps the aspect
+// ratio from boot, so a game started in portrait (or before the viewport
+// settled) stayed letterboxed at that old shape on a wider screen.
+function refitGame() {
+  const scale = window.__game.scale;
   const w = computeGameWidth();
-  if (Math.abs(w - window.__game.scale.width) >= 4) {
-    window.__game.scale.resize(w, 600);
-  }
-});
-window.addEventListener('orientationchange', () => {
-  setTimeout(() => window.__game.scale.resize(computeGameWidth(), 600), 300);
-});
+  if (Math.abs(w - scale.width) >= 4) scale.resize(w, 600);
+  scale.displaySize.setAspectRatio(scale.width / scale.height);
+  scale.getParentBounds();
+  scale.refresh();
+}
+window.addEventListener('resize', refitGame);
+window.addEventListener('orientationchange', () => setTimeout(refitGame, 300));
 
 // ── Landscape preference, not a hard lock (2026-07-04, revised again) ──────
 // Mobile game, designed for landscape — but a plain Safari/Chrome tab can't
