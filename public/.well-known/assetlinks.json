@@ -1,11 +1,14 @@
 [
   {
-    "relation": ["delegate_permission/common.handle_all_urls"],
+    "relation": [
+      "delegate_permission/common.handle_all_urls"
+    ],
     "target": {
       "namespace": "android_app",
       "package_name": "com.fluxjamstudio.fantasysportstactics",
       "sha256_cert_fingerprints": [
-        "56:7F:AF:1E:E7:AB:CE:71:0C:F8:DA:8D:D5:B3:56:87:8E:B7:6C:7F:09:BD:3D:B8:52:B0:DA:49:A8:43:EE:4F"
+        "56:7F:AF:1E:E7:AB:CE:71:0C:F8:DA:8D:D5:B3:56:87:8E:B7:6C:7F:09:BD:3D:B8:52:B0:DA:49:A8:43:EE:4F",
+        "4F:33:48:34:46:A0:5C:53:2E:73:89:49:93:FC:47:B8:FE:72:68:13:40:A6:79:41:4B:CA:DD:8B:5C:D2:49:C4"
       ]
     }
   }
