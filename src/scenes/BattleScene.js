@@ -120,6 +120,7 @@ const STAGE_CONFIGS = {
     tiles: ['000','001','002','003','055','056','057','061','062'],
     label: 'HIDDEN CAVE',
     bgColor: 0x100a04,
+    backdrop: BACKDROPS.cave,
     layout(col, row) {
       const p = th(col, row);
       const edge = col === 0 || row === 0 || col === 9 || row === 9;
@@ -136,6 +137,7 @@ const STAGE_CONFIGS = {
     tiles: ['022','026','027','034','047','049','061','062'],
     label: "WOLF'S DEN",
     bgColor: 0x060a04,
+    backdrop: BACKDROPS.wilds,
     layout(col, row) {
       const p = th(col, row);
       const edge = col === 0 || row === 0 || col === 9 || row === 9;
@@ -153,6 +155,7 @@ const STAGE_CONFIGS = {
     tiles: ['022','026','027','033','034','037','041','047','049'],
     label: 'SIRBLANC OUTSKIRTS',
     bgColor: 0x0a1408,
+    backdrop: BACKDROPS.wilds,
     layout(col, row) {
       const p = th(col, row);
       const edge = col === 0 || row === 0 || col === 9 || row === 9;
@@ -170,6 +173,7 @@ const STAGE_CONFIGS = {
     tiles: ['000','001','002','003','011','012','022','026','061','062'],
     label: 'THUNDER PLAINS',
     bgColor: 0x10100a,
+    backdrop: BACKDROPS.wilds,
     layout(col, row) {
       const p  = th(col, row);
       const band = col + row; // horizontal line in screen space
@@ -195,6 +199,7 @@ const STAGE_CONFIGS = {
     tiles: ['022','026','027','033','034','037','041','088','089','090'],
     label: 'GREENFIELD PLAINS',
     bgColor: 0x081208,
+    backdrop: BACKDROPS.wilds,
     layout(col, row) {
       const p = th(col, row);
       // Diamond-shaped pond: Manhattan distance from center point (6,5)
@@ -220,6 +225,7 @@ const STAGE_CONFIGS = {
     tiles: ['000','001','002','003','055','056','057','061','062'],
     label: 'ARENA ATLROS',
     bgColor: 0x140e08,
+    backdrop: BACKDROPS.altroesArena,
     layout(col, row) {
       const p = th(col, row);
       const edge = col === 0 || row === 0 || col === 9 || row === 9;
@@ -239,6 +245,7 @@ const STAGE_CONFIGS = {
     tiles: ['000','001','002','003','055','056','057','061','062'],
     label: 'NORTHERN CAVE',
     bgColor: 0x020406,
+    backdrop: BACKDROPS.cave,
     layout(col, row) {
       const p = th(col, row);
       const edge = col === 0 || row === 0 || col === 9 || row === 9;
@@ -255,6 +262,7 @@ const STAGE_CONFIGS = {
     tiles: ['022','026','027','033','034','037','041','088','089','090'],
     label: 'HILBERT LOW LANDS',
     bgColor: 0x081208,
+    backdrop: BACKDROPS.wilds,
     layout(col, row) {
       const p = th(col, row);
       const dist = Math.abs(col - 6) + Math.abs(row - 5);
@@ -281,6 +289,7 @@ const STAGE_CONFIGS = {
     tiles: ['022','026','027','033','034','037','041','088','089','090'],
     label: "LION'S PRIDE",
     bgColor: 0x0a1608,
+    backdrop: BACKDROPS.wilds,
     layout(col, row) {
       const p = th(col, row);
       const dist = Math.abs(col - 6) + Math.abs(row - 5);
@@ -301,6 +310,7 @@ const STAGE_CONFIGS = {
     tiles: ['000','001','002','003','055','056','057','061','062'],
     label: 'GOBLIN WARCAMP',
     bgColor: 0x140a02,
+    backdrop: BACKDROPS.cave,
     layout(col, row) {
       const p = th(col, row);
       const edge = col === 0 || row === 0 || col === 9 || row === 9;
@@ -319,6 +329,7 @@ const STAGE_CONFIGS = {
     tiles: ['000','001','002','003','055','056','057','061','062'],
     label: 'CAVE DEPTHS',
     bgColor: 0x05040a,
+    backdrop: BACKDROPS.cave,
     layout(col, row) {
       const p = th(col, row);
       const edge = col === 0 || row === 0 || col === 9 || row === 9;
@@ -340,6 +351,7 @@ const STAGE_CONFIGS = {
     tiles: ['004','010','015','020','033','034','061','062'],
     label: "DRAGON'S ROOST",
     bgColor: 0x1c1006,
+    backdrop: BACKDROPS.altroesVolcano,
     layout(col, row) {
       const p = th(col, row);
       const edge = col === 0 || row === 0 || col === 9 || row === 9;
@@ -355,6 +367,7 @@ const STAGE_CONFIGS = {
     tiles: ['000','001','002','003','055','056','057','061','062'],
     label: 'THE GREAT BOULDER',
     bgColor: 0x140e08,
+    backdrop: BACKDROPS.altroesArena,
     layout(col, row) {
       const p = th(col, row);
       const edge = col === 0 || row === 0 || col === 9 || row === 9;
@@ -389,6 +402,7 @@ const STAGE_CONFIGS = {
     tiles: ['000','001','002','003','055','056','057','061','062'],
     label: 'ALTROES TRIALS I',
     bgColor: 0x140e08,
+    backdrop: BACKDROPS.altroesArena,
     layout(col, row) {
       const p = th(col, row);
       const edge = col === 0 || row === 0 || col === 9 || row === 9;
@@ -403,6 +417,7 @@ const STAGE_CONFIGS = {
     tiles: ['000','001','002','003','055','056','057','061','062'],
     label: 'ALTROES TRIALS II',
     bgColor: 0x1c1206,
+    backdrop: BACKDROPS.altroesArena,
     layout(col, row) {
       const p = th(col, row);
       const edge = col === 0 || row === 0 || col === 9 || row === 9;
@@ -421,6 +436,7 @@ const STAGE_CONFIGS = {
     tiles: ['004','010','015','020','033','034','061','062'],
     label: 'THE FROZEN PEAKS',
     bgColor: 0x0c1420,
+    backdrop: BACKDROPS.galeWilds,
     layout(col, row) {
       const p = th(col, row);
       const edge = col === 0 || row === 0 || col === 9 || row === 9;
@@ -436,6 +452,7 @@ const STAGE_CONFIGS = {
     tiles: ['004','010','015','020','033','034','061','062'],
     label: 'MONSTER HUNT',
     bgColor: 0x0c1420,
+    backdrop: BACKDROPS.galeWilds,
     layout(col, row) {
       const p = th(col, row);
       const edge = col === 0 || row === 0 || col === 9 || row === 9;
@@ -452,6 +469,7 @@ const STAGE_CONFIGS = {
     tiles: ['000','001','002','003','055','056','057','061','062'],
     label: 'GALE TOURNAMENT',
     bgColor: 0x1c1608,
+    backdrop: BACKDROPS.galeArena,
     layout(col, row) {
       const p = th(col, row);
       const edge = col === 0 || row === 0 || col === 9 || row === 9;
@@ -470,6 +488,7 @@ const STAGE_CONFIGS = {
     tiles: ['004','010','015','020','033','034','061','062'],
     label: 'BLIGHTREACH',
     bgColor: 0x140a1c,
+    backdrop: BACKDROPS.galeWilds,
     layout(col, row) {
       const p = th(col, row);
       const edge = col === 0 || row === 0 || col === 9 || row === 9;
@@ -487,6 +506,7 @@ const STAGE_CONFIGS = {
     tiles: ['000','001','002','003','055','056','057','061','062'],
     label: 'THE GRAND ARENA',
     bgColor: 0x1c0a1c,
+    backdrop: BACKDROPS.galeArena,
     layout(col, row) {
       const p = th(col, row);
       const edge = col === 0 || row === 0 || col === 9 || row === 9;
@@ -501,13 +521,13 @@ const STAGE_CONFIGS = {
   // grounds" tile family (same sandy-arena tiles as M7/GT, matching
   // lametusTrainingField's backdrop), distinguished only by a per-trial
   // bgColor tint so each still reads as its own place on replay.
-  'T1': { tiles: ['000','001','002','003','055','056','057','061','062'], label: 'TRIAL OF ATHLETICS',    bgColor: 0x141c0a, layout: trialLayout },
-  'T2': { tiles: ['000','001','002','003','055','056','057','061','062'], label: 'TRIAL OF MARTIAL ARTS', bgColor: 0x1c0a0a, layout: trialLayout },
-  'T3': { tiles: ['000','001','002','003','055','056','057','061','062'], label: 'TRIAL OF PERFORMANCE',  bgColor: 0x1c0a14, layout: trialLayout },
-  'T4': { tiles: ['000','001','002','003','055','056','057','061','062'], label: 'TRIAL OF TARGET',       bgColor: 0x0a1414, layout: trialLayout },
-  'T5': { tiles: ['000','001','002','003','055','056','057','061','062'], label: 'TRIAL OF BALL',         bgColor: 0x0a141c, layout: trialLayout },
-  'T6': { tiles: ['000','001','002','003','055','056','057','061','062'], label: 'TRIAL OF BAT & BALL',   bgColor: 0x14140a, layout: trialLayout },
-  'T7': { tiles: ['000','001','002','003','055','056','057','061','062'], label: 'TRIAL OF RACQUET',      bgColor: 0x1c1c0a, layout: trialLayout },
+  'T1': { tiles: ['000','001','002','003','055','056','057','061','062'], label: 'TRIAL OF ATHLETICS',    bgColor: 0x141c0a, backdrop: BACKDROPS.lametusTrainingField, layout: trialLayout },
+  'T2': { tiles: ['000','001','002','003','055','056','057','061','062'], label: 'TRIAL OF MARTIAL ARTS', bgColor: 0x1c0a0a, backdrop: BACKDROPS.lametusTrainingField, layout: trialLayout },
+  'T3': { tiles: ['000','001','002','003','055','056','057','061','062'], label: 'TRIAL OF PERFORMANCE',  bgColor: 0x1c0a14, backdrop: BACKDROPS.lametusTrainingField, layout: trialLayout },
+  'T4': { tiles: ['000','001','002','003','055','056','057','061','062'], label: 'TRIAL OF TARGET',       bgColor: 0x0a1414, backdrop: BACKDROPS.lametusTrainingField, layout: trialLayout },
+  'T5': { tiles: ['000','001','002','003','055','056','057','061','062'], label: 'TRIAL OF BALL',         bgColor: 0x0a141c, backdrop: BACKDROPS.lametusTrainingField, layout: trialLayout },
+  'T6': { tiles: ['000','001','002','003','055','056','057','061','062'], label: 'TRIAL OF BAT & BALL',   bgColor: 0x14140a, backdrop: BACKDROPS.lametusTrainingField, layout: trialLayout },
+  'T7': { tiles: ['000','001','002','003','055','056','057','061','062'], label: 'TRIAL OF RACQUET',      bgColor: 0x1c1c0a, backdrop: BACKDROPS.lametusTrainingField, layout: trialLayout },
   // The Golem Trial (2026-07-18, "North of A3 they will fight the Golems
   // as there last trial") — the entry-requirement fight for the Final
   // Tournament, separate from the 7 class trials above (it isn't tied to
@@ -519,6 +539,7 @@ const STAGE_CONFIGS = {
     tiles: ['004','010','015','020','033','034','061','062'],
     label: 'STONEWAKE PASS',
     bgColor: 0x2c2822,
+    backdrop: BACKDROPS.altroesVolcano,
     layout(col, row) {
       const p = th(col, row);
       const edge = col === 0 || row === 0 || col === 9 || row === 9;
@@ -537,6 +558,7 @@ const STAGE_CONFIGS = {
     tiles: ['000','001','002','003','055','056','057','061','062'],
     label: 'THE FINAL TOURNAMENT',
     bgColor: 0x1c0a1c,
+    backdrop: BACKDROPS.lametusArena,
     layout(col, row) {
       const p = th(col, row);
       const edge = col === 0 || row === 0 || col === 9 || row === 9;
@@ -1225,6 +1247,9 @@ export class BattleScene extends Phaser.Scene {
         this.load.image(key, `tiles/isometric tileset/separated images/tile_${num}.png`);
       }
     }
+    if (stageCfg.backdrop && !this.textures.exists(stageCfg.backdrop.key)) {
+      this.load.image(stageCfg.backdrop.key, stageCfg.backdrop.path);
+    }
 
     // Hero-sprite enemies (e.g. M4's instructor) — Phase 4, M0-M4 redesign.
     // Same HERO_SPRITES pipeline as the party below, just for a mission's
@@ -1336,6 +1361,20 @@ export class BattleScene extends Phaser.Scene {
 
     // ── Stage background tint ─────────────────────────────────────────────
     this.cameras.main.setBackgroundColor(stageCfg.bgColor ?? 0x0a0a18);
+
+    // ── Stage backdrop photo (2026-08-27, "use the pictures we have in the
+    // world folder" — replaces the flat bgColor fill everywhere it's
+    // visible around the isometric diamond). Cover-fit + a tinted overlay
+    // using the same per-stage bgColor above, same pattern StoryScene uses
+    // for its own backdrops — keeps each stage's hand-picked tint (e.g.
+    // M6/M7's sickly purple) instead of flattening every stage to one
+    // neutral dim. Depth -1000/-999 guarantees it stays behind every tile
+    // (tiles start at depth 0) and unit regardless of add() order.
+    if (stageCfg.backdrop && this.textures.exists(stageCfg.backdrop.key)) {
+      const img = this.add.image(width / 2, height / 2, stageCfg.backdrop.key).setDepth(-1000);
+      img.setScale(Math.max(width / img.width, height / img.height));
+      this.add.rectangle(width / 2, height / 2, width, height, stageCfg.bgColor ?? 0x0a0a18, 0.55).setDepth(-999);
+    }
 
     // ── Tile sprites (back-to-front creation = natural depth sort) ────────
     this.tileSprites = new Map();
@@ -2779,25 +2818,28 @@ export class BattleScene extends Phaser.Scene {
     const specials = getEquippedSpecialAbilities(unit).filter(Boolean);
     const skills   = getEquippedSkillAbilities(unit).filter(Boolean);
 
-    const IH = 30, PAD = 5;
+    // Sized 1.5x the original (2026-08-28, "make the in battle menu bigger
+    // 1.5X") — every constant below is the original value times 1.5,
+    // rounded up on ties so nothing undershoots the ask.
+    const IH = 45, PAD = 8;
     const ITEMS = this.buildMenuItems(unit, specials, skills);
-    const MW = 148, MH = ITEMS.length * IH + PAD * 2;
+    const MW = 222, MH = ITEMS.length * IH + PAD * 2;
 
     // Position beside unit: right if space, left otherwise
-    const toRight = ux + 40 + MW < width - 4;
-    const mx = toRight ? ux + 40 : ux - 40 - MW;
+    const toRight = ux + 60 + MW < width - 4;
+    const mx = toRight ? ux + 60 : ux - 60 - MW;
     const my = Math.min(Math.max(uy - MH / 2, 6), height - MH - 6);
 
     const con = this.add.container(mx, my).setDepth(4000);
     this.actionMenu = con;
-    const RADIUS = 10;
+    const RADIUS = 15;
 
     // Soft drop shadow — an offset, low-alpha rounded rect fakes depth/blur
     // without a real filter, so the card still reads as "raised" once its
     // own fill goes translucent.
     const shadow = this.add.graphics();
     shadow.fillStyle(0x000000, 0.32);
-    shadow.fillRoundedRect(4, 6, MW, MH, RADIUS);
+    shadow.fillRoundedRect(6, 9, MW, MH, RADIUS);
     con.add(shadow);
 
     // Panel background — modern translucent "glass" card, 30% opacity
@@ -2806,26 +2848,26 @@ export class BattleScene extends Phaser.Scene {
     const bg = this.add.graphics();
     bg.fillStyle(0x0d1428, 0.3);
     bg.fillRoundedRect(0, 0, MW, MH, RADIUS);
-    bg.lineStyle(1.5, unit.color, 0.75);
+    bg.lineStyle(2.25, unit.color, 0.75);
     bg.strokeRoundedRect(0, 0, MW, MH, RADIUS);
     // Bright top edge accent — the "modern card" highlight strip
     bg.fillStyle(unit.color, 0.6);
-    bg.fillRoundedRect(0, 0, MW, 3, { tl: RADIUS, tr: RADIUS, bl: 0, br: 0 });
+    bg.fillRoundedRect(0, 0, MW, 5, { tl: RADIUS, tr: RADIUS, bl: 0, br: 0 });
     con.add(bg);
 
     // Arrow connector toward unit
-    const ax = toRight ? -7 : MW;
+    const ax = toRight ? -11 : MW;
     const ay = MH / 2;
     const arrowG = this.add.graphics();
     arrowG.fillStyle(0x0d1428, 0.3);
-    arrowG.fillTriangle(ax, ay - 6, ax, ay + 6, toRight ? ax - 7 : ax + 7, ay);
+    arrowG.fillTriangle(ax, ay - 9, ax, ay + 9, toRight ? ax - 11 : ax + 11, ay);
     con.add(arrowG);
 
     // Unit name header
-    const nameHdr = this.add.text(MW / 2, PAD + 6, unit.name.split(' ')[0].toUpperCase(), {
-      fontSize: '9px', fontFamily: 'monospace', fontStyle: 'bold',
+    const nameHdr = this.add.text(MW / 2, PAD + 9, unit.name.split(' ')[0].toUpperCase(), {
+      fontSize: '14px', fontFamily: 'monospace', fontStyle: 'bold',
       color: '#' + unit.color.toString(16).padStart(6, '0'),
-      stroke: '#000000', strokeThickness: 3,
+      stroke: '#000000', strokeThickness: 5,
     }).setOrigin(0.5, 0);
     con.add(nameHdr);
 
@@ -2835,7 +2877,7 @@ export class BattleScene extends Phaser.Scene {
       if (separator) {
         const sepG = this.add.graphics();
         sepG.lineStyle(1, 0xffffff, 0.08);
-        sepG.lineBetween(4, iy + 2, MW - 4, iy + 2);
+        sepG.lineBetween(6, iy + 3, MW - 6, iy + 3);
         con.add(sepG);
       }
 
@@ -2844,10 +2886,10 @@ export class BattleScene extends Phaser.Scene {
         g.clear();
         if (h && !disabled) {
           g.fillStyle(0x2a4a90, 0.5);
-          g.fillRoundedRect(2, iy + 3, MW - 4, IH - 5, 6);
+          g.fillRoundedRect(3, iy + 5, MW - 6, IH - 8, 9);
           // Left accent bar — modern "selected row" indicator
           g.fillStyle(unit.color, 0.9);
-          g.fillRoundedRect(2, iy + 3, 3, IH - 5, 2);
+          g.fillRoundedRect(3, iy + 5, 5, IH - 8, 3);
         }
       };
       draw(false);
@@ -2856,19 +2898,19 @@ export class BattleScene extends Phaser.Scene {
       const tc = disabled ? '#3a3a52' : '#e8eeff';
       const ic = disabled ? '#2a2a44' : '#' + unit.color.toString(16).padStart(6, '0');
 
-      con.add(this.add.text(10, iy + IH / 2, icon, {
-        fontSize: '12px', fontFamily: 'monospace', color: ic,
-        stroke: '#000000', strokeThickness: 3,
+      con.add(this.add.text(15, iy + IH / 2, icon, {
+        fontSize: '18px', fontFamily: 'monospace', color: ic,
+        stroke: '#000000', strokeThickness: 5,
       }).setOrigin(0, 0.5));
-      con.add(this.add.text(28, iy + IH / 2, label, {
-        fontSize: '12px', fontFamily: 'monospace', fontStyle: disabled ? 'normal' : 'bold', color: tc,
-        stroke: '#000000', strokeThickness: disabled ? 0 : 3,
+      con.add(this.add.text(42, iy + IH / 2, label, {
+        fontSize: '18px', fontFamily: 'monospace', fontStyle: disabled ? 'normal' : 'bold', color: tc,
+        stroke: '#000000', strokeThickness: disabled ? 0 : 5,
       }).setOrigin(0, 0.5));
 
       if (sub && !disabled) {
-        con.add(this.add.text(MW - 8, iy + IH / 2, sub, {
-          fontSize: '9px', fontFamily: 'monospace', color: '#7799cc',
-          stroke: '#000000', strokeThickness: 2,
+        con.add(this.add.text(MW - 12, iy + IH / 2, sub, {
+          fontSize: '14px', fontFamily: 'monospace', color: '#7799cc',
+          stroke: '#000000', strokeThickness: 3,
         }).setOrigin(1, 0.5));
       }
 
@@ -2887,8 +2929,8 @@ export class BattleScene extends Phaser.Scene {
           ((this.tutorialStep === 'move' && label === 'Move') ||
            (this.tutorialStep === 'attack' && label === 'Playbook'))) {
         const hl = this.add.graphics();
-        hl.lineStyle(2, 0xffee88, 0.95);
-        hl.strokeRoundedRect(2, iy + 3, MW - 4, IH - 5, 6);
+        hl.lineStyle(3, 0xffee88, 0.95);
+        hl.strokeRoundedRect(3, iy + 5, MW - 6, IH - 8, 9);
         con.add(hl);
         this.tweens.add({ targets: hl, alpha: 0.25, duration: 500, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
       }
@@ -3019,43 +3061,45 @@ export class BattleScene extends Phaser.Scene {
     const { width, height } = this.scale;
     const { x: ux, y: uy } = this.gridToScreen(unit.col, unit.row);
 
-    const IH = 30, PAD = 4;
-    const MW = 200, MH = (abilities.length + 1) * IH + PAD * 2;
-    const toRight = ux + 40 + MW < width - 4;
-    const mx = toRight ? ux + 40 : ux - 40 - MW;
+    // Sized 1.5x the original (2026-08-28, "make the in battle menu bigger
+    // 1.5X") — same scaling pass as showActionMenu above.
+    const IH = 45, PAD = 6;
+    const MW = 300, MH = (abilities.length + 1) * IH + PAD * 2;
+    const toRight = ux + 60 + MW < width - 4;
+    const mx = toRight ? ux + 60 : ux - 60 - MW;
     const my = Math.min(Math.max(uy - MH / 2, 6), height - MH - 6);
 
     const con = this.add.container(mx, my).setDepth(4000);
     this.actionMenu = con;
-    const RADIUS = 10;
+    const RADIUS = 15;
 
     const shadow = this.add.graphics();
     shadow.fillStyle(0x000000, 0.32);
-    shadow.fillRoundedRect(4, 6, MW, MH, RADIUS);
+    shadow.fillRoundedRect(6, 9, MW, MH, RADIUS);
     con.add(shadow);
 
     const bg = this.add.graphics();
     bg.fillStyle(0x0d1428, 0.3);
     bg.fillRoundedRect(0, 0, MW, MH, RADIUS);
-    bg.lineStyle(1.5, unit.color, 0.75);
+    bg.lineStyle(2.25, unit.color, 0.75);
     bg.strokeRoundedRect(0, 0, MW, MH, RADIUS);
     bg.fillStyle(unit.color, 0.6);
-    bg.fillRoundedRect(0, 0, MW, 3, { tl: RADIUS, tr: RADIUS, bl: 0, br: 0 });
+    bg.fillRoundedRect(0, 0, MW, 5, { tl: RADIUS, tr: RADIUS, bl: 0, br: 0 });
     con.add(bg);
-    const ax = toRight ? -7 : MW;
+    const ax = toRight ? -11 : MW;
     const ay = MH / 2;
     const arrowG = this.add.graphics();
     arrowG.fillStyle(0x0d1428, 0.3);
-    arrowG.fillTriangle(ax, ay - 6, ax, ay + 6, toRight ? ax - 7 : ax + 7, ay);
+    arrowG.fillTriangle(ax, ay - 9, ax, ay + 9, toRight ? ax - 11 : ax + 11, ay);
     con.add(arrowG);
 
     // Back button
     const backG = this.add.graphics();
-    const drawBack = (h) => { backG.clear(); if (h) { backG.fillStyle(0x2a4a90, 0.5); backG.fillRoundedRect(2, PAD + 2, MW - 4, IH - 4, 6); } };
+    const drawBack = (h) => { backG.clear(); if (h) { backG.fillStyle(0x2a4a90, 0.5); backG.fillRoundedRect(3, PAD + 3, MW - 6, IH - 6, 9); } };
     drawBack(false);
     con.add(backG);
-    con.add(this.add.text(10, PAD + IH / 2, '← Back', {
-      fontSize:'11px', fontFamily:'monospace', color:'#88aadd', stroke:'#000000', strokeThickness:3,
+    con.add(this.add.text(15, PAD + IH / 2, '← Back', {
+      fontSize:'17px', fontFamily:'monospace', color:'#88aadd', stroke:'#000000', strokeThickness:5,
     }).setOrigin(0, 0.5));
     const bz = this.add.zone(MW/2, PAD + IH/2, MW, IH).setInteractive({ useHandCursor:true });
     bz.on('pointerover', () => drawBack(true)); bz.on('pointerout', () => drawBack(false));
@@ -3070,9 +3114,9 @@ export class BattleScene extends Phaser.Scene {
         g.clear();
         if (h && canUse) {
           g.fillStyle(0x2a4a90, 0.5);
-          g.fillRoundedRect(2, iy+2, MW-4, IH-4, 6);
+          g.fillRoundedRect(3, iy+3, MW-6, IH-6, 9);
           g.fillStyle(unit.color, 0.9);
-          g.fillRoundedRect(2, iy+2, 3, IH-4, 2);
+          g.fillRoundedRect(3, iy+3, 5, IH-6, 3);
         }
       };
       draw(false);
@@ -3080,9 +3124,9 @@ export class BattleScene extends Phaser.Scene {
 
       const tc = canUse ? '#ffffff' : '#252535';
       const sc = canUse ? '#66aaff' : '#1e2233';
-      const nameText = this.add.text(10, iy + IH / 2, `${ab.icon}  ${ab.name}`, {
-        fontSize:'12px', fontFamily:'monospace', fontStyle:'bold', color: tc,
-        stroke: '#000000', strokeThickness: canUse ? 3 : 0,
+      const nameText = this.add.text(15, iy + IH / 2, `${ab.icon}  ${ab.name}`, {
+        fontSize:'18px', fontFamily:'monospace', fontStyle:'bold', color: tc,
+        stroke: '#000000', strokeThickness: canUse ? 5 : 0,
       }).setOrigin(0, 0.5);
       con.add(nameText);
 
@@ -3091,15 +3135,15 @@ export class BattleScene extends Phaser.Scene {
       // it never overlaps regardless of how long the ability's name is.
       const typeTag = this.abilityTypeTag(unit, ab);
       if (typeTag) {
-        con.add(this.add.text(nameText.x + nameText.width + 6, iy + IH / 2, typeTag, {
-          fontSize: '11px', fontFamily: 'monospace', color: canUse ? '#ddccaa' : '#3a3428',
-          stroke: '#000000', strokeThickness: canUse ? 2 : 0,
+        con.add(this.add.text(nameText.x + nameText.width + 9, iy + IH / 2, typeTag, {
+          fontSize: '17px', fontFamily: 'monospace', color: canUse ? '#ddccaa' : '#3a3428',
+          stroke: '#000000', strokeThickness: canUse ? 3 : 0,
         }).setOrigin(0, 0.5));
       }
 
-      con.add(this.add.text(MW - 8, iy + IH / 2, this.abilitySubLabel(unit, ab), {
-        fontSize:'10px', fontFamily:'monospace', color: sc,
-        stroke: '#000000', strokeThickness: canUse ? 2 : 0,
+      con.add(this.add.text(MW - 12, iy + IH / 2, this.abilitySubLabel(unit, ab), {
+        fontSize:'15px', fontFamily:'monospace', color: sc,
+        stroke: '#000000', strokeThickness: canUse ? 3 : 0,
       }).setOrigin(1, 0.5));
 
       if (canUse) {
@@ -3119,8 +3163,8 @@ export class BattleScene extends Phaser.Scene {
         // baseline moves (Attack/Throw) is actually usable right now.
         if (this.tutorialActive && this.tutorialStep === 'attack' && (ab === ATTACK || ab === THROW)) {
           const hl = this.add.graphics();
-          hl.lineStyle(2, 0xffee88, 0.95);
-          hl.strokeRoundedRect(2, iy + 2, MW - 4, IH - 4, 6);
+          hl.lineStyle(3, 0xffee88, 0.95);
+          hl.strokeRoundedRect(3, iy + 3, MW - 6, IH - 6, 9);
           con.add(hl);
           this.tweens.add({ targets: hl, alpha: 0.25, duration: 500, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
         }
@@ -3188,44 +3232,46 @@ export class BattleScene extends Phaser.Scene {
     const { x: ux, y: uy } = this.gridToScreen(unit.col, unit.row);
     const groups = this.usableItemGroups();
 
-    const IH = 30, PAD = 4;
+    // Sized 1.5x the original (2026-08-28, "make the in battle menu bigger
+    // 1.5X") — same scaling pass as showActionMenu above.
+    const IH = 45, PAD = 6;
     const rowCount = Math.max(groups.length, 1);
-    const MW = 200, MH = (rowCount + 1) * IH + PAD * 2;
-    const toRight = ux + 40 + MW < width - 4;
-    const mx = toRight ? ux + 40 : ux - 40 - MW;
+    const MW = 300, MH = (rowCount + 1) * IH + PAD * 2;
+    const toRight = ux + 60 + MW < width - 4;
+    const mx = toRight ? ux + 60 : ux - 60 - MW;
     const my = Math.min(Math.max(uy - MH / 2, 6), height - MH - 6);
 
     const con = this.add.container(mx, my).setDepth(4000);
     this.actionMenu = con;
-    const RADIUS = 10;
+    const RADIUS = 15;
 
     const shadow = this.add.graphics();
     shadow.fillStyle(0x000000, 0.32);
-    shadow.fillRoundedRect(4, 6, MW, MH, RADIUS);
+    shadow.fillRoundedRect(6, 9, MW, MH, RADIUS);
     con.add(shadow);
 
     const bg = this.add.graphics();
     bg.fillStyle(0x0d1428, 0.3);
     bg.fillRoundedRect(0, 0, MW, MH, RADIUS);
-    bg.lineStyle(1.5, unit.color, 0.75);
+    bg.lineStyle(2.25, unit.color, 0.75);
     bg.strokeRoundedRect(0, 0, MW, MH, RADIUS);
     bg.fillStyle(unit.color, 0.6);
-    bg.fillRoundedRect(0, 0, MW, 3, { tl: RADIUS, tr: RADIUS, bl: 0, br: 0 });
+    bg.fillRoundedRect(0, 0, MW, 5, { tl: RADIUS, tr: RADIUS, bl: 0, br: 0 });
     con.add(bg);
-    const ax = toRight ? -7 : MW;
+    const ax = toRight ? -11 : MW;
     const ay = MH / 2;
     const arrowG = this.add.graphics();
     arrowG.fillStyle(0x0d1428, 0.3);
-    arrowG.fillTriangle(ax, ay - 6, ax, ay + 6, toRight ? ax - 7 : ax + 7, ay);
+    arrowG.fillTriangle(ax, ay - 9, ax, ay + 9, toRight ? ax - 11 : ax + 11, ay);
     con.add(arrowG);
 
     // Back button
     const backG = this.add.graphics();
-    const drawBack = (h) => { backG.clear(); if (h) { backG.fillStyle(0x2a4a90, 0.5); backG.fillRoundedRect(2, PAD + 2, MW - 4, IH - 4, 6); } };
+    const drawBack = (h) => { backG.clear(); if (h) { backG.fillStyle(0x2a4a90, 0.5); backG.fillRoundedRect(3, PAD + 3, MW - 6, IH - 6, 9); } };
     drawBack(false);
     con.add(backG);
-    con.add(this.add.text(10, PAD + IH / 2, '← Back', {
-      fontSize:'11px', fontFamily:'monospace', color:'#88aadd', stroke:'#000000', strokeThickness:3,
+    con.add(this.add.text(15, PAD + IH / 2, '← Back', {
+      fontSize:'17px', fontFamily:'monospace', color:'#88aadd', stroke:'#000000', strokeThickness:5,
     }).setOrigin(0, 0.5));
     const bz = this.add.zone(MW/2, PAD + IH/2, MW, IH).setInteractive({ useHandCursor:true });
     bz.on('pointerover', () => drawBack(true)); bz.on('pointerout', () => drawBack(false));
@@ -3234,7 +3280,7 @@ export class BattleScene extends Phaser.Scene {
 
     if (!groups.length) {
       con.add(this.add.text(MW / 2, PAD + IH + IH / 2, 'No items', {
-        fontSize:'11px', fontFamily:'monospace', color:'#334466',
+        fontSize:'17px', fontFamily:'monospace', color:'#334466',
       }).setOrigin(0.5));
     }
 
@@ -3245,21 +3291,21 @@ export class BattleScene extends Phaser.Scene {
         g.clear();
         if (h) {
           g.fillStyle(0x2a4a90, 0.5);
-          g.fillRoundedRect(2, iy+2, MW-4, IH-4, 6);
+          g.fillRoundedRect(3, iy+3, MW-6, IH-6, 9);
           g.fillStyle(unit.color, 0.9);
-          g.fillRoundedRect(2, iy+2, 3, IH-4, 2);
+          g.fillRoundedRect(3, iy+3, 5, IH-6, 3);
         }
       };
       draw(false);
       con.add(g);
 
-      con.add(this.add.text(10, iy + IH / 2, item.name, {
-        fontSize:'12px', fontFamily:'monospace', fontStyle:'bold', color:'#ffffff',
-        stroke: '#000000', strokeThickness: 3,
+      con.add(this.add.text(15, iy + IH / 2, item.name, {
+        fontSize:'18px', fontFamily:'monospace', fontStyle:'bold', color:'#ffffff',
+        stroke: '#000000', strokeThickness: 5,
       }).setOrigin(0, 0.5));
-      con.add(this.add.text(MW - 8, iy + IH / 2, `×${count}`, {
-        fontSize:'10px', fontFamily:'monospace', color:'#66aaff',
-        stroke: '#000000', strokeThickness: 2,
+      con.add(this.add.text(MW - 12, iy + IH / 2, `×${count}`, {
+        fontSize:'15px', fontFamily:'monospace', color:'#66aaff',
+        stroke: '#000000', strokeThickness: 3,
       }).setOrigin(1, 0.5));
 
       const z = this.add.zone(MW/2, iy + IH/2, MW, IH).setInteractive({ useHandCursor:true });
@@ -3286,43 +3332,45 @@ export class BattleScene extends Phaser.Scene {
     const { x: ux, y: uy } = this.gridToScreen(actor.col, actor.row);
     const targets = this.playerUnits.filter(u => !u.isDead);
 
-    const IH = 34, PAD = 4;
-    const MW = 210, MH = (targets.length + 1) * IH + PAD * 2;
-    const toRight = ux + 40 + MW < width - 4;
-    const mx = toRight ? ux + 40 : ux - 40 - MW;
+    // Sized 1.5x the original (2026-08-28, "make the in battle menu bigger
+    // 1.5X") — same scaling pass as showActionMenu above.
+    const IH = 51, PAD = 6;
+    const MW = 315, MH = (targets.length + 1) * IH + PAD * 2;
+    const toRight = ux + 60 + MW < width - 4;
+    const mx = toRight ? ux + 60 : ux - 60 - MW;
     const my = Math.min(Math.max(uy - MH / 2, 6), height - MH - 6);
 
     const con = this.add.container(mx, my).setDepth(4000);
     this.actionMenu = con;
-    const RADIUS = 10;
+    const RADIUS = 15;
 
     const shadow = this.add.graphics();
     shadow.fillStyle(0x000000, 0.32);
-    shadow.fillRoundedRect(4, 6, MW, MH, RADIUS);
+    shadow.fillRoundedRect(6, 9, MW, MH, RADIUS);
     con.add(shadow);
 
     const bg = this.add.graphics();
     bg.fillStyle(0x0d1428, 0.3);
     bg.fillRoundedRect(0, 0, MW, MH, RADIUS);
-    bg.lineStyle(1.5, actor.color, 0.75);
+    bg.lineStyle(2.25, actor.color, 0.75);
     bg.strokeRoundedRect(0, 0, MW, MH, RADIUS);
     bg.fillStyle(actor.color, 0.6);
-    bg.fillRoundedRect(0, 0, MW, 3, { tl: RADIUS, tr: RADIUS, bl: 0, br: 0 });
+    bg.fillRoundedRect(0, 0, MW, 5, { tl: RADIUS, tr: RADIUS, bl: 0, br: 0 });
     con.add(bg);
-    const ax = toRight ? -7 : MW;
+    const ax = toRight ? -11 : MW;
     const ay = MH / 2;
     const arrowG = this.add.graphics();
     arrowG.fillStyle(0x0d1428, 0.3);
-    arrowG.fillTriangle(ax, ay - 6, ax, ay + 6, toRight ? ax - 7 : ax + 7, ay);
+    arrowG.fillTriangle(ax, ay - 9, ax, ay + 9, toRight ? ax - 11 : ax + 11, ay);
     con.add(arrowG);
 
     // Back button — returns to the item list, not the action menu.
     const backG = this.add.graphics();
-    const drawBack = (h) => { backG.clear(); if (h) { backG.fillStyle(0x2a4a90, 0.5); backG.fillRoundedRect(2, PAD + 2, MW - 4, IH - 4, 6); } };
+    const drawBack = (h) => { backG.clear(); if (h) { backG.fillStyle(0x2a4a90, 0.5); backG.fillRoundedRect(3, PAD + 3, MW - 6, IH - 6, 9); } };
     drawBack(false);
     con.add(backG);
-    con.add(this.add.text(10, PAD + IH / 2, '← Back', {
-      fontSize:'11px', fontFamily:'monospace', color:'#88aadd', stroke:'#000000', strokeThickness:3,
+    con.add(this.add.text(15, PAD + IH / 2, '← Back', {
+      fontSize:'17px', fontFamily:'monospace', color:'#88aadd', stroke:'#000000', strokeThickness:5,
     }).setOrigin(0, 0.5));
     const bz = this.add.zone(MW/2, PAD + IH/2, MW, IH).setInteractive({ useHandCursor:true });
     bz.on('pointerover', () => drawBack(true)); bz.on('pointerout', () => drawBack(false));
@@ -3336,23 +3384,23 @@ export class BattleScene extends Phaser.Scene {
         g.clear();
         if (h) {
           g.fillStyle(0x2a4a90, 0.5);
-          g.fillRoundedRect(2, iy+2, MW-4, IH-4, 6);
+          g.fillRoundedRect(3, iy+3, MW-6, IH-6, 9);
           g.fillStyle(target.color, 0.9);
-          g.fillRoundedRect(2, iy+2, 3, IH-4, 2);
+          g.fillRoundedRect(3, iy+3, 5, IH-6, 3);
         }
       };
       draw(false);
       con.add(g);
 
       const label = target === actor ? `${target.name.split(' ')[0]} (self)` : target.name.split(' ')[0];
-      con.add(this.add.text(10, iy + 9, label, {
-        fontSize:'12px', fontFamily:'monospace', fontStyle:'bold', color:'#ffffff',
-        stroke: '#000000', strokeThickness: 3,
+      con.add(this.add.text(15, iy + 14, label, {
+        fontSize:'18px', fontFamily:'monospace', fontStyle:'bold', color:'#ffffff',
+        stroke: '#000000', strokeThickness: 5,
       }).setOrigin(0, 0.5));
       const statBits = [`HP ${target.hp}/${target.maxHp}`];
       if (item.spPct != null && target.maxSp != null) statBits.push(`SP ${target.sp}/${target.maxSp}`);
-      con.add(this.add.text(10, iy + 23, statBits.join('  ·  '), {
-        fontSize:'9px', fontFamily:'monospace', color: target.hp < target.maxHp ? '#66ff88' : '#7799bb',
+      con.add(this.add.text(15, iy + 35, statBits.join('  ·  '), {
+        fontSize:'14px', fontFamily:'monospace', color: target.hp < target.maxHp ? '#66ff88' : '#7799bb',
       }).setOrigin(0, 0.5));
 
       const z = this.add.zone(MW/2, iy + IH/2, MW, IH).setInteractive({ useHandCursor:true });
