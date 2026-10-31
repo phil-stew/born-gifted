@@ -4866,7 +4866,7 @@ export class BattleScene extends Phaser.Scene {
       for (const key of this.moveRange) {
         if (this.unitMap.has(key)) continue;
         const [col, row] = key.split(',').map(Number);
-        this.drawDiamond(col, row, key === hovKey ? 0x9edaff : 0x88aaff, dimmed ? 0.18 : 0.4);
+        this.drawDiamond(col, row, key === hovKey ? 0x2f7fe0 : 0x1a46b8, dimmed ? 0.3 : 0.65);
       }
     }
 
@@ -4881,7 +4881,7 @@ export class BattleScene extends Phaser.Scene {
           if (col < 0 || col >= COLS || row < 0 || row >= ROWS) continue;
           const occ = this.unitMap.get(`${col},${row}`);
           const isTarget = occ?.team === 'enemy' && !occ.isDead;
-          this.drawDiamond(col, row, isTarget ? 0xff2200 : 0xffaa33, isTarget ? 0.7 : 0.32);
+          this.drawDiamond(col, row, isTarget ? 0xb01000 : 0xb85c00, isTarget ? 0.8 : 0.55);
         }
       }
       // Directional lines
@@ -4891,7 +4891,7 @@ export class BattleScene extends Phaser.Scene {
           if (col < 0 || col >= COLS || row < 0 || row >= ROWS) break;
           const occ = this.unitMap.get(`${col},${row}`);
           const isTarget = occ?.team === 'enemy' && !occ.isDead;
-          this.drawDiamond(col, row, isTarget ? 0xff4400 : 0xffaa33, isTarget ? 0.55 : 0.3);
+          this.drawDiamond(col, row, isTarget ? 0xb02000 : 0xb85c00, isTarget ? 0.75 : 0.55);
           if (occ) break;
         }
       }
@@ -4909,7 +4909,7 @@ export class BattleScene extends Phaser.Scene {
           if (dist < 1 || !this.abilityRangeMatches(this.selectedUnit, this.activeAbility, dist)) continue;
           const occ = this.unitMap.get(`${col},${row}`);
           const isTarget = occ?.team === this.activeAbility.targetType;
-          this.drawDiamond(col, row, isTarget ? 0xff8800 : 0xffaa33, isTarget ? 0.55 : 0.32);
+          this.drawDiamond(col, row, isTarget ? 0xb05000 : 0xb85c00, isTarget ? 0.75 : 0.55);
         }
       }
     }
@@ -4919,7 +4919,7 @@ export class BattleScene extends Phaser.Scene {
       const selOcc = this.unitMap.get(selectedKey);
       if (!selOcc?.portrait) {
         const [col, row] = selectedKey.split(',').map(Number);
-        this.drawDiamond(col, row, 0xffd700, 0.5);
+        this.drawDiamond(col, row, 0xb08a00, 0.65);
       }
     }
 
@@ -4927,7 +4927,7 @@ export class BattleScene extends Phaser.Scene {
     if (hovKey && !this.moveRange.has(hovKey) && hovKey !== selectedKey) {
       const hovOcc = this.unitMap.get(hovKey);
       if (!hovOcc?.portrait) {
-        this.drawDiamond(this.hoveredTile.col, this.hoveredTile.row, 0x9edaff, 0.3);
+        this.drawDiamond(this.hoveredTile.col, this.hoveredTile.row, 0x2f7fe0, 0.5);
       }
     }
 
@@ -4935,7 +4935,7 @@ export class BattleScene extends Phaser.Scene {
     // darker once the unit is done for the turn), every enemy tile shows dark red.
     for (const u of this.playerUnits) {
       if (u.isDead) continue;
-      if (u === this.selectedUnit)   this.drawDiamond(u.col, u.row, 0x55bbff, 0.55);
+      if (u === this.selectedUnit)   this.drawDiamond(u.col, u.row, 0x0f6fc0, 0.75);
       else if (u.isDone)             this.drawDiamond(u.col, u.row, 0x152a52, 0.4);
       else                           this.drawDiamond(u.col, u.row, 0x2a6fdb, 0.4);
     }
