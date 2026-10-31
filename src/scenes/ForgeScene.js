@@ -103,12 +103,23 @@ export class ForgeScene extends Phaser.Scene {
     return true;
   }
 
-  recipesHTML() {
-    return FORGE_RECIPES.map((recipe, i) => `
+  // Slots this unit's class can wear, so the Forge never offers gear they
+  // couldn't equip (a Dancer only has Class Item and Chest).
+  craftableSlots(recipe, unit) {
+    const { slots } = gearLayoutForUnit(unit);
+    return recipe.resultSlots.filter(s => slots.includes(s));
+  }
+
+  recipesHTML(unit) {
+    return FORGE_RECIPES.map((recipe, i) => {
+      const resultSlots = this.craftableSlots(recipe, unit);
+      if (!resultSlots.length) return '';
+      return `
       <button class="ui-row ${this.selectedRecipe?.id === recipe.id ? 'active' : ''} ${this.recipeAvailable(recipe) ? '' : 'dim'}" data-recipe="${i}">
-        <span class="ui-row-name">${recipe.resultSlots.map(s => SLOT_LABEL[s] ?? s).join(' / ')}
+        <span class="ui-row-name">${resultSlots.map(s => SLOT_LABEL[s] ?? s).join(' / ')}
           <span class="ui-row-sub">${esc(recipe.desc)}</span></span>
-      </button>`).join('');
+      </button>`;
+    }).join('');
   }
 
   craftDetailHTML(unit) {
@@ -121,6 +132,7 @@ export class ForgeScene extends Phaser.Scene {
         ${options.map(o => `<button class="ui-detail-tab ${o.active ? 'active' : ''}" data-${attr}="${o.value}">${esc(o.label)}</button>`).join('')}
       </div>`;
 
+    const resultSlots = this.craftableSlots(recipe, unit);
     const ores = this.oreOptions();
     const materials = recipe.materials.map(kind => {
       const isOre = kind === 'ore';
@@ -135,7 +147,7 @@ export class ForgeScene extends Phaser.Scene {
 
     return `
       <div class="ui-item-name">${esc(recipe.desc)}</div>
-      ${recipe.resultSlots.length > 1 ? picker('Result slot', 'result-slot', recipe.resultSlots.map(slot => (
+      ${resultSlots.length > 1 ? picker('Result slot', 'result-slot', resultSlots.map(slot => (
         { value: slot, label: SLOT_LABEL[slot] ?? slot, active: this.selectedResultSlot === slot }))) : ''}
       ${recipe.materials.includes('ore') && ores.length > 1 ? picker('Ore type (sets rarity)', 'ore', ores.map(ore => (
         { value: ore.id, label: ore.name.replace(' Ore', ''), active: this.selectedOreId === ore.id }))) : ''}
@@ -163,7 +175,7 @@ export class ForgeScene extends Phaser.Scene {
               <button class="ui-detail-tab ${craft ? '' : 'active'}" data-mode="reinforce">Reinforce</button>
               <button class="ui-detail-tab ${craft ? 'active' : ''}" data-mode="craft">Craft</button>
             </div>
-            ${craft ? this.recipesHTML() : this.slotsHTML(unit)}
+            ${craft ? this.recipesHTML(unit) : this.slotsHTML(unit)}
           </div>
           <div class="ui-panel ui-detail-panel" data-scroll-id="forge-detail">
             ${craft ? this.craftDetailHTML(unit) : this.reinforceDetailHTML(unit)}
@@ -181,7 +193,13 @@ export class ForgeScene extends Phaser.Scene {
       this.selectedOreId = null;
       this.rebuild();
     });
-    onClick('[data-unit]', (e, node) => { this.unitIndex = Number(node.dataset.unit); this.selectedSlot = null; this.rebuild(); });
+    onClick('[data-unit]', (e, node) => {
+      this.unitIndex = Number(node.dataset.unit);
+      this.selectedSlot = null;
+      this.selectedRecipe = null;
+      this.selectedResultSlot = null;
+      this.rebuild();
+    });
     onClick('[data-slot]', (e, node) => { this.selectedSlot = node.dataset.slot; this.rebuild(); });
     onClick('[data-reinforce]', (e, node) => {
       const lvl = unit.equip[this.selectedSlot].reinforceLevel ?? 0;
@@ -190,7 +208,7 @@ export class ForgeScene extends Phaser.Scene {
     onClick('[data-recipe]', (e, node) => {
       const recipe = FORGE_RECIPES[Number(node.dataset.recipe)];
       this.selectedRecipe = recipe;
-      this.selectedResultSlot = recipe.resultSlots[0];
+      this.selectedResultSlot = this.craftableSlots(recipe, unit)[0];
       this.selectedOreId = this.oreOptions()[0]?.id ?? null;
       this.rebuild();
     });
