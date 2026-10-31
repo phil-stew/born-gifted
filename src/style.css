@@ -906,4 +906,31 @@ canvas {
   .ui-section { margin-top: 10px; }
   .ui-detail-tabs { margin-top: 8px; }
   .ui-level-row { margin-bottom: 4px; }
+
+  /* Party packs in more; its top bar buttons keep the sizes above. */
+  .ui-party .ui-body { grid-template-columns: minmax(170px, 24%) 1fr; gap: 8px; padding-top: 6px; padding-bottom: 6px; }
+  .ui-party .ui-list-panel { gap: 4px; padding: 6px; }
+  .ui-party .ui-card { gap: 8px; padding: 5px 8px; }
+  .ui-party .ui-portrait-thumb { width: 36px; height: 36px; }
+  .ui-party .ui-card-name { font-size: 14px; }
+  .ui-party .ui-card-sub { font-size: 12px; }
+  .ui-party .ui-card .ui-bar { margin: 2px 0; }
+  .ui-party .ui-detail-panel { padding: 8px 12px; }
+  .ui-party .ui-detail-header { gap: 8px; margin-bottom: 4px; }
+  .ui-party .ui-portrait-lg { width: 40px; height: 40px; }
+  .ui-party .ui-name { font-size: 16px; }
+  .ui-party .ui-role-path, .ui-party .ui-element { display: inline; font-size: 12px; }
+  .ui-party .ui-level-row { font-size: 13px; margin-bottom: 2px; }
+  .ui-party .ui-xp-label { font-size: 12px; }
+  .ui-party .ui-detail-tabs { gap: 6px; margin-top: 6px; }
+  .ui-party .ui-detail-tab { min-height: 32px; font-size: 13px; }
+  .ui-party .ui-section { margin-top: 6px; }
+  .ui-party .ui-section-label { font-size: 11px; margin-bottom: 4px; padding-bottom: 2px; }
+  .ui-party .ui-stat-row, .ui-party .ui-hpsp-row { font-size: 13px; padding: 1px 0; }
+  .ui-party .ui-slot-grid { gap: 4px; }
+  .ui-party .ui-slot { font-size: 13px; padding: 4px 8px; min-height: 0; }
+  .ui-party .ui-slot-label { font-size: 10px; }
+  .ui-party .ui-skill-slot, .ui-party .ui-ability-row { padding: 4px 8px; margin-bottom: 3px; }
+  .ui-party .ui-ability-name { font-size: 13px; }
+  .ui-party .ui-ability-desc, .ui-party .ui-ability-cost { font-size: 12px; }
 }

@@ -100,7 +100,7 @@ export class PartyScene extends Phaser.Scene {
       </div>`;
 
     mount(`
-      <div class="ui-screen">
+      <div class="ui-screen ui-party">
         <div class="ui-topbar">
           <button class="ui-navbtn" data-nav="back">◀ World Map</button>
           <div class="ui-title">PARTY</div>
