@@ -4881,7 +4881,7 @@ export class BattleScene extends Phaser.Scene {
           if (col < 0 || col >= COLS || row < 0 || row >= ROWS) continue;
           const occ = this.unitMap.get(`${col},${row}`);
           const isTarget = occ?.team === 'enemy' && !occ.isDead;
-          this.drawDiamond(col, row, isTarget ? 0xb01000 : 0xb85c00, isTarget ? 0.8 : 0.55);
+          this.drawDiamond(col, row, isTarget ? 0xd00000 : 0x7a2200, isTarget ? 0.85 : 0.65);
         }
       }
       // Directional lines
@@ -4891,14 +4891,14 @@ export class BattleScene extends Phaser.Scene {
           if (col < 0 || col >= COLS || row < 0 || row >= ROWS) break;
           const occ = this.unitMap.get(`${col},${row}`);
           const isTarget = occ?.team === 'enemy' && !occ.isDead;
-          this.drawDiamond(col, row, isTarget ? 0xb02000 : 0xb85c00, isTarget ? 0.75 : 0.55);
+          this.drawDiamond(col, row, isTarget ? 0xd00000 : 0x7a2200, isTarget ? 0.85 : 0.65);
           if (occ) break;
         }
       }
     }
 
     // Ability/skill range highlight — every tile the selected ability can
-    // reach lights up in amber, so the range is visible before picking a
+    // reach lights up in dark red, so the range is visible before picking a
     // target; a ring (not a filled diamond) for exact-range abilities like
     // 3-Point since abilityRangeMatches already enforces dist === exactRange.
     if (this.phase === 'ability_targeting' && this.selectedUnit && this.activeAbility) {
@@ -4909,7 +4909,7 @@ export class BattleScene extends Phaser.Scene {
           if (dist < 1 || !this.abilityRangeMatches(this.selectedUnit, this.activeAbility, dist)) continue;
           const occ = this.unitMap.get(`${col},${row}`);
           const isTarget = occ?.team === this.activeAbility.targetType;
-          this.drawDiamond(col, row, isTarget ? 0xb05000 : 0xb85c00, isTarget ? 0.75 : 0.55);
+          this.drawDiamond(col, row, isTarget ? 0xd00000 : 0x7a2200, isTarget ? 0.85 : 0.65);
         }
       }
     }
