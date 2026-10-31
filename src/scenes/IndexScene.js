@@ -315,11 +315,11 @@ export class IndexScene extends Phaser.Scene {
             <div class="ui-card-sub">Exactly one of the 4 sources — orange, normal size.</div>
           </div>
           <div class="ui-index-ability">
-            <div class="ui-card-name" style="color:#cc5500; font-size:18px;">-88 · Two bonuses</div>
+            <div class="ui-card-name" style="color:#cc5500; font-size: calc(18px * var(--font-scale, 1));">-88 · Two bonuses</div>
             <div class="ui-card-sub">Any two stacking — dark orange, bigger font.</div>
           </div>
           <div class="ui-index-ability">
-            <div class="ui-card-name" style="font-size:18px;"><span style="color:#ff3b3b;">-</span><span style="color:#ff9c33;">1</span><span style="color:#ffe135;">3</span><span style="color:#4ade80;">0</span> · Three or more</div>
+            <div class="ui-card-name" style="font-size: calc(18px * var(--font-scale, 1));"><span style="color:#ff3b3b;">-</span><span style="color:#ff9c33;">1</span><span style="color:#ffe135;">3</span><span style="color:#4ade80;">0</span> · Three or more</div>
             <div class="ui-card-sub">E.g. affinity + designation advantage + Combat adjacency — rainbow, biggest font.</div>
           </div>
         </div>

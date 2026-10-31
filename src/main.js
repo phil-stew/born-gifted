@@ -1,5 +1,6 @@
 import './style.css';
 import Phaser from 'phaser';
+import { installTextScaling } from './data/textSize.js';
 import { GameScene }      from './scenes/GameScene.js';
 import { CharacterCreationScene } from './scenes/CharacterCreationScene.js';
 import { RecruitClassScene } from './scenes/RecruitClassScene.js';
@@ -111,6 +112,7 @@ const config = {
   scene: [GameScene, CharacterCreationScene, RecruitClassScene, WorldMapScene, BattleScene, PreBattleScene, VictoryScene, LootScene, LevelUpScene, StoryScene, HubScene, ShopScene, ForgeScene, PartyScene, InventoryScene, RewardPopupScene, AcademyTaskListScene, AcademyQuestListScene, HandbookScene, VillageQuestListScene, HubBattlesScene, IndexScene, SettingsScene],
 };
 
+installTextScaling();
 window.__game = new Phaser.Game(config);
 
 // manifest.json's "Settings" home-screen shortcut (2026-08-08) launches to

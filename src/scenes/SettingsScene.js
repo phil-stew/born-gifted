@@ -6,6 +6,7 @@ import { getSfxVolume, setSfxVolume, getMusicVolume } from '../audio/settings.js
 import { setMusicVolume } from '../audio/music.js';
 import { DIFFICULTIES, getDifficultyKey, setDifficultyKey } from '../data/difficulty.js';
 import { HINT_MODES, getHintMode, setHintMode } from '../data/battleHints.js';
+import { TEXT_SIZES, getTextSizeKey, setTextSizeKey } from '../data/textSize.js';
 
 // Reachable from the title screen only (for now) — see GameScene's
 // SETTINGS button. Both sliders write straight through to
@@ -32,12 +33,13 @@ export class SettingsScene extends Phaser.Scene {
       fontSize: '26px', fontFamily: 'Georgia, serif', fontStyle: 'bold', color: '#ffffff',
     }).setOrigin(0.5);
 
-    this.buildVolumeRow('MUSIC VOLUME', height / 2 - 170, getMusicVolume(), (v) => setMusicVolume(v));
-    this.buildVolumeRow('SOUND EFFECTS VOLUME', height / 2 - 80, getSfxVolume(), (v) => setSfxVolume(v), {
+    this.buildVolumeRow('MUSIC VOLUME', height / 2 - 200, getMusicVolume(), (v) => setMusicVolume(v));
+    this.buildVolumeRow('SOUND EFFECTS VOLUME', height / 2 - 125, getSfxVolume(), (v) => setSfxVolume(v), {
       onRelease: () => playSfx(this, SFX.click),
     });
-    this.buildDifficultyRow(height / 2 + 40);
-    this.buildHintRow(height / 2 + 160);
+    this.buildDifficultyRow(height / 2 - 25);
+    this.buildHintRow(height / 2 + 90);
+    this.buildTextSizeRow(height / 2 + 205);
 
     this.cameras.main.fadeIn(250, 0, 0, 0);
   }
@@ -96,6 +98,27 @@ export class SettingsScene extends Phaser.Scene {
         },
       });
       buttons.push(btn);
+    });
+  }
+
+  // Canvas text picks up its size when created, so restart to show the change.
+  buildTextSizeRow(y) {
+    const cx = this.scale.width / 2;
+    this.add.text(cx, y - 44, 'TEXT SIZE', {
+      fontSize: '21px', fontFamily: 'monospace', fontStyle: 'bold', color: '#ccccee',
+    }).setOrigin(0.5);
+
+    const bw = 150, bh = 56, gap = 14;
+    const startX = cx - (TEXT_SIZES.length * (bw + gap) - gap) / 2 + bw / 2;
+    TEXT_SIZES.forEach((size, i) => {
+      drawButton(this, {
+        x: startX + i * (bw + gap), y, w: bw, h: bh, label: size.label, fontSize: '21px',
+        active: size.key === getTextSizeKey(),
+        onClick: () => {
+          setTextSizeKey(size.key);
+          this.scene.restart({ returnScene: this.returnScene, returnData: this.returnData });
+        },
+      });
     });
   }
 

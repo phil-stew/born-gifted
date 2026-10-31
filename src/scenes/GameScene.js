@@ -340,7 +340,7 @@ export class GameScene extends Phaser.Scene {
       this.titleElements.push(this.add.text(cx - w / 2 + 14, y + 20, summary.leadName, {
         fontSize: '17px', fontFamily: 'monospace', fontStyle: 'bold', color: '#dddddd',
       }));
-      this.titleElements.push(this.add.text(cx - w / 2 + 14, y + 42, `Lv.${summary.level}  ·  ${summary.missionsCompleted}/${TOTAL_MISSIONS} missions  ·  ${savedStr}`, {
+      this.titleElements.push(this.add.text(cx - w / 2 + 14, y + 42, `Lv.${summary.level} · ${summary.missionsCompleted}/${TOTAL_MISSIONS} missions · ${savedStr}`, {
         fontSize: '14px', fontFamily: 'monospace', color: '#aabbcc',
       }));
     } else {

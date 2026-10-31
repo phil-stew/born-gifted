@@ -3641,7 +3641,7 @@ export class BattleScene extends Phaser.Scene {
     // Left-aligned under RETREAT, not top-right — drawReferenceHud's
     // designation/element cheat-sheet panel already owns that whole corner
     // (px..width-6, y 34-98).
-    this.tutorialSkipBtn = this.add.text(10, 38, 'Skip tutorial ✕', {
+    this.tutorialSkipBtn = this.add.text(10, 66, 'Skip tutorial ✕', {
       fontSize: '18px', fontFamily: 'monospace', color: '#ccd6ff',
       backgroundColor: '#0a0a18', padding: { x: 6, y: 4 },
     }).setOrigin(0, 0).setDepth(5001).setInteractive({ useHandCursor: true });
