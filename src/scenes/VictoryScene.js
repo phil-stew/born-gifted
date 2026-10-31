@@ -327,7 +327,7 @@ export class VictoryScene extends Phaser.Scene {
     // Gold accent line
     bg.fillStyle(0xddaa00, 1);
     bg.fillRect(width * 0.15, 90, width * 0.7, 2);
-    bg.fillRect(width * 0.15, height - 70, width * 0.7, 2);
+    bg.fillRect(width * 0.15, height - 66, width * 0.7, 2);
 
     // ── Header ────────────────────────────────────────────────────────────
     this.add.text(width / 2, 40, 'VICTORY!', {
@@ -336,28 +336,28 @@ export class VictoryScene extends Phaser.Scene {
     }).setOrigin(0.5);
 
     this.add.text(width / 2, 78, `${this.missionId} — ${MISSION_NAMES[this.missionId]}`, {
-      fontSize: '13px', fontFamily: 'monospace', color: '#888888',
+      fontSize: '18px', fontFamily: 'monospace', color: '#bbbbbb',
     }).setOrigin(0.5);
 
     this.add.text(width / 2, 104,
       `+${totalXP} XP  ·  ${this.enemiesKilled} enemies defeated` + (tytrateReward ? `  ·  +${tytrateReward} T` : ''), {
-      fontSize: '14px', fontFamily: 'monospace', color: '#aaaacc',
+      fontSize: '19px', fontFamily: 'monospace', color: '#ccccee',
     }).setOrigin(0.5);
 
     // ── Party XP rows ─────────────────────────────────────────────────────
     let y = 138;
     for (const unit of state.party) {
       this.drawUnitRow(unit, y, width, totalXP);
-      y += 54;
+      y += 72;
     }
 
     // ── Level up notice ───────────────────────────────────────────────────
     if (this.levelUps.length > 0) {
-      this.add.text(width / 2, height - 90, '★  LEVEL UP! ★', {
-        fontSize: '17px', fontFamily: 'Georgia, serif', color: '#ffdd44',
+      this.add.text(width / 2, height - 118, '★  LEVEL UP! ★', {
+        fontSize: '24px', fontFamily: 'Georgia, serif', color: '#ffdd44',
       }).setOrigin(0.5);
-      this.add.text(width / 2, height - 70, this.levelUps.map(lu => lu.unit.name).join('  ·  '), {
-        fontSize: '12px', fontFamily: 'monospace', color: '#aaaaff',
+      this.add.text(width / 2, height - 88, this.levelUps.map(lu => lu.unit.name).join('  ·  '), {
+        fontSize: '17px', fontFamily: 'monospace', color: '#aaaaff',
       }).setOrigin(0.5);
     }
 
@@ -397,15 +397,15 @@ export class VictoryScene extends Phaser.Scene {
       : this.levelUps.length > 0 ? 'LEVEL UP  ▶'
       : (cutscene ? 'CONTINUE  ▶' : 'WORLD MAP  ▶');
     drawButton(this, {
-      x: width / 2, y: height - 30, w: 200, h: 40, label: btnLabel,
-      fontSize: '16px', bg: 0x224422, bgHover: 0x2e582e, border: 0x44aa44, accent: 0xffff88,
+      x: width / 2, y: height - 32, w: 300, h: 52, label: btnLabel,
+      fontSize: '22px', bg: 0x224422, bgHover: 0x2e582e, border: 0x44aa44, accent: 0xffff88,
       textColor: '#ffffff', textHoverColor: '#ffff88',
       onClick: () => this.scene.start(firstStep.scene, firstStep.data),
     });
   }
 
   drawUnitRow(unit, y, width, xpGained) {
-    const lx = 60, barW = 480, barH = 10;
+    const lx = 40, barW = Math.min(480, width - 420), barH = 14;
     const level   = unit.level;
     const xpPrev  = unit.xp;                // already updated by addXP
     const needed  = xpToNext(level);
@@ -414,33 +414,33 @@ export class VictoryScene extends Phaser.Scene {
     // Color badge
     const gfx = this.add.graphics();
     gfx.fillStyle(unit.color, 1);
-    gfx.fillCircle(lx, y + 14, 10);
+    gfx.fillCircle(lx, y + 20, 12);
 
     // Name + level
-    this.add.text(lx + 18, y + 4, `${unit.name}`, {
-      fontSize: '13px', fontFamily: 'monospace', color: '#dddddd',
+    this.add.text(lx + 20, y + 2, `${unit.name}`, {
+      fontSize: '20px', fontFamily: 'monospace', color: '#ffffff',
     });
-    this.add.text(lx + 18, y + 20, `Lv.${level}`, {
-      fontSize: '11px', fontFamily: 'monospace', color: '#888888',
+    this.add.text(lx + 20, y + 28, `Lv.${level}`, {
+      fontSize: '17px', fontFamily: 'monospace', color: '#bbbbbb',
     });
 
     // XP bar background
     gfx.fillStyle(0x222233, 1);
-    gfx.fillRect(lx + 70, y + 18, barW, barH);
+    gfx.fillRect(lx + 200, y + 16, barW, barH);
     // XP fill
     gfx.fillStyle(0x44aaff, 1);
-    gfx.fillRect(lx + 70, y + 18, barW * pct, barH);
+    gfx.fillRect(lx + 200, y + 16, barW * pct, barH);
 
     // XP label
-    this.add.text(lx + 70 + barW + 8, y + 16, `${xpPrev}/${needed}`, {
-      fontSize: '10px', fontFamily: 'monospace', color: '#666688',
+    this.add.text(lx + 200 + barW + 10, y + 12, `${xpPrev}/${needed}`, {
+      fontSize: '17px', fontFamily: 'monospace', color: '#aaaacc',
     });
 
     // LEVEL UP badge
     const wasLevelUp = this.levelUps?.some(lu => lu.unit === unit);
     if (wasLevelUp) {
-      this.add.text(lx + 70 + barW + 55, y + 6, 'LEVEL UP!', {
-        fontSize: '11px', fontFamily: 'monospace', fontStyle: 'bold', color: '#ffdd44',
+      this.add.text(lx + 200, y + 36, 'LEVEL UP!', {
+        fontSize: '17px', fontFamily: 'monospace', fontStyle: 'bold', color: '#ffdd44',
       });
     }
   }

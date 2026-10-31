@@ -3,6 +3,7 @@ import { STARTING_SPORTS, sportById, TALENTS, ELEMENTS, createStarterUnit, newGa
 import { DIFFICULTIES, setDifficultyKey } from '../data/difficulty.js';
 import { playSfx, SFX } from '../audio/sound.js';
 import { mount, unmount, onClick, esc } from '../ui/domUI.js';
+import { drawBackButton } from '../ui/canvasButton.js';
 
 const DEFAULT_NAME = 'Reno Sirblanc';
 
@@ -36,17 +37,19 @@ export class CharacterCreationScene extends Phaser.Scene {
   create() {
     const { width, height } = this.scale;
     this.W = width; this.H = height;
+    this.S = width >= 1000 ? 1.5 : 1;
 
     this.bg = this.add.graphics();
     this.bg.fillStyle(0x0a0a18, 1);
     this.bg.fillRect(0, 0, width, height);
 
-    this.headerText = this.add.text(width / 2, 30, '', {
-      fontSize: '18px', fontFamily: 'Georgia, serif', fontStyle: 'bold', color: '#ffffff',
+    this.headerText = this.add.text(width / 2, 24, '', {
+      fontSize: '26px', fontFamily: 'Georgia, serif', fontStyle: 'bold', color: '#ffffff',
     }).setOrigin(0.5);
 
-    this.subText = this.add.text(width / 2, 54, '', {
-      fontSize: '11px', fontFamily: 'monospace', color: '#7788aa',
+    this.subText = this.add.text(width / 2, 56, '', {
+      fontSize: '18px', fontFamily: 'monospace', color: '#aabbdd',
+      align: 'center', wordWrap: { width: width - 60 },
     }).setOrigin(0.5);
 
     this.con = this.add.container(0, 0);
@@ -111,12 +114,12 @@ export class CharacterCreationScene extends Phaser.Scene {
     draw(false);
     this.con.add(g);
 
-    this.con.add(this.add.text(x, y - (sub ? 8 : 0), label, {
-      fontSize: '13px', fontFamily: 'monospace', fontStyle: 'bold', color: '#ddddee',
+    this.con.add(this.add.text(x, y - (sub ? 12 : 0), label, {
+      fontSize: `${Math.round(18 * Math.min(this.S, 1.35))}px`, fontFamily: 'monospace', fontStyle: 'bold', color: '#ddddee',
     }).setOrigin(0.5));
     if (sub) {
-      this.con.add(this.add.text(x, y + 10, sub, {
-        fontSize: '9px', fontFamily: 'monospace', color: '#5577aa',
+      this.con.add(this.add.text(x, y + 16, sub, {
+        fontSize: '18px', fontFamily: 'monospace', color: '#88aadd',
       }).setOrigin(0.5));
     }
 
@@ -127,14 +130,19 @@ export class CharacterCreationScene extends Phaser.Scene {
     this.con.add(z);
   }
 
+  backLink(onClick) {
+    this.con.add(drawBackButton(this, { label: 'BACK', onClick }).container);
+  }
+
   renderSportStep() {
     this.headerText.setText('WHAT ROLE SHALL I TRAIN FOR?');
     this.subText.setText('This is who you are — your talent picks (next) only affect stat growth');
 
-    const cols = 2, bw = 220, bh = 44, gapX = 20, gapY = 12;
+    const S = this.S;
+    const cols = 2, bw = 220 * S, bh = 44 * S, gapX = 20, gapY = 12;
     const totalW = cols * bw + (cols - 1) * gapX;
     const startX = this.W / 2 - totalW / 2 + bw / 2;
-    const startY = 100;
+    const startY = 92 + 22 * S;
 
     STARTING_SPORTS.forEach((sportId, i) => {
       const sport = sportById(sportId);
@@ -150,13 +158,10 @@ export class CharacterCreationScene extends Phaser.Scene {
       });
     });
 
-    this.con.add(this.add.text(20, 16, '◀ back', {
-      fontSize: '11px', fontFamily: 'monospace', color: '#556688',
-    }).setInteractive({ useHandCursor: true }).on('pointerdown', () => {
-      playSfx(this, SFX.click);
+    this.backLink(() => {
       this.step = 'name';
       this.render();
-    }));
+    });
   }
 
   renderRoleStep() {
@@ -164,8 +169,8 @@ export class CharacterCreationScene extends Phaser.Scene {
     this.headerText.setText(`CHOOSE YOUR ROLE`);
     this.subText.setText(`${sport.name} — your in-sport position`);
 
-    const bw = 260, bh = 56, gap = 16;
-    const startY = this.H / 2 - (sport.roles.length * (bh + gap) - gap) / 2;
+    const bw = 260 * this.S, bh = 56 * this.S, gap = 16;
+    const startY = this.H / 2 + 30 - (sport.roles.length * (bh + gap) - gap) / 2 + bh / 2;
 
     sport.roles.forEach((role, i) => {
       const y = startY + i * (bh + gap);
@@ -179,23 +184,21 @@ export class CharacterCreationScene extends Phaser.Scene {
     // Back links moved into the header row (2026-07-11, "have the back
     // button at top of menues") — all 4 in this file were bottom-left,
     // now top-left alongside headerText/subText.
-    this.con.add(this.add.text(20, 16, '◀ back', {
-      fontSize: '11px', fontFamily: 'monospace', color: '#556688',
-    }).setInteractive({ useHandCursor: true }).on('pointerdown', () => {
-      playSfx(this, SFX.click);
+    this.backLink(() => {
       this.step = 'sport';
       this.render();
-    }));
+    });
   }
 
   renderElementStep() {
     this.headerText.setText('CHOOSE YOUR ELEMENT');
     this.subText.setText('Your affinity — shown alongside your class');
 
-    const cols = 3, bw = 140, bh = 70, gapX = 16, gapY = 16;
+    const S = this.S;
+    const cols = 3, bw = 140 * S, bh = 70 * S, gapX = 16, gapY = 16;
     const totalW = cols * bw + (cols - 1) * gapX;
     const startX = this.W / 2 - totalW / 2 + bw / 2;
-    const startY = 130;
+    const startY = 110 + bh / 2;
 
     ELEMENTS.forEach((el, i) => {
       const col = i % cols, row = Math.floor(i / cols);
@@ -210,13 +213,10 @@ export class CharacterCreationScene extends Phaser.Scene {
 
     // Back button — skip the role step if this sport only had one role
     const sport = sportById(this.chosenSport);
-    this.con.add(this.add.text(20, 16, '◀ back', {
-      fontSize: '11px', fontFamily: 'monospace', color: '#556688',
-    }).setInteractive({ useHandCursor: true }).on('pointerdown', () => {
-      playSfx(this, SFX.click);
+    this.backLink(() => {
       this.step = sport.roles.length >= 2 ? 'role' : 'sport';
       this.render();
-    }));
+    });
   }
 
   renderTalentStep(which) {
@@ -228,8 +228,8 @@ export class CharacterCreationScene extends Phaser.Scene {
         : 'Each talent doubles that stat\'s growth per level-up.'
     );
 
-    const bw = 260, bh = 56, gap = 16;
-    const startY = this.H / 2 - (TALENTS.length * (bh + gap) - gap) / 2;
+    const bw = 260 * this.S, bh = 56 * this.S, gap = 16;
+    const startY = this.H / 2 + 40 - (TALENTS.length * (bh + gap) - gap) / 2 + bh / 2;
 
     TALENTS.forEach((t, i) => {
       const y = startY + i * (bh + gap);
@@ -243,13 +243,10 @@ export class CharacterCreationScene extends Phaser.Scene {
     });
 
     // Back button
-    this.con.add(this.add.text(20, 16, '◀ back', {
-      fontSize: '11px', fontFamily: 'monospace', color: '#556688',
-    }).setInteractive({ useHandCursor: true }).on('pointerdown', () => {
-      playSfx(this, SFX.click);
+    this.backLink(() => {
       this.step = which === 1 ? 'element' : 'talent1';
       this.render();
-    }));
+    });
   }
 
   renderConfirmStep() {
@@ -260,32 +257,29 @@ export class CharacterCreationScene extends Phaser.Scene {
     this.subText.setText(`${sport.name} · ${role.name}  ·  ${elIcon} ${this.chosenElement}  ·  ${this.chosenTalents.join(' + ')}`);
 
     const STAT_TALENT = { speed: 'Speed', strength: 'Strength', endurance: 'Endurance', stamina: 'Stamina' };
-    let y = 110;
+    let y = 120;
     for (const [stat, talent] of Object.entries(STAT_TALENT)) {
       const picks = this.chosenTalents.filter(t => t === talent).length;
       const mult = Math.pow(2, picks);
-      this.con.add(this.add.text(this.W / 2 - 120, y, stat.toUpperCase(), {
-        fontSize: '12px', fontFamily: 'monospace', color: '#8899bb',
+      this.con.add(this.add.text(this.W / 2 - 240, y, stat.toUpperCase(), {
+        fontSize: '22px', fontFamily: 'monospace', color: '#aabbcc',
       }));
-      this.con.add(this.add.text(this.W / 2 + 120, y, `growth ×${mult}`, {
-        fontSize: '12px', fontFamily: 'monospace', fontStyle: mult > 1 ? 'bold' : 'normal',
-        color: mult >= 4 ? '#ffcc44' : mult === 2 ? '#44ccff' : '#556677',
+      this.con.add(this.add.text(this.W / 2 + 240, y, `growth ×${mult}`, {
+        fontSize: '22px', fontFamily: 'monospace', fontStyle: mult > 1 ? 'bold' : 'normal',
+        color: mult >= 4 ? '#ffcc44' : mult === 2 ? '#44ccff' : '#8899aa',
       }).setOrigin(1, 0));
-      y += 26;
+      y += 40;
     }
 
-    this.makeButton(this.W / 2, y + 50, 220, 46, 'NEXT', null, () => {
+    this.makeButton(this.W / 2, y + 60, 360, 66, 'NEXT', null, () => {
       this.step = 'difficulty';
       this.render();
     });
 
-    this.con.add(this.add.text(20, 16, '◀ back', {
-      fontSize: '11px', fontFamily: 'monospace', color: '#556688',
-    }).setInteractive({ useHandCursor: true }).on('pointerdown', () => {
-      playSfx(this, SFX.click);
+    this.backLink(() => {
       this.step = 'talent2';
       this.render();
-    }));
+    });
   }
 
   renderDifficultyStep() {
@@ -302,8 +296,8 @@ export class CharacterCreationScene extends Phaser.Scene {
       perilous: 'Enemies scale up further, full strength — no safety net',
     };
 
-    const bw = 360, bh = 66, gap = 16;
-    const startY = this.H / 2 - (DIFFICULTIES.length * (bh + gap) - gap) / 2;
+    const bw = 660, bh = 66 * this.S, gap = 16;
+    const startY = this.H / 2 + 30 - (DIFFICULTIES.length * (bh + gap) - gap) / 2 + bh / 2;
 
     DIFFICULTIES.forEach((d, i) => {
       const y = startY + i * (bh + gap);
@@ -320,12 +314,9 @@ export class CharacterCreationScene extends Phaser.Scene {
       });
     });
 
-    this.con.add(this.add.text(20, 16, '◀ back', {
-      fontSize: '11px', fontFamily: 'monospace', color: '#556688',
-    }).setInteractive({ useHandCursor: true }).on('pointerdown', () => {
-      playSfx(this, SFX.click);
+    this.backLink(() => {
       this.step = 'confirm';
       this.render();
-    }));
+    });
   }
 }

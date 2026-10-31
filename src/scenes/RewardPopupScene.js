@@ -30,7 +30,7 @@ export class RewardPopupScene extends Phaser.Scene {
     dim.fillStyle(0x000000, 0.6);
     dim.fillRect(0, 0, width, height);
 
-    const PW = 300, PH = Math.min(360, 130 + this.lines.length * 34);
+    const PW = 520, PH = Math.min(540, 170 + this.lines.length * 44);
     const px = (width - PW) / 2, py = (height - PH) / 2;
 
     const shadow = this.add.graphics().setDepth(1);
@@ -45,26 +45,26 @@ export class RewardPopupScene extends Phaser.Scene {
     panel.fillStyle(0xffdd88, 0.6);
     panel.fillRoundedRect(px, py, PW, 3, { tl: 10, tr: 10, bl: 0, br: 0 });
 
-    this.add.text(px + PW / 2, py + 26, this.title.toUpperCase(), {
-      fontSize: '18px', fontFamily: 'Georgia, serif', fontStyle: 'bold',
+    this.add.text(px + PW / 2, py + 36, this.title.toUpperCase(), {
+      fontSize: '30px', fontFamily: 'Georgia, serif', fontStyle: 'bold',
       color: '#ffdd44', stroke: '#000000', strokeThickness: 3,
     }).setOrigin(0.5).setDepth(2);
 
-    let ly = py + 62;
+    let ly = py + 84;
     for (const line of this.lines) {
       const col = line.rarity ? '#' + rarityColor(line.rarity).toString(16).padStart(6, '0')
         : line.currency ? '#ddcc44' : '#ccddaa';
       const label = line.currency ? `+${line.amount}  ${line.label}`
         : line.amount > 1 ? `${line.label}  ×${line.amount}` : line.label;
       this.add.text(px + PW / 2, ly, label, {
-        fontSize: '14px', fontFamily: 'monospace', fontStyle: 'bold', color: col,
+        fontSize: '24px', fontFamily: 'monospace', fontStyle: 'bold', color: col,
       }).setOrigin(0.5).setDepth(2);
-      ly += 34;
+      ly += 44;
     }
 
     drawButton(this, {
-      x: px + PW / 2, y: py + PH - 30, w: 160, h: 38, label: 'CONTINUE',
-      fontSize: '14px', depth: 2,
+      x: px + PW / 2, y: py + PH - 42, w: 280, h: 58, label: 'CONTINUE',
+      fontSize: '24px', depth: 2,
       bg: 0x223344, bgHover: 0x2e4458, border: 0x4477aa, accent: 0xffff88,
       textColor: '#ffffff', textHoverColor: '#ffff88',
       onClick: () => {

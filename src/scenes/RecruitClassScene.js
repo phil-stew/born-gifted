@@ -6,6 +6,7 @@ import {
 import { loadHeroSprites, stripHeroBackground, heroKey, firstFrame, spriteKeyForRole } from '../data/heroSprites.js';
 import { mount, unmount, onClick, esc } from '../ui/domUI.js';
 import { playSfx, SFX } from '../audio/sound.js';
+import { drawBackButton } from '../ui/canvasButton.js';
 
 // Recruit flow: same sport → role → element → talent1 → talent2 choice
 // machine as CharacterCreationScene (the protagonist's own new-game flow),
@@ -80,6 +81,7 @@ export class RecruitClassScene extends Phaser.Scene {
   create() {
     const { width, height } = this.scale;
     this.W = width; this.H = height;
+    this.S = width >= 1000 ? 1.5 : 1;
 
     const roleIds = new Set();
     for (const sportId of this.availableSports()) {
@@ -94,12 +96,13 @@ export class RecruitClassScene extends Phaser.Scene {
     this.bg.fillStyle(0x0a0a18, 1);
     this.bg.fillRect(0, 0, width, height);
 
-    this.headerText = this.add.text(width / 2, 30, '', {
-      fontSize: '18px', fontFamily: 'Georgia, serif', fontStyle: 'bold', color: '#ffffff',
+    this.headerText = this.add.text(width / 2, 24, '', {
+      fontSize: '26px', fontFamily: 'Georgia, serif', fontStyle: 'bold', color: '#ffffff',
     }).setOrigin(0.5);
 
-    this.subText = this.add.text(width / 2, 54, '', {
-      fontSize: '11px', fontFamily: 'monospace', color: '#7788aa',
+    this.subText = this.add.text(width / 2, 56, '', {
+      fontSize: '18px', fontFamily: 'monospace', color: '#aabbdd',
+      align: 'center', wordWrap: { width: width - 60 },
     }).setOrigin(0.5);
 
     this.con = this.add.container(0, 0);
@@ -171,12 +174,12 @@ export class RecruitClassScene extends Phaser.Scene {
     draw(false);
     this.con.add(g);
 
-    this.con.add(this.add.text(x, y - (sub ? 8 : 0), label, {
-      fontSize: '13px', fontFamily: 'monospace', fontStyle: 'bold', color: '#ddddee',
+    this.con.add(this.add.text(x, y - (sub ? 12 : 0), label, {
+      fontSize: `${Math.round(18 * Math.min(this.S, 1.35))}px`, fontFamily: 'monospace', fontStyle: 'bold', color: '#ddddee',
     }).setOrigin(0.5));
     if (sub) {
-      this.con.add(this.add.text(x, y + 10, sub, {
-        fontSize: '9px', fontFamily: 'monospace', color: '#5577aa',
+      this.con.add(this.add.text(x, y + 16, sub, {
+        fontSize: '18px', fontFamily: 'monospace', color: '#88aadd',
       }).setOrigin(0.5));
     }
 
@@ -190,19 +193,18 @@ export class RecruitClassScene extends Phaser.Scene {
   // Moved into the header (2026-07-11, "have the back button at top of
   // menues") — was bottom-left, now top-left alongside the step header.
   backLink(onClick) {
-    this.con.add(this.add.text(20, 16, '◀ back', {
-      fontSize: '11px', fontFamily: 'monospace', color: '#556688',
-    }).setInteractive({ useHandCursor: true }).on('pointerdown', (...args) => { playSfx(this, SFX.click); onClick(...args); }));
+    this.con.add(drawBackButton(this, { label: 'BACK', onClick }).container);
   }
 
   renderSportStep() {
     this.headerText.setText(`CHOOSE ${this.displayName().split(' ')[0].toUpperCase()}'S SPORT`);
     this.subText.setText(`${this.displayName()} just joined the team — pick their class`);
 
-    const cols = 2, bw = 220, bh = 44, gapX = 20, gapY = 12;
+    const S = this.S;
+    const cols = 2, bw = 220 * S, bh = 44 * S, gapX = 20, gapY = 12;
     const totalW = cols * bw + (cols - 1) * gapX;
     const startX = this.W / 2 - totalW / 2 + bw / 2;
-    const startY = 100;
+    const startY = 92 + 22 * S;
 
     this.availableSports().forEach((sportId, i) => {
       const sport = sportById(sportId);
@@ -226,8 +228,8 @@ export class RecruitClassScene extends Phaser.Scene {
     this.headerText.setText('CHOOSE THEIR ROLE');
     this.subText.setText(`${sport.name} — in-sport position`);
 
-    const bw = 260, bh = 56, gap = 16;
-    const startY = this.H / 2 - (sport.roles.length * (bh + gap) - gap) / 2;
+    const bw = 260 * this.S, bh = 56 * this.S, gap = 16;
+    const startY = this.H / 2 + 30 - (sport.roles.length * (bh + gap) - gap) / 2 + bh / 2;
 
     sport.roles.forEach((role, i) => {
       const y = startY + i * (bh + gap);
@@ -245,10 +247,11 @@ export class RecruitClassScene extends Phaser.Scene {
     this.headerText.setText('CHOOSE THEIR ELEMENT');
     this.subText.setText('Affinity — shown alongside their class');
 
-    const cols = 3, bw = 140, bh = 70, gapX = 16, gapY = 16;
+    const S = this.S;
+    const cols = 3, bw = 140 * S, bh = 70 * S, gapX = 16, gapY = 16;
     const totalW = cols * bw + (cols - 1) * gapX;
     const startX = this.W / 2 - totalW / 2 + bw / 2;
-    const startY = 130;
+    const startY = 110 + bh / 2;
 
     ELEMENTS.forEach((el, i) => {
       const col = i % cols, row = Math.floor(i / cols);
@@ -274,8 +277,8 @@ export class RecruitClassScene extends Phaser.Scene {
         : 'Each talent doubles that stat\'s growth per level-up.'
     );
 
-    const bw = 260, bh = 56, gap = 16;
-    const startY = this.H / 2 - (TALENTS.length * (bh + gap) - gap) / 2;
+    const bw = 260 * this.S, bh = 56 * this.S, gap = 16;
+    const startY = this.H / 2 + 40 - (TALENTS.length * (bh + gap) - gap) / 2 + bh / 2;
 
     TALENTS.forEach((t, i) => {
       const y = startY + i * (bh + gap);
@@ -299,21 +302,21 @@ export class RecruitClassScene extends Phaser.Scene {
     this.subText.setText(`${sport.name} · ${role.name}  ·  ${elIcon} ${this.chosenElement}  ·  ${this.chosenTalents.join(' + ')}`);
 
     const STAT_TALENT = { speed: 'Speed', strength: 'Strength', endurance: 'Endurance', stamina: 'Stamina' };
-    let y = 110;
+    let y = 120;
     for (const [stat, talent] of Object.entries(STAT_TALENT)) {
       const picks = this.chosenTalents.filter(t => t === talent).length;
       const mult = Math.pow(2, picks);
-      this.con.add(this.add.text(this.W / 2 - 120, y, stat.toUpperCase(), {
-        fontSize: '12px', fontFamily: 'monospace', color: '#8899bb',
+      this.con.add(this.add.text(this.W / 2 - 240, y, stat.toUpperCase(), {
+        fontSize: '22px', fontFamily: 'monospace', color: '#aabbcc',
       }));
-      this.con.add(this.add.text(this.W / 2 + 120, y, `growth ×${mult}`, {
-        fontSize: '12px', fontFamily: 'monospace', fontStyle: mult > 1 ? 'bold' : 'normal',
-        color: mult >= 4 ? '#ffcc44' : mult === 2 ? '#44ccff' : '#556677',
+      this.con.add(this.add.text(this.W / 2 + 240, y, `growth ×${mult}`, {
+        fontSize: '22px', fontFamily: 'monospace', fontStyle: mult > 1 ? 'bold' : 'normal',
+        color: mult >= 4 ? '#ffcc44' : mult === 2 ? '#44ccff' : '#8899aa',
       }).setOrigin(1, 0));
-      y += 26;
+      y += 40;
     }
 
-    this.makeButton(this.W / 2, y + 50, 240, 46, `RECRUIT ${this.displayName().split(' ')[0].toUpperCase()}`, null, () => {
+    this.makeButton(this.W / 2, y + 60, 420, 66, `RECRUIT ${this.displayName().split(' ')[0].toUpperCase()}`, null, () => {
       this.recruitedUnit = this.newRecruit
         ? recruitNewUnit({
             name: this.chosenName,
@@ -371,19 +374,19 @@ export class RecruitClassScene extends Phaser.Scene {
     this.tweens.add({ targets: banner, scale: 1, duration: 350, ease: 'Back.easeOut', delay: 150 });
 
     const joinedText = this.add.text(cx, 296, 'HAS JOINED THE TEAM!', {
-      fontSize: '15px', fontFamily: 'monospace', fontStyle: 'bold', color: '#ffffff',
+      fontSize: '20px', fontFamily: 'monospace', fontStyle: 'bold', color: '#ffffff',
     }).setOrigin(0.5).setAlpha(0);
     this.con.add(joinedText);
     this.tweens.add({ targets: joinedText, alpha: 1, duration: 300, delay: 400 });
 
     this.con.add(this.add.text(cx, 330, `${sport.name}  ·  ${role.name}  ·  ${elementIcon(unit.element)} ${unit.element}`, {
-      fontSize: '12px', fontFamily: 'monospace', color: '#aaaacc',
+      fontSize: '17px', fontFamily: 'monospace', color: '#aaaacc',
     }).setOrigin(0.5));
     this.con.add(this.add.text(cx, 350, `Talents: ${unit.talents.join(' + ')}  ·  Level ${unit.level}`, {
-      fontSize: '11px', fontFamily: 'monospace', color: '#667799',
+      fontSize: '16px', fontFamily: 'monospace', color: '#99aacc',
     }).setOrigin(0.5));
 
-    this.makeButton(cx, 430, 220, 46, 'CONTINUE', null, () => {
+    this.makeButton(cx, 450, 340, 66, 'CONTINUE', null, () => {
       const nextIdx = this.idx + 1;
       if (nextIdx < this.recruitIds.length) {
         this.scene.restart({

@@ -847,6 +847,37 @@ canvas {
 
 .ui-forge .ui-title { color: var(--ui-accent); }
 
+/* Task Board, Quest List, Quest Menu. */
+.ui-quest-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  align-content: start;
+  gap: 12px;
+  padding: 12px max(16px, env(safe-area-inset-right)) 12px max(16px, env(safe-area-inset-left));
+}
+
+.ui-quest-card {
+  padding: 14px 16px;
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius);
+  background: var(--ui-panel);
+}
+
+.ui-quest-card.ready { border-color: #4ecc6e; }
+.ui-quest-name { font-size: 19px; font-weight: 700; margin-bottom: 4px; }
+.ui-quest-text { font-size: 16px; line-height: 1.35; color: var(--ui-text-muted); }
+.ui-quest-text.ok, .ui-quest-status.ok { color: #6fdc8c; }
+.ui-quest-reward { font-size: 16px; font-weight: 600; color: #ffdd66; }
+.ui-quest-status { margin-top: 8px; font-size: 16px; font-weight: 700; color: var(--ui-text-muted); }
+
+.ui-topbar-center { justify-content: center; }
+.ui-title-gold { color: #ffdd44; font-size: 22px; }
+.ui-footer { flex: none; padding: 8px max(16px, env(safe-area-inset-right)) 10px max(16px, env(safe-area-inset-left)); }
+.ui-footer .ui-action-btn { margin-top: 0; }
+
 /* Landscape phones. Last in the file so it overrides the rules above. */
 @media (max-height: 500px) {
   .ui-topbar {

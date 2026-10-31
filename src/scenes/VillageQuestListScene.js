@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { state } from '../data/gameState.js';
-import { drawButton, drawBackButton } from '../ui/canvasButton.js';
+import { mount, unmount, onClick, esc } from '../ui/domUI.js';
 
 // Hidden Village Quest Menu (2026-07-07 feedback) — M0a (Hidden Cave) and
 // M0b (Wolf's Den) both require accepting here before the map node will
@@ -27,98 +27,41 @@ export class VillageQuestListScene extends Phaser.Scene {
   }
 
   create() {
-    const { width, height } = this.scale;
-
-    const bg = this.add.graphics();
-    bg.fillStyle(0x07080f, 1);
-    bg.fillRect(0, 0, width, height);
-    bg.fillStyle(0x0c0c1a, 1);
-    bg.fillRect(0, 0, width, 40);
-    bg.lineStyle(1, 0x222244, 1);
-    bg.lineBetween(0, 40, width, 40);
-
-    this.add.text(width / 2, 20, 'QUEST MENU', {
-      fontSize: '16px', fontFamily: 'monospace', fontStyle: 'bold', color: '#ffcc66',
-    }).setOrigin(0.5);
-
-    // Back button moved into the header (2026-07-11, "have the back button
-    // at top of menues") — was bottom-left, now top-left alongside the title.
-    drawBackButton(this, { label: 'BACK', onClick: () => this.scene.start('HubScene', this.hubData) });
-
-    this.listCon = this.add.container(0, 0);
-    this.build();
-
-    this.cameras.main.fadeIn(300, 0, 0, 0);
+    this.render();
+    this.events.once('shutdown', unmount);
   }
 
-  build() {
-    this.listCon.removeAll(true);
-    const { width } = this.scale;
+  cardHTML(q) {
+    const mastered = q.id === 'M0a' && (state.party[0]?.level ?? 1) >= 30 && state.completedMissions.includes('M0a');
+    const accepted = state.questAccepted[q.id];
+    const everCompleted = state.completedMissions.includes(q.id);
+    let action;
+    if (mastered) action = '<div class="ui-quest-status ok">Mastered</div>';
+    else if (accepted) action = '<div class="ui-quest-status ok">Accepted — head to the map!</div>';
+    else action = `<button class="ui-action-btn" data-accept="${q.id}">${everCompleted ? 'Re-Accept' : 'Accept'}</button>`;
+    return `
+      <div class="ui-quest-card ${accepted || mastered ? 'ready' : ''}">
+        <div class="ui-quest-name">${esc(q.name)}</div>
+        <div class="ui-quest-text">${esc(q.body)}</div>
+        ${action}
+      </div>`;
+  }
 
+  render() {
     const known = VILLAGE_QUESTS.filter(q => state.unlockedMissions.includes(q.id));
-    const cardW = 420, cardH = 130, gap = 20;
-    const startY = 64;
-
-    if (!known.length) {
-      this.listCon.add(this.add.text(width / 2, startY + 60, 'No quests posted yet.', {
-        fontSize: '12px', fontFamily: 'monospace', color: '#2a2a3a',
-      }).setOrigin(0.5));
-      return;
-    }
-
-    known.forEach((q, i) => {
-      const cx = (width - cardW) / 2;
-      const cy = startY + i * (cardH + gap);
-
-      const mastered = q.id === 'M0a' && (state.party[0]?.level ?? 1) >= 30 && state.completedMissions.includes('M0a');
-      const accepted = state.questAccepted[q.id];
-      const everCompleted = state.completedMissions.includes(q.id);
-
-      const shadow = this.add.graphics();
-      shadow.fillStyle(0x000000, 0.3);
-      shadow.fillRoundedRect(cx + 2, cy + 3, cardW, cardH, 8);
-      this.listCon.add(shadow);
-
-      const panel = this.add.graphics();
-      panel.fillStyle(0x0b0b18, 1);
-      panel.fillRoundedRect(cx, cy, cardW, cardH, 8);
-      panel.lineStyle(1.5, accepted || mastered ? 0x44aa66 : 0x1e1e33, 1);
-      panel.strokeRoundedRect(cx, cy, cardW, cardH, 8);
-      panel.fillStyle(0xffcc66, 0.5);
-      panel.fillRoundedRect(cx, cy, cardW, 3, { tl: 8, tr: 8, bl: 0, br: 0 });
-      this.listCon.add(panel);
-
-      this.listCon.add(this.add.text(cx + 16, cy + 12, q.name, {
-        fontSize: '14px', fontFamily: 'monospace', fontStyle: 'bold', color: '#ffddaa',
-      }));
-      this.listCon.add(this.add.text(cx + 16, cy + 34, q.body, {
-        fontSize: '10px', fontFamily: 'monospace', color: '#8888aa',
-        wordWrap: { width: cardW - 32 }, lineSpacing: 2,
-      }));
-
-      if (mastered) {
-        this.listCon.add(this.add.text(cx + cardW / 2, cy + cardH - 20, 'MASTERED', {
-          fontSize: '12px', fontFamily: 'monospace', fontStyle: 'bold', color: '#66aacc',
-        }).setOrigin(0.5));
-        return;
-      }
-
-      if (accepted) {
-        this.listCon.add(this.add.text(cx + cardW / 2, cy + cardH - 20, 'ACCEPTED — head to the map!', {
-          fontSize: '11px', fontFamily: 'monospace', fontStyle: 'bold', color: '#66cc88',
-        }).setOrigin(0.5));
-        return;
-      }
-
-      const label = everCompleted ? 'RE-ACCEPT' : 'ACCEPT';
-      const btn = drawButton(this, {
-        x: cx + cardW / 2, y: cy + cardH - 20, w: cardW - 32, h: 30, label,
-        fontSize: '12px', radius: 6,
-        bg: 0x180d06, bgHover: 0x251408, border: 0x7a3c15, accent: 0xffaa44,
-        textColor: '#ffaa44', textHoverColor: '#ffffff',
-        onClick: () => { state.questAccepted[q.id] = true; this.build(); },
-      });
-      this.listCon.add(btn.container);
-    });
+    mount(`
+      <div class="ui-screen">
+        <div class="ui-topbar">
+          <button class="ui-navbtn" data-nav="back">◀ Back</button>
+          <div class="ui-title">Quest Menu</div>
+          <div style="width:90px;"></div>
+        </div>
+        <div class="ui-quest-list" data-scroll-id="village-quests">
+          ${known.length ? known.map(q => this.cardHTML(q)).join('') : '<div class="ui-empty-note">No quests posted yet.</div>'}
+        </div>
+      </div>
+    `);
+    onClick('[data-nav="back"]', () => this.scene.start('HubScene', this.hubData));
+    onClick('[data-accept]', (e, node) => { state.questAccepted[node.dataset.accept] = true; this.render(); });
   }
 }

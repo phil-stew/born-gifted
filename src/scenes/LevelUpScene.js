@@ -73,18 +73,18 @@ export class LevelUpScene extends Phaser.Scene {
     // Unit color ring
     const ring = this.add.graphics();
     ring.lineStyle(3, lu.unit.color, 1);
-    ring.strokeCircle(width / 2, 150, 40);
+    ring.strokeCircle(width / 2, 44, 32);
     ring.fillStyle(lu.unit.color, 0.8);
-    ring.fillCircle(width / 2, 150, 36);
+    ring.fillCircle(width / 2, 44, 28);
 
     // Initials
-    this.add.text(width / 2, 150, lu.unit.initials, {
+    this.add.text(width / 2, 44, lu.unit.initials, {
       fontSize: '18px', fontFamily: 'monospace', fontStyle: 'bold', color: '#ffffff',
     }).setOrigin(0.5);
 
     // Name
-    this.add.text(width / 2, 202, lu.unit.name, {
-      fontSize: '16px', fontFamily: 'monospace', color: '#aaaacc',
+    this.add.text(width / 2, 94, lu.unit.name, {
+      fontSize: '21px', fontFamily: 'monospace', color: '#aaaacc',
     }).setOrigin(0.5);
 
     if (this.subPhase === 'statAllocate')     { this.renderStatAllocate(lu); return; }
@@ -99,12 +99,12 @@ export class LevelUpScene extends Phaser.Scene {
     playStinger(this, SFX.levelup);
 
     // Level up text
-    this.add.text(width / 2, 250, 'LEVEL UP!', {
+    this.add.text(width / 2, 140, 'LEVEL UP!', {
       fontSize: '44px', fontFamily: 'Georgia, serif', fontStyle: 'bold',
       color: '#ffdd44', stroke: '#000000', strokeThickness: 5,
     }).setOrigin(0.5);
 
-    this.add.text(width / 2, 304, `Lv.${lu.gains.oldLevel}  →  Lv.${lu.gains.newLevel}`, {
+    this.add.text(width / 2, 188, `Lv.${lu.gains.oldLevel}  →  Lv.${lu.gains.newLevel}`, {
       fontSize: '22px', fontFamily: 'monospace', color: '#ffffff',
     }).setOrigin(0.5);
 
@@ -117,61 +117,61 @@ export class LevelUpScene extends Phaser.Scene {
       { label:'Endurance', val: gains.endurance, color:'#44cccc' },
     ].filter(s => s.val > 0);
 
-    let sy = 350;
+    let sy = 216;
     const gfx = this.add.graphics();
     for (const stat of statLines) {
       gfx.fillStyle(Phaser.Display.Color.HexStringToColor(stat.color.replace('#','0x')).color, 0.15);
-      gfx.fillRoundedRect(width / 2 - 140, sy - 2, 280, 28, 6);
+      gfx.fillRoundedRect(width / 2 - 240, sy - 2, 480, 30, 6);
 
-      this.add.text(width / 2 - 120, sy + 4, stat.label, {
-        fontSize: '14px', fontFamily: 'monospace', color: '#aaaaaa',
+      this.add.text(width / 2 - 220, sy + 2, stat.label, {
+        fontSize: '21px', fontFamily: 'monospace', color: '#cccccc',
       });
-      this.add.text(width / 2 + 100, sy + 4, `+${stat.val}`, {
-        fontSize: '14px', fontFamily: 'monospace', fontStyle: 'bold', color: stat.color,
+      this.add.text(width / 2 + 220, sy + 2, `+${stat.val}`, {
+        fontSize: '21px', fontFamily: 'monospace', fontStyle: 'bold', color: stat.color,
       }).setOrigin(1, 0);
 
-      sy += 34;
+      sy += 33;
     }
     sy += 6;
 
     this.add.text(width / 2, sy, roleDisplayLabel(lu.unit), {
-      fontSize: '12px', fontFamily: 'monospace', color: '#555577',
+      fontSize: '17px', fontFamily: 'monospace', color: '#9999bb',
     }).setOrigin(0.5);
-    sy += 20;
+    sy += 25;
 
     const pending = !this.declinedPromo && pendingPromotion(lu.unit);
     if (pending) {
       this.add.text(width / 2, sy, `A new sport is available — Tier ${pending === 't3' ? '3' : '2'}`, {
-        fontSize: '13px', fontFamily: 'monospace', fontStyle: 'bold', color: '#ffaa44',
+        fontSize: '18px', fontFamily: 'monospace', fontStyle: 'bold', color: '#ffaa44',
       }).setOrigin(0.5);
-      sy += 20;
+      sy += 25;
     }
     if (lu.gains.unlockedSlot) {
       this.add.text(width / 2, sy, 'Class Skill slot unlocked!', {
-        fontSize: '12px', fontFamily: 'monospace', color: '#44ccff',
+        fontSize: '17px', fontFamily: 'monospace', color: '#44ccff',
       }).setOrigin(0.5);
-      sy += 20;
+      sy += 25;
     }
 
     const bonusPool = (lu.gains.newLevel - lu.gains.oldLevel) * BONUS_POINTS_PER_LEVEL;
     if (bonusPool > 0 && !this.bonusAllocated) {
       this.add.text(width / 2, sy, `+ ${bonusPool} bonus points to allocate yourself`, {
-        fontSize: '12px', fontFamily: 'monospace', fontStyle: 'bold', color: '#ffee88',
+        fontSize: '17px', fontFamily: 'monospace', fontStyle: 'bold', color: '#ffee88',
       }).setOrigin(0.5);
-      sy += 20;
+      sy += 25;
     }
 
     // Progress indicator
     if (this.levelUps.length > 1) {
-      this.add.text(width / 2, height - 60, `${this.index + 1} / ${this.levelUps.length}`, {
-        fontSize: '12px', fontFamily: 'monospace', color: '#555577',
+      this.add.text(width / 2 + 340, height - 34, `${this.index + 1} / ${this.levelUps.length}`, {
+        fontSize: '17px', fontFamily: 'monospace', color: '#9999bb',
       }).setOrigin(0.5);
     }
 
     if (bonusPool > 0 && !this.bonusAllocated) {
       drawButton(this, {
-        x: width / 2, y: height - 28, w: 260, h: 42, label: `ALLOCATE ${bonusPool} BONUS POINTS  ▶`,
-        fontSize: '14px', bg: 0x3a3312, bgHover: 0x4e4420, border: 0x887722, accent: 0xffee88,
+        x: width / 2, y: height - 34, w: 560, h: 56, label: `ALLOCATE ${bonusPool} BONUS POINTS  ▶`,
+        fontSize: '24px', bg: 0x3a3312, bgHover: 0x4e4420, border: 0x887722, accent: 0xffee88,
         textColor: '#ffffff', textHoverColor: '#ffee88',
         onClick: () => {
           this.subPhase = 'statAllocate';
@@ -183,8 +183,8 @@ export class LevelUpScene extends Phaser.Scene {
 
     if (pending) {
       drawButton(this, {
-        x: width / 2, y: height - 28, w: 260, h: 42, label: 'PROMOTION AVAILABLE  ▶',
-        fontSize: '15px', bg: 0x443322, bgHover: 0x5a4530, border: 0x886644, accent: 0xffdd88,
+        x: width / 2, y: height - 34, w: 560, h: 56, label: 'PROMOTION AVAILABLE  ▶',
+        fontSize: '24px', bg: 0x443322, bgHover: 0x5a4530, border: 0x886644, accent: 0xffdd88,
         textColor: '#ffffff', textHoverColor: '#ffdd88',
         onClick: () => {
           this.promoTier = pending;
@@ -203,8 +203,8 @@ export class LevelUpScene extends Phaser.Scene {
     const isLast = this.index >= this.levelUps.length - 1;
     const btnText = isLast ? 'WORLD MAP  ▶' : 'NEXT  ▶';
     drawButton(this, {
-      x: width / 2, y: height - 28, w: 200, h: 42, label: btnText,
-      fontSize: '16px', bg: 0x223344, bgHover: 0x2e4458, border: 0x4477aa, accent: 0xffff88,
+      x: width / 2, y: height - 34, w: 360, h: 56, label: btnText,
+      fontSize: '24px', bg: 0x223344, bgHover: 0x2e4458, border: 0x4477aa, accent: 0xffff88,
       textColor: '#ffffff', textHoverColor: '#ffff88',
       onClick: () => this.advance(),
     });
@@ -225,43 +225,43 @@ export class LevelUpScene extends Phaser.Scene {
     const spent = Object.values(this.allocated).reduce((a, b) => a + b, 0);
     const remaining = totalPool - spent;
 
-    this.add.text(width / 2, 250, 'BONUS POINTS', {
+    this.add.text(width / 2, 136, 'BONUS POINTS', {
       fontSize: '30px', fontFamily: 'Georgia, serif', fontStyle: 'bold',
       color: '#ffee88', stroke: '#000000', strokeThickness: 4,
     }).setOrigin(0.5);
-    this.add.text(width / 2, 288, `${remaining} remaining — tap + to choose where they go`, {
-      fontSize: '12px', fontFamily: 'monospace', color: '#ccccdd',
+    this.add.text(width / 2, 176, `${remaining} remaining — tap + to choose where they go`, {
+      fontSize: '17px', fontFamily: 'monospace', color: '#ccccdd',
     }).setOrigin(0.5);
 
-    let sy = 336;
+    let sy = 200;
     for (const stat of STAT_ROWS) {
       const count = this.allocated[stat.key];
 
       const rowBg = this.add.graphics();
       rowBg.fillStyle(Phaser.Display.Color.HexStringToColor(stat.color.replace('#', '0x')).color, 0.1);
-      rowBg.fillRoundedRect(width / 2 - 140, sy, 280, 40, 8);
+      rowBg.fillRoundedRect(width / 2 - 280, sy, 560, 62, 8);
 
-      this.add.text(width / 2 - 120, sy + 20, stat.label, {
-        fontSize: '14px', fontFamily: 'monospace', fontStyle: 'bold', color: stat.color,
+      this.add.text(width / 2 - 260, sy + 31, stat.label, {
+        fontSize: '24px', fontFamily: 'monospace', fontStyle: 'bold', color: stat.color,
       }).setOrigin(0, 0.5);
 
-      this.add.text(width / 2 + 40, sy + 20, `+${count}`, {
-        fontSize: '15px', fontFamily: 'monospace', fontStyle: 'bold', color: '#ffffff',
+      this.add.text(width / 2 + 150, sy + 31, `+${count}`, {
+        fontSize: '24px', fontFamily: 'monospace', fontStyle: 'bold', color: '#ffffff',
       }).setOrigin(0.5);
 
-      this.makeStepper(width / 2 + 10, sy + 20, '−', count > 0, () => {
+      this.makeStepper(width / 2 + 70, sy + 31, '−', count > 0, () => {
         this.allocated[stat.key]--;
         this.showCurrent();
       });
-      this.makeStepper(width / 2 + 70, sy + 20, '+', remaining > 0, () => {
+      this.makeStepper(width / 2 + 230, sy + 31, '+', remaining > 0, () => {
         this.allocated[stat.key]++;
         this.showCurrent();
       });
 
-      sy += 48;
+      sy += 68;
     }
 
-    this.makeButton(width / 2, height - 28, 240, 42, 'CONFIRM', null, () => {
+    this.makeButton(width / 2, height - 34, 360, 56, 'CONFIRM', null, () => {
       let leftover = totalPool - Object.values(this.allocated).reduce((a, b) => a + b, 0);
       let i = 0;
       const order = ['speed', 'strength', 'stamina', 'endurance'];
@@ -279,7 +279,7 @@ export class LevelUpScene extends Phaser.Scene {
   // Small square +/- control for the stat allocator above — makeButton is
   // sized for full label+sub rows, not a compact stepper.
   makeStepper(x, y, symbol, enabled, onClick) {
-    const size = 26;
+    const size = 54;
     const g = this.add.graphics();
     const draw = (hover) => {
       g.clear();
@@ -297,7 +297,7 @@ export class LevelUpScene extends Phaser.Scene {
     };
     draw(false);
     this.add.text(x, y, symbol, {
-      fontSize: '15px', fontFamily: 'monospace', fontStyle: 'bold',
+      fontSize: '32px', fontFamily: 'monospace', fontStyle: 'bold',
       color: enabled ? '#ddddee' : '#3a3a4a',
     }).setOrigin(0.5);
 
@@ -320,26 +320,26 @@ export class LevelUpScene extends Phaser.Scene {
     const destSportId = branching ? null : (tier === 't2' ? chain.t2 : chain.t3[0]);
     const destSport = destSportId ? sportById(destSportId) : null;
 
-    this.add.text(width / 2, 250, `TIER ${tier === 't3' ? '3' : '2'} PROMOTION`, {
+    this.add.text(width / 2, 136, `TIER ${tier === 't3' ? '3' : '2'} PROMOTION`, {
       fontSize: '30px', fontFamily: 'Georgia, serif', fontStyle: 'bold',
       color: '#ffaa44', stroke: '#000000', strokeThickness: 4,
     }).setOrigin(0.5);
 
-    this.add.text(width / 2, 300,
+    this.add.text(width / 2, 188,
       destSport ? `Promote to ${destSport.name}?` : 'Choose your next sport.', {
-      fontSize: '14px', fontFamily: 'monospace', color: '#ccccdd',
+      fontSize: '19px', fontFamily: 'monospace', color: '#ccccdd',
     }).setOrigin(0.5);
 
-    this.add.text(width / 2, 328,
+    this.add.text(width / 2, 244,
       'Promoting swaps in the new sport\'s abilities. Declining keeps everything you know now — you can promote later from the Party screen.', {
-      fontSize: '10px', fontFamily: 'monospace', color: '#666688', align: 'center', wordWrap: { width: 340 },
+      fontSize: '15px', fontFamily: 'monospace', color: '#9999bb', align: 'center', wordWrap: { width: 700 },
     }).setOrigin(0.5);
 
-    this.makeButton(width / 2, 400, 220, 46, 'PROMOTE', null, () => {
+    this.makeButton(width / 2, 350, 360, 66, 'PROMOTE', null, () => {
       this.subPhase = branching ? 'promoSport' : 'promoRole';
       this.showCurrent();
     });
-    this.makeButton(width / 2, 460, 220, 40, 'NOT YET', null, () => {
+    this.makeButton(width / 2, 436, 360, 66, 'NOT YET', null, () => {
       this.declinedPromo = true;
       this.subPhase = 'stats';
       this.showCurrent();
@@ -350,12 +350,12 @@ export class LevelUpScene extends Phaser.Scene {
     const { width, height } = this.scale;
     const options = t3SportOptions(lu.unit).map(sportById);
 
-    this.add.text(width / 2, 250, 'CHOOSE YOUR SPORT', {
+    this.add.text(width / 2, 136, 'CHOOSE YOUR SPORT', {
       fontSize: '24px', fontFamily: 'Georgia, serif', fontStyle: 'bold', color: '#ffaa44',
     }).setOrigin(0.5);
 
-    const bw = 240, bh = 56, gap = 16;
-    const startY = 320 - ((options.length * (bh + gap) - gap) / 2 - bh / 2);
+    const bw = 460, bh = 84, gap = 16;
+    const startY = 340 - ((options.length * (bh + gap) - gap) / 2 - bh / 2);
     options.forEach((sport, i) => {
       const y = startY + i * (bh + gap);
       this.makeButton(width / 2, y, bw, bh, sport.name, `${sport.roles.map(r => r.name).join(' / ')}`, () => {
@@ -372,15 +372,15 @@ export class LevelUpScene extends Phaser.Scene {
     const sportId = this.promoTier === 't2' ? chain.t2 : (this.promoSport ?? chain.t3[0]);
     const sport = sportById(sportId);
 
-    this.add.text(width / 2, 250, `CHOOSE YOUR ROLE`, {
+    this.add.text(width / 2, 136, `CHOOSE YOUR ROLE`, {
       fontSize: '24px', fontFamily: 'Georgia, serif', fontStyle: 'bold', color: '#ffaa44',
     }).setOrigin(0.5);
-    this.add.text(width / 2, 280, sport.name, {
-      fontSize: '13px', fontFamily: 'monospace', color: '#8899bb',
+    this.add.text(width / 2, 170, sport.name, {
+      fontSize: '18px', fontFamily: 'monospace', color: '#8899bb',
     }).setOrigin(0.5);
 
-    const bw = 240, bh = 56, gap = 16;
-    const startY = 340 - ((sport.roles.length * (bh + gap) - gap) / 2 - bh / 2);
+    const bw = 460, bh = 84, gap = 16;
+    const startY = 360 - ((sport.roles.length * (bh + gap) - gap) / 2 - bh / 2);
     sport.roles.forEach((role, i) => {
       const y = startY + i * (bh + gap);
       this.makeButton(width / 2, y, bw, bh, role.name, role.designations.join(' / '), () => {
@@ -407,12 +407,12 @@ export class LevelUpScene extends Phaser.Scene {
     };
     draw(false);
 
-    this.add.text(x, y - (sub ? 8 : 0), label, {
-      fontSize: '13px', fontFamily: 'monospace', fontStyle: 'bold', color: '#ffddaa',
+    this.add.text(x, y - (sub ? 14 : 0), label, {
+      fontSize: '24px', fontFamily: 'monospace', fontStyle: 'bold', color: '#ffddaa',
     }).setOrigin(0.5);
     if (sub) {
-      this.add.text(x, y + 10, sub, {
-        fontSize: '9px', fontFamily: 'monospace', color: '#997755',
+      this.add.text(x, y + 16, sub, {
+        fontSize: '17px', fontFamily: 'monospace', color: '#997755',
       }).setOrigin(0.5);
     }
 
