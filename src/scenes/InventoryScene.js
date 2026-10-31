@@ -6,7 +6,7 @@ import { drawButton, drawBackButton, drawCurrency, currencyLabel } from '../ui/c
 import { playSfx, SFX } from '../audio/sound.js';
 
 const TABS = ['ALL', 'EQUIPMENT', 'MATERIALS'];
-const PANEL_ALPHA = 0.72;
+const PANEL_ALPHA = 0.5;
 
 export class InventoryScene extends Phaser.Scene {
   constructor() { super({ key: 'InventoryScene' }); }
@@ -63,9 +63,9 @@ export class InventoryScene extends Phaser.Scene {
     map.setScale(Math.max(width / map.width, height / map.height));
 
     const bg = this.add.graphics();
-    bg.fillStyle(0x07080f, 0.5);
+    bg.fillStyle(0x07080f, 0.35);
     bg.fillRect(0, 0, width, height);
-    bg.fillStyle(0x0c0c1a, 0.8);
+    bg.fillStyle(0x0c0c1a, 0.6);
     bg.fillRect(0, 0, width, 40);
     bg.lineStyle(1, 0x222244, 1);
     bg.lineBetween(0, 40, width, 40);
@@ -117,7 +117,7 @@ export class InventoryScene extends Phaser.Scene {
       const g = this.add.graphics();
       const draw = (h) => {
         g.clear();
-        g.fillStyle(active ? 0x16162a : (h ? 0x111128 : 0x0c0c1a), 0.85);
+        g.fillStyle(active ? 0x16162a : (h ? 0x111128 : 0x0c0c1a), 0.7);
         g.fillRoundedRect(tx, ty, tw, th, 6);
         g.lineStyle(1.5, active ? 0x4455aa : 0x1e1e33, 1);
         g.strokeRoundedRect(tx, ty, tw, th, 6);
@@ -129,7 +129,7 @@ export class InventoryScene extends Phaser.Scene {
       const counts = { ALL: state.inventory.length, EQUIPMENT: state.inventory.filter(i => i.slot).length, MATERIALS: state.inventory.filter(i => i.type === 'material').length };
       this.tabCon.add(this.add.text(tx + tw / 2, ty + th / 2, `${t}  ${counts[t]}`, {
         fontSize: big ? '17px' : '10px', fontFamily: 'monospace', fontStyle: active ? 'bold' : 'normal',
-        color: active ? '#ffffff' : '#99aacc',
+        color: active ? '#ffffff' : '#d6d6e4',
       }).setOrigin(0.5));
 
       if (!active) {
@@ -195,7 +195,7 @@ export class InventoryScene extends Phaser.Scene {
 
     if (!entries.length) {
       this.listCon.add(this.add.text(lx + lw / 2, startY + 60, 'Nothing here yet.', {
-        fontSize: '15px', fontFamily: 'monospace', color: '#9999bb',
+        fontSize: '15px', fontFamily: 'monospace', color: '#d6d6e4',
       }).setOrigin(0.5));
       return;
     }
@@ -237,11 +237,11 @@ export class InventoryScene extends Phaser.Scene {
       const rlvl = item.reinforceLevel ?? 0;
       const nameStr = item.name + (rlvl ? ` ✦${rlvl}` : '') + (count > 1 ? ` ×${count}` : '');
       this.listCon.add(this.add.text(textLx, iy + 5, nameStr, {
-        fontSize: big ? '17px' : '11px', fontFamily: 'monospace', color: rlvl ? '#ffaa44' : '#ccccdd',
+        fontSize: big ? '17px' : '11px', fontFamily: 'monospace', color: rlvl ? '#ffaa44' : '#ffffff',
       }));
       const subStr = item.type === 'material' ? 'MATERIAL' : (item.slot?.toUpperCase() ?? '') + (item.forClass ? ` · ${item.forClass}` : '');
       this.listCon.add(this.add.text(textLx, iy + (big ? 32 : 22), subStr, {
-        fontSize: big ? '15px' : '9px', fontFamily: 'monospace', color: item.type === 'material' ? '#88bb55' : '#7799bb',
+        fontSize: big ? '15px' : '9px', fontFamily: 'monospace', color: item.type === 'material' ? '#b4e27c' : '#a8c8ee',
       }));
 
       const z = this.add.zone(rx + rowW / 2, iy + boxH / 2, rowW, boxH).setInteractive({ useHandCursor: true });
@@ -275,7 +275,7 @@ export class InventoryScene extends Phaser.Scene {
     const entry = this.selected;
     if (!entry) {
       this.detCon.add(this.add.text(cx, startY + panH / 2, 'Select an item', {
-        fontSize: '17px', fontFamily: 'monospace', color: '#8888aa',
+        fontSize: '17px', fontFamily: 'monospace', color: '#d6d6e4',
       }).setOrigin(0.5));
       return;
     }
@@ -295,26 +295,26 @@ export class InventoryScene extends Phaser.Scene {
     const rarHex = '#' + rarityColor(item.rarity).toString(16).padStart(6, '0');
     const typeStr = item.type === 'material' ? 'MATERIAL' : (item.slot?.toUpperCase() ?? '');
     this.detCon.add(this.add.text(cx, y, `${item.rarity.toUpperCase()}  ·  ${typeStr}`, {
-      fontSize: '15px', fontFamily: 'monospace', color: rarHex,
+      fontSize: '15px', fontFamily: 'monospace', color: rarHex, stroke: '#000000', strokeThickness: 3,
     }).setOrigin(0.5));
     y += 26;
 
     if (item.forClass) {
       this.detCon.add(this.add.text(cx, y, `FOR ${item.forClass.toUpperCase()}`, {
-        fontSize: '15px', fontFamily: 'monospace', color: '#8888aa',
+        fontSize: '15px', fontFamily: 'monospace', color: '#d6d6e4',
       }).setOrigin(0.5));
       y += 24;
     }
 
     if (rlvl > 0) {
       this.detCon.add(this.add.text(cx, y, `${'✦'.repeat(rlvl)}${'✧'.repeat(3 - rlvl)}`, {
-        fontSize: '21px', fontFamily: 'monospace', color: '#cc7722',
+        fontSize: '21px', fontFamily: 'monospace', color: '#ffaa44',
       }).setOrigin(0.5));
       y += 24;
     }
 
     this.detCon.add(this.add.text(cx, y, item.desc ?? '', {
-      fontSize: '16px', fontFamily: 'Georgia, serif', color: '#8888aa',
+      fontSize: '16px', fontFamily: 'Georgia, serif', color: '#d6d6e4',
       wordWrap: { width: dw - 24 }, align: 'center',
     }).setOrigin(0.5, 0));
     y += 52;
@@ -323,7 +323,7 @@ export class InventoryScene extends Phaser.Scene {
     if (stats.length) {
       for (const [stat, val] of stats) {
         this.detCon.add(this.add.text(cx, y, `+${val}  ${stat[0].toUpperCase() + stat.slice(1)}`, {
-          fontSize: '18px', fontFamily: 'monospace', color: '#44ccff',
+          fontSize: '18px', fontFamily: 'monospace', color: '#7fdcff',
         }).setOrigin(0.5));
         y += 26;
       }
@@ -332,7 +332,7 @@ export class InventoryScene extends Phaser.Scene {
 
     if (count > 1) {
       this.detCon.add(this.add.text(cx, y, `×${count} in inventory`, {
-        fontSize: '15px', fontFamily: 'monospace', color: '#445566',
+        fontSize: '15px', fontFamily: 'monospace', color: '#b0b0c8',
       }).setOrigin(0.5));
       y += 24;
     }
@@ -352,7 +352,7 @@ export class InventoryScene extends Phaser.Scene {
       draw(false);
       this.detCon.add(g);
       this.detCon.add(this.add.text(cx, y + 18, 'EQUIP TO…', {
-        fontSize: '18px', fontFamily: 'monospace', fontStyle: 'bold', color: '#44bb66',
+        fontSize: '18px', fontFamily: 'monospace', fontStyle: 'bold', color: '#7fe69a',
       }).setOrigin(0.5));
 
       const z = this.add.zone(cx, y + 18, 160, 36).setInteractive({ useHandCursor: true });
