@@ -209,11 +209,10 @@ export const NODES = [
   // lands the party, and the visual `connectsFrom` parent for the 7
   // trial nodes below. completedMissions/unlockedMissions gain 'M7a' and
   // 'T1'-'T7' all at once as part of THAT cutscene chain, not through any
-  // click-time or live-check logic here — see onMissionClick's plain
-  // toast-only handling for it (there's nothing to "enter"). Deliberately
-  // has no HUB_CONFIGS entry, so [[feedback_forge_every_hub]]'s "every hub
-  // gets forge" rule doesn't apply to it — it was never made a real hub.
-  { id:'M7a', x:966, y:578, short:'Deity', arc:'Trial', name:"The Noble Deity",     connectsFrom:'M7' },
+  // click-time or live-check logic here. Now the golden God Trials node in
+  // the desert: it opens HubBattlesScene's list of T1-T7. Its HUB_CONFIGS
+  // entry has no services, so it isn't a real hub and needs no forge.
+  { id:'M7a', x:474, y:575, short:'God Trials', noLine:true, gold:true, arc:'Trial', name:"The Noble Deity",     connectsFrom:'M7' },
   // The 7 Trials (2026-07-17, "7 trail... 1 trial for each weapon class")
   // — one per CLASS_GEAR_LAYOUT/classGrouping key (gameState.js), the same
   // 7 groupings GEAR_CLASS_COL/items.js already treats as authoritative.
@@ -225,13 +224,13 @@ export const NODES = [
   // id to its classGrouping string for both the battle's enemy flavor and
   // VictoryScene's reward wiring (rollGodTierClassItem per matching-class
   // party member).
-  { id:'T1',  x:115, y:768, noLine:true, short:'Athletics', arc:'Trial', name:'Trial of Athletics',     connectsFrom:'M7a', side:true },
-  { id:'T2',  x:247, y:768, noLine:true, short:'Martial Arts', arc:'Trial', name:'Trial of Martial Arts',  connectsFrom:'M7a', side:true },
-  { id:'T3',  x:380, y:768, noLine:true, short:'Performance', arc:'Trial', name:'Trial of Performance',   connectsFrom:'M7a', side:true },
-  { id:'T4',  x:512, y:768, noLine:true, short:'Target', arc:'Trial', name:'Trial of Target',        connectsFrom:'M7a', side:true },
-  { id:'T5',  x:644, y:768, noLine:true, short:'Ball', arc:'Trial', name:'Trial of Ball',          connectsFrom:'M7a', side:true },
-  { id:'T6',  x:777, y:768, noLine:true, short:'Bat & Ball', arc:'Trial', name:'Trial of Bat & Ball',    connectsFrom:'M7a', side:true },
-  { id:'T7',  x:909, y:768, noLine:true, short:'Racquet', arc:'Trial', name:'Trial of Racquet',       connectsFrom:'M7a', side:true },
+  { id:'T1',  x:115, y:768, short:'Athletics', arc:'Trial', name:'Trial of Athletics',     connectsFrom:'M7a', side:true },
+  { id:'T2',  x:247, y:768, short:'Martial Arts', arc:'Trial', name:'Trial of Martial Arts',  connectsFrom:'M7a', side:true },
+  { id:'T3',  x:380, y:768, short:'Performance', arc:'Trial', name:'Trial of Performance',   connectsFrom:'M7a', side:true },
+  { id:'T4',  x:512, y:768, short:'Target', arc:'Trial', name:'Trial of Target',        connectsFrom:'M7a', side:true },
+  { id:'T5',  x:644, y:768, short:'Ball', arc:'Trial', name:'Trial of Ball',          connectsFrom:'M7a', side:true },
+  { id:'T6',  x:777, y:768, short:'Bat & Ball', arc:'Trial', name:'Trial of Bat & Ball',    connectsFrom:'M7a', side:true },
+  { id:'T7',  x:909, y:768, short:'Racquet', arc:'Trial', name:'Trial of Racquet',       connectsFrom:'M7a', side:true },
   // Lametus Capital + its 2 academies (2026-07-17, "after m7a is
   // completed the m8 apears which becomes the lametus capital... one
   // school in the east of M8 and the other west"). Unlocked all at once
@@ -260,7 +259,7 @@ export const NODES = [
 ];
 
 // Three map colors, one per kingdom. Side missions use a lighter shade.
-const FIRE = 0xe03a1e, WATER = 0x2f7fe0, LEAF = 0x2fae55;
+const FIRE = 0xe03a1e, WATER = 0x2f7fe0, LEAF = 0x2fae55, GOLD = 0xffc21a;
 const ARC_COLORS = {
   Home: FIRE, Tutorial: FIRE, Capital: FIRE, Academy: FIRE,
   Selection: WATER, Tournament: WATER,
@@ -477,10 +476,6 @@ const ARC_LABEL_POS = {
   Selection:  { x: 883, y: 294 },
   Tournament: { x: 768, y: 790 },
   Blight:     { x: 870, y: 557 },
-  // Placed off to the side (not centered over the 7-node row) to dodge
-  // both the LAMETUS kingdom label and the trial nodes' own side:true
-  // diamond markers (25px radius around each).
-  Trial:      { x: 192, y: 640 },
   // Shifted to dodge TG's node — see NODES.
   Lametus:    { x: 698, y: 723 },
 };
@@ -703,8 +698,8 @@ export class WorldMapScene extends Phaser.Scene {
     for (let i = 0; i < this.nodes.length; i++) {
       const node = this.nodes[i];
       const { id, x, y, arc } = node;
-      const color = node.side ? lighten(ARC_COLORS[arc]) : ARC_COLORS[arc];
-      const isCompleted = state.completedMissions.includes(id);
+      const color = node.gold ? GOLD : node.side ? lighten(ARC_COLORS[arc]) : ARC_COLORS[arc];
+      const isCompleted = state.completedMissions.includes(id) && !node.gold;
 
       // Future levels stay fully unrendered until unlocked — no circle, no
       // label, no diamond outline, nothing at (x, y) to spoil what's ahead
@@ -1227,7 +1222,7 @@ export class WorldMapScene extends Phaser.Scene {
     // BattleScene.js's checkEndConditions) — there's nothing left to
     // "enter" here, just a short idle line.
     if (node.id === 'M7a') {
-      this.showToast(`${node.name}\n"Seek out the seven trials when you're ready."`);
+      this.scene.start('HubBattlesScene', { nodeId: node.id });
       return;
     }
 

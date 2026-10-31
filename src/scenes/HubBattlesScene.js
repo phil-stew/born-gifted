@@ -18,7 +18,7 @@ export class HubBattlesScene extends Phaser.Scene {
   }
 
   create() {
-    const name = HUB_CONFIGS[this.nodeId]?.name ?? 'Battles';
+    const name = HUB_CONFIGS[this.nodeId]?.battlesTitle ?? `${HUB_CONFIGS[this.nodeId]?.name} Battles`;
     const cards = hubBattles(this.nodeId).map(id => {
       const node = NODES.find(n => n.id === id);
       const done = state.completedMissions.includes(id);
@@ -32,7 +32,7 @@ export class HubBattlesScene extends Phaser.Scene {
       <div class="ui-screen">
         <div class="ui-topbar">
           <button class="ui-navbtn" data-nav="back">◀ Back</button>
-          <div class="ui-title">${esc(name)} Battles</div>
+          <div class="ui-title">${esc(name)}</div>
           <div style="width:90px;"></div>
         </div>
         <div class="ui-quest-list" data-scroll-id="hub-battles">
@@ -40,7 +40,10 @@ export class HubBattlesScene extends Phaser.Scene {
         </div>
       </div>
     `);
-    onClick('[data-nav="back"]', () => this.scene.start('HubScene', { nodeId: this.nodeId }));
+    onClick('[data-nav="back"]', () => {
+      if (HUB_CONFIGS[this.nodeId]?.services) this.scene.start('HubScene', { nodeId: this.nodeId });
+      else this.scene.start('WorldMapScene');
+    });
     onClick('[data-battle]', (e, el) => this.scene.start('WorldMapScene', { enterNode: el.dataset.battle }));
     this.events.once('shutdown', unmount);
   }

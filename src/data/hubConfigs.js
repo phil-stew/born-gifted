@@ -32,6 +32,11 @@
 // Capital to unlock") at any hub reached before M3, and opens the exact
 // same crafting screen everywhere once unlocked.
 export const HUB_CONFIGS = {
+  // The golden God Trials map node: a battle list with no town behind it.
+  M7a: {
+    battlesTitle: 'God Trials',
+    battles: ['T1', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'],
+  },
   M0: {
     type: 'village', name: 'Hidden Village', shopId: 'town_sirblanc',
     services: ['shop', 'forge', 'villageQuests'],
