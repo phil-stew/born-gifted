@@ -169,7 +169,7 @@ export class ForgeScene extends Phaser.Scene {
     const craft = this.mode === 'craft';
 
     mount(`
-      <div class="ui-screen ui-forge ${craft ? 'ui-forge-paper' : ''}">
+      <div class="ui-screen ui-forge ui-forge-paper">
         <div class="ui-topbar">
           <button class="ui-navbtn" data-nav="back">◀ Back</button>
           <div class="ui-title">Forge</div>

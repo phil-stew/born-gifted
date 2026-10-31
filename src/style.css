@@ -1027,7 +1027,7 @@ button.ui-quest-card { color: inherit; font: inherit; text-align: left; cursor: 
   .ui-prebattle .ui-pb-tip, .ui-prebattle .ui-pb-matchup, .ui-prebattle .ui-pb-rule, .ui-prebattle .ui-pb-warn { font-size: 12px; }
 }
 
-/* Forge crafting: an old recipe sheet, parchment and brown ink. */
+/* The Forge: an old recipe sheet, parchment and brown ink. */
 .ui-forge-paper {
   --ui-text: #3a2614;
   --ui-text-muted: #6b4f33;
@@ -1062,6 +1062,7 @@ button.ui-quest-card { color: inherit; font: inherit; text-align: left; cursor: 
 .ui-forge-paper .ui-detail-tab.active { color: var(--ui-accent); background: var(--ui-accent-soft); }
 .ui-forge-paper .ui-item-name { font-style: italic; }
 .ui-forge-paper .ui-section-label { border-color: var(--ui-border); }
+.ui-forge-paper .ui-item-stat { color: #2c4f7a; }
 .ui-forge-paper .ui-item-stat.have { color: #2f6b22; }
 .ui-forge-paper .ui-item-stat.missing { color: #a32a1a; }
 .ui-forge-paper .ui-action-btn { color: #f6e8c8; background: #7a3a14; border-color: #4e230b; }
