@@ -1026,3 +1026,44 @@ button.ui-quest-card { color: inherit; font: inherit; text-align: left; cursor: 
   .ui-prebattle .ui-pb-foot { padding: 4px; }
   .ui-prebattle .ui-pb-tip, .ui-prebattle .ui-pb-matchup, .ui-prebattle .ui-pb-rule, .ui-prebattle .ui-pb-warn { font-size: 12px; }
 }
+
+/* Forge crafting: an old recipe sheet, parchment and brown ink. */
+.ui-forge-paper {
+  --ui-text: #3a2614;
+  --ui-text-muted: #6b4f33;
+  --ui-text-faint: #7d6244;
+  --ui-accent: #8a3d12;
+  --ui-accent-soft: rgba(138, 61, 18, 0.12);
+  --ui-border: rgba(90, 60, 30, 0.35);
+  background: linear-gradient(#2c1c10, #1c110a);
+  font-family: Georgia, 'Times New Roman', serif;
+}
+.ui-forge-paper .ui-topbar { color: #f0dfba; border-color: rgba(240, 223, 186, 0.2); }
+.ui-forge-paper .ui-title { color: #f0dfba; }
+.ui-forge-paper .ui-currency { color: #f0c870; }
+.ui-forge-paper .ui-navbtn { color: #f0dfba; border-color: rgba(240, 223, 186, 0.35); background: transparent; }
+.ui-forge-paper .ui-panel {
+  color: var(--ui-text);
+  background:
+    radial-gradient(ellipse at center, rgba(255, 245, 215, 0.55), rgba(150, 105, 55, 0.28) 100%),
+    #e6d3a8;
+  border: 1px solid #8a6a3f;
+  box-shadow: inset 0 0 22px rgba(95, 60, 20, 0.35);
+}
+.ui-forge-paper .ui-row {
+  color: var(--ui-text);
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--ui-border);
+  border-radius: 0;
+}
+.ui-forge-paper .ui-row.active { background: var(--ui-accent-soft); box-shadow: inset 3px 0 0 var(--ui-accent); }
+.ui-forge-paper .ui-detail-tab { color: var(--ui-text-muted); background: transparent; }
+.ui-forge-paper .ui-detail-tab.active { color: var(--ui-accent); background: var(--ui-accent-soft); }
+.ui-forge-paper .ui-item-name { font-style: italic; }
+.ui-forge-paper .ui-section-label { border-color: var(--ui-border); }
+.ui-forge-paper .ui-item-stat.have { color: #2f6b22; }
+.ui-forge-paper .ui-item-stat.missing { color: #a32a1a; }
+.ui-forge-paper .ui-action-btn { color: #f6e8c8; background: #7a3a14; border-color: #4e230b; }
+.ui-forge-paper .ui-action-btn:disabled { color: #e5d3ad; background: #a58a63; border-color: #8a6a3f; opacity: 1; }
+.ui-forge-paper .ui-empty-note { color: var(--ui-text-muted); }

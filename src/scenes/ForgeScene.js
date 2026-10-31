@@ -110,6 +110,13 @@ export class ForgeScene extends Phaser.Scene {
     return recipe.resultSlots.filter(s => slots.includes(s));
   }
 
+  // Names only the result this unit can make, e.g. "Skin + Ore → Headwear".
+  recipeDesc(recipe, unit) {
+    const slots = this.craftableSlots(recipe, unit);
+    return slots.length === recipe.resultSlots.length ? recipe.desc
+      : recipe.desc.replace(/→.*/, `→ ${slots.map(s => SLOT_LABEL[s] ?? s).join(' / ')}`);
+  }
+
   recipesHTML(unit) {
     return FORGE_RECIPES.map((recipe, i) => {
       const resultSlots = this.craftableSlots(recipe, unit);
@@ -117,7 +124,7 @@ export class ForgeScene extends Phaser.Scene {
       return `
       <button class="ui-row ${this.selectedRecipe?.id === recipe.id ? 'active' : ''} ${this.recipeAvailable(recipe) ? '' : 'dim'}" data-recipe="${i}">
         <span class="ui-row-name">${resultSlots.map(s => SLOT_LABEL[s] ?? s).join(' / ')}
-          <span class="ui-row-sub">${esc(recipe.desc)}</span></span>
+          <span class="ui-row-sub">${esc(this.recipeDesc(recipe, unit))}</span></span>
       </button>`;
     }).join('');
   }
@@ -146,7 +153,7 @@ export class ForgeScene extends Phaser.Scene {
     const previewRarity = oreTier ? (ORE_TIER_TO_RARITY[oreTier] ?? 'uncommon') : 'uncommon';
 
     return `
-      <div class="ui-item-name">${esc(recipe.desc)}</div>
+      <div class="ui-item-name">${esc(this.recipeDesc(recipe, unit))}</div>
       ${resultSlots.length > 1 ? picker('Result slot', 'result-slot', resultSlots.map(slot => (
         { value: slot, label: SLOT_LABEL[slot] ?? slot, active: this.selectedResultSlot === slot }))) : ''}
       ${recipe.materials.includes('ore') && ores.length > 1 ? picker('Ore type (sets rarity)', 'ore', ores.map(ore => (
@@ -162,7 +169,7 @@ export class ForgeScene extends Phaser.Scene {
     const craft = this.mode === 'craft';
 
     mount(`
-      <div class="ui-screen ui-forge">
+      <div class="ui-screen ui-forge ${craft ? 'ui-forge-paper' : ''}">
         <div class="ui-topbar">
           <button class="ui-navbtn" data-nav="back">◀ Back</button>
           <div class="ui-title">Forge</div>
