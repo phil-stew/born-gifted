@@ -105,7 +105,7 @@ export class InventoryScene extends Phaser.Scene {
 
   buildTabs() {
     TABS.forEach((t, i) => {
-      const big = this.W >= 1100;
+      const big = this.W >= 1000;
       const tx = this.listLayout().lx + i * (big ? 190 : 90), ty = 44, tw = big ? 182 : 82, th = big ? 32 : 24;
       const active = this.tab === t;
       const g = this.add.graphics();
@@ -161,7 +161,7 @@ export class InventoryScene extends Phaser.Scene {
 
   // Wide (phone-shaped) canvases get a two-column list with larger rows.
   listLayout() {
-    const big = this.W >= 1100;
+    const big = this.W >= 1000;
     const lx = 8, lw = big ? Math.round(this.W * 0.56) : 230;
     const cols = big ? 2 : 1, rowH = big ? 66 : 44, boxH = rowH - 6;
     return { lx, lw, cols, rowH, boxH, rowW: (lw - 4) / cols, big };
@@ -189,7 +189,7 @@ export class InventoryScene extends Phaser.Scene {
 
     if (!entries.length) {
       this.listCon.add(this.add.text(lx + lw / 2, startY + 60, 'Nothing here yet.', {
-        fontSize: '11px', fontFamily: 'monospace', color: '#2a2a3a',
+        fontSize: '15px', fontFamily: 'monospace', color: '#9999bb',
       }).setOrigin(0.5));
       return;
     }

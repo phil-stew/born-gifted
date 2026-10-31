@@ -51,6 +51,9 @@ export function classSkillSlotCount(level) {
 // capped and player-selected via PartyScene's Skills tab, mirroring how Class Skills
 // already work). Not level-gated like CLASS_SKILL_SLOT_LEVELS — always this
 // many slots, some may just be empty if the unit doesn't know enough yet.
+// Every entry completedMissions can hold, including M7a (no battle of its own).
+export const TOTAL_MISSIONS = 29;
+
 export const MAX_EQUIPPED_SPECIALS = 4;
 export const MAX_EQUIPPED_SKILLS = 3;
 

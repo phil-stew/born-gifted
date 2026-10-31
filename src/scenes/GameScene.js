@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { loadGame, getSaveSummary, deleteSave, collectAllGear, SAVE_SLOTS } from '../data/gameState.js';
+import { loadGame, getSaveSummary, deleteSave, collectAllGear, SAVE_SLOTS, TOTAL_MISSIONS } from '../data/gameState.js';
 import { drawButton } from '../ui/canvasButton.js';
 import { preloadSfx, playSfx, SFX } from '../audio/sound.js';
 import { preloadMusic, playMusic } from '../audio/music.js';
@@ -148,8 +148,8 @@ export class GameScene extends Phaser.Scene {
     this.input.keyboard?.on('keydown', () => this.handleTap());
 
     const settingsBtn = drawButton(this, {
-      x: width - 60, y: 24, w: 100, h: 32, label: '⚙ SETTINGS',
-      fontSize: '10px', radius: 6,
+      x: width - 86, y: 26, w: 156, h: 40, label: '⚙ SETTINGS',
+      fontSize: '17px', radius: 6,
       bg: 0x14142a, bgHover: 0x1e1e3a, border: 0x334477, accent: 0xaaaaff,
       textColor: '#8899cc', depth: 50,
       onClick: () => this.scene.start('SettingsScene', { returnScene: 'GameScene', returnData: { skipCrawl: true } }),
@@ -330,25 +330,25 @@ export class GameScene extends Phaser.Scene {
     drawBg(false);
     this.titleElements.push(g);
 
-    const slotLabel = this.add.text(cx - w / 2 + 14, y + 8, `SLOT ${slot}`, {
-      fontSize: '9px', fontFamily: 'monospace', color: '#556688',
+    const slotLabel = this.add.text(cx - w / 2 + 14, y + 5, `SLOT ${slot}`, {
+      fontSize: '13px', fontFamily: 'monospace', color: '#99aacc',
     });
     this.titleElements.push(slotLabel);
 
     if (occupied) {
       const savedStr = summary.savedAt ? new Date(summary.savedAt).toLocaleDateString() : '';
-      this.titleElements.push(this.add.text(cx - w / 2 + 14, y + 22, summary.leadName, {
-        fontSize: '14px', fontFamily: 'monospace', fontStyle: 'bold', color: '#dddddd',
+      this.titleElements.push(this.add.text(cx - w / 2 + 14, y + 20, summary.leadName, {
+        fontSize: '17px', fontFamily: 'monospace', fontStyle: 'bold', color: '#dddddd',
       }));
-      this.titleElements.push(this.add.text(cx - w / 2 + 14, y + 42, `Lv.${summary.level}  ·  ${summary.missionsCompleted}/15 missions  ·  ${savedStr}`, {
-        fontSize: '10px', fontFamily: 'monospace', color: '#667788',
+      this.titleElements.push(this.add.text(cx - w / 2 + 14, y + 42, `Lv.${summary.level}  ·  ${summary.missionsCompleted}/${TOTAL_MISSIONS} missions  ·  ${savedStr}`, {
+        fontSize: '14px', fontFamily: 'monospace', color: '#aabbcc',
       }));
     } else {
-      this.titleElements.push(this.add.text(cx - w / 2 + 14, y + topH / 2 - 7, '— empty —', {
-        fontSize: '13px', fontFamily: 'monospace', color: '#556688',
+      this.titleElements.push(this.add.text(cx - w / 2 + 14, y + topH / 2 - 11, '— empty —', {
+        fontSize: '16px', fontFamily: 'monospace', color: '#99aacc',
       }));
       this.titleElements.push(this.add.text(cx - w / 2 + 14, y + topH / 2 + 9, 'tap to start a new game', {
-        fontSize: '9px', fontFamily: 'monospace', color: '#445566',
+        fontSize: '14px', fontFamily: 'monospace', color: '#99aacc',
       }));
     }
 
@@ -370,7 +370,7 @@ export class GameScene extends Phaser.Scene {
     if (occupied) {
       const rx = cx + w / 2 - resetW / 2 - 6;
       const resetLabel = this.add.text(rx, y + topH / 2, 'DELETE', {
-        fontSize: '10px', fontFamily: 'monospace', fontStyle: 'bold', color: '#885555',
+        fontSize: '14px', fontFamily: 'monospace', fontStyle: 'bold', color: '#ee8888',
       }).setOrigin(0.5);
       this.resetLabels[slot] = resetLabel;
       this.titleElements.push(resetLabel);
@@ -404,10 +404,10 @@ export class GameScene extends Phaser.Scene {
     if (summary?.beaten) {
       const stripCy = y + topH + (h - topH) / 2;
       const ngLabel = this.add.text(cx, stripCy - 7, '✦ NEW GAME+', {
-        fontSize: '11px', fontFamily: 'monospace', fontStyle: 'bold', color: '#ffc72c',
+        fontSize: '15px', fontFamily: 'monospace', fontStyle: 'bold', color: '#ffc72c',
       }).setOrigin(0.5);
       const ngSub = this.add.text(cx, stripCy + 8, 'carry over all gear · levels reset to 1', {
-        fontSize: '8px', fontFamily: 'monospace', color: '#a68a3a',
+        fontSize: '12px', fontFamily: 'monospace', color: '#d4b45a',
       }).setOrigin(0.5);
       this.ngPlusLabels[slot] = { main: ngLabel, sub: ngSub };
       this.titleElements.push(ngLabel, ngSub);
