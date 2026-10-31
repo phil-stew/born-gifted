@@ -1618,15 +1618,15 @@ export class BattleScene extends Phaser.Scene {
       // Legacy replay-picker banner (Hard/Elite) — untouched.
       const diffLabel = diff >= 1.5 ? 'ELITE' : 'HARD';
       const diffColor = diff >= 1.5 ? '#ff4444' : '#ffaa33';
-      this.add.text(width / 2, 8, diffLabel, {
-        fontSize: '12px', fontFamily: 'monospace', fontStyle: 'bold', color: diffColor,
-      }).setOrigin(0.5, 0).setDepth(1001);
+      this.add.text(width - 110, 7, diffLabel, {
+        fontSize: '17px', fontFamily: 'monospace', fontStyle: 'bold', color: diffColor,
+      }).setOrigin(1, 0).setDepth(1001);
     } else if (cfg && cfg.key !== 'newbie') {
       // Settings-tier banner (Veteran/Perilous) — Newbie is the baseline
       // default, same "no banner" treatment Normal always had.
-      this.add.text(width / 2, 8, cfg.label.toUpperCase(), {
-        fontSize: '12px', fontFamily: 'monospace', fontStyle: 'bold', color: cfg.color,
-      }).setOrigin(0.5, 0).setDepth(1001);
+      this.add.text(width - 110, 7, cfg.label.toUpperCase(), {
+        fontSize: '17px', fontFamily: 'monospace', fontStyle: 'bold', color: cfg.color,
+      }).setOrigin(1, 0).setDepth(1001);
     }
 
     this.actionHint = this.add.text(width / 2, height - 6, '', {
@@ -4852,8 +4852,15 @@ export class BattleScene extends Phaser.Scene {
     ];
     g.fillPoints(corners, true);
     if (outline !== null) {
-      g.lineStyle(2.5, outline, 0.95);
-      g.strokePoints(corners, true, true);
+      // Thin filled quads rather than strokePoints, which drew stray lines
+      // to the screen corner on a real Android phone's WebGL.
+      const cx = x, cy = y + TH2, inset = 0.9;
+      const inner = corners.map(p => ({ x: cx + (p.x - cx) * inset, y: cy + (p.y - cy) * inset }));
+      g.fillStyle(outline, 0.95);
+      corners.forEach((p, i) => {
+        const n = (i + 1) % corners.length;
+        g.fillPoints([p, corners[n], inner[n], inner[i]], true);
+      });
     }
   }
 
