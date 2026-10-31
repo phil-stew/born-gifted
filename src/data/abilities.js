@@ -238,7 +238,7 @@ export const ABILITIES = {
     // Cost not given on the sheet (quick-reference table marks it '?') —
     // assumed 2 SP to match this tree's other tier-1 actives.
     cost: 2, range: 2, targetType: 'player', effect: 'allyAtkBuff', atkMultiplier: 1.0,
-    desc: "Target ally's next attack deals 200% damage  ·  range 2  ·  2 SP (cost assumed)",
+    desc: "Target ally's next attack deals 200% damage  ·  range 2  ·  2 SP",
   },
   block: {
     id: 'block', name: 'Block', icon: '🛡', category: 'passive',
@@ -352,7 +352,7 @@ export const ABILITIES = {
     id: 'windward_throw', name: 'Windward Throw', icon: '🌬', category: 'special',
     // Cost not given on the sheet — assumed 2 (matches this class's other tiers).
     cost: 2, range: 3, targetType: 'enemy', multiplier: 2.0, fixedElement: 'Wind',
-    desc: '2× dmg  ·  Wind  ·  range 3  ·  2 SP (cost assumed)',
+    desc: '2× dmg  ·  Wind  ·  range 3  ·  2 SP',
   },
 
   // Racquet (lacrosse/tennis/golf — all 3 sports in the class)
@@ -507,7 +507,7 @@ export const ABILITIES = {
     onlySportIds: ['ice_skating', 'speed_skating'],
     // Cost not given on the sheet — assumed 2.
     cost: 2, range: 2, targetType: 'enemy', multiplier: 2.5, fixedElement: 'Water',
-    desc: '2.5× dmg  ·  Water  ·  range 2  ·  2 SP (cost assumed)  ·  Skating subgroup',
+    desc: '2.5× dmg  ·  Water  ·  range 2  ·  2 SP  ·  Skating subgroup',
   },
   extreme_speed: {
     id: 'extreme_speed', name: 'Extreme Speed', icon: '☄', category: 'special',
@@ -527,7 +527,7 @@ export const ABILITIES = {
     id: 'jab', name: 'Jab', icon: '👊', category: 'special',
     // Cost not given on the sheet — assumed 2.
     cost: 2, range: 1, targetType: 'enemy', multiplier: 1.1, hits: 3,
-    desc: '3× 1.1× dmg  ·  range 1  ·  2 SP (cost assumed)  ·  also learnable by Hockey players',
+    desc: '3× 1.1× dmg  ·  range 1  ·  2 SP  ·  also learnable by Hockey players',
   },
   blazing_low_kick: {
     id: 'blazing_low_kick', name: 'Blazing Low Kick', icon: '🔥', category: 'special',
