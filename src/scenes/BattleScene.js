@@ -1560,6 +1560,10 @@ export class BattleScene extends Phaser.Scene {
     this.add.text(160, 9, stageCfg.label, {
       fontSize: '14px', color: '#8899aa', fontFamily: 'monospace',
     }).setOrigin(0, 0).setDepth(1001);
+    this.add.text(10, 38, `Objective: ${this.missionObjective(missionCfg)}`, {
+      fontSize: '17px', color: '#ffee88', fontFamily: 'monospace', fontStyle: 'bold',
+      stroke: '#000000', strokeThickness: 4,
+    }).setOrigin(0, 0).setDepth(1001);
     this.turnText = this.add.text(width - 10, 5, 'Turn 1', {
       fontSize: '20px', color: '#ccd6ff', fontFamily: 'monospace',
     }).setOrigin(1, 0).setDepth(1001);
@@ -1625,6 +1629,14 @@ export class BattleScene extends Phaser.Scene {
       this.showPhaseBanner('PLAYER TURN');
       this.redraw();
     }
+  }
+
+  missionObjective(cfg) {
+    if (cfg.scriptedDefeat) return 'Survive';
+    if (cfg.turnLimitVictory) return `Defeat as many as you can in ${cfg.turnLimit} turns`;
+    const target = cfg.winCondition?.type === 'bossName' ? cfg.winCondition.name
+      : this.enemyUnits.length === 1 ? this.enemyUnits[0].name : 'all enemies';
+    return `Defeat ${target}${cfg.turnLimit ? ` within ${cfg.turnLimit} turns` : ''}`;
   }
 
   // Plain-language notes on how this fight differs from "defeat everyone".
