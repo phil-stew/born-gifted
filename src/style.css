@@ -933,4 +933,19 @@ canvas {
   .ui-party .ui-skill-slot, .ui-party .ui-ability-row { padding: 4px 8px; margin-bottom: 3px; }
   .ui-party .ui-ability-name { font-size: 13px; }
   .ui-party .ui-ability-desc, .ui-party .ui-ability-cost { font-size: 12px; }
+
+  /* Index is reference text: dense like Party, same top bar back button. */
+  .ui-index .ui-index-tabbar { gap: 6px; padding: 5px max(16px, env(safe-area-inset-right)) 5px max(16px, env(safe-area-inset-left)); }
+  .ui-index .ui-index-tabbar .ui-navbtn { font-size: 13px; padding: 5px 12px; }
+  .ui-index .ui-index-body { grid-template-columns: 1fr; padding: 6px max(16px, env(safe-area-inset-right)) 6px max(16px, env(safe-area-inset-left)); }
+  .ui-index .ui-index-panel { padding: 8px 12px; }
+  .ui-index .ui-section { margin-top: 6px; }
+  .ui-index .ui-section:first-child { margin-top: 0; }
+  .ui-index .ui-section-label { font-size: 11px; margin-bottom: 4px; padding-bottom: 2px; }
+  .ui-index .ui-card-name { font-size: 14px; }
+  .ui-index .ui-card-sub { font-size: 13px; }
+  .ui-index .ui-stat-row { font-size: 13px; padding: 1px 0; }
+  .ui-index .ui-index-ability, .ui-index .ui-index-monster { padding: 6px 8px; }
+  .ui-index .ui-index-ability-grid, .ui-index .ui-index-monster-grid { gap: 6px; }
+  .ui-index .ui-index-step, .ui-index .ui-index-list { font-size: 13px; }
 }

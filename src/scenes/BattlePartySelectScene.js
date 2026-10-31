@@ -79,15 +79,15 @@ export class BattlePartySelectScene extends Phaser.Scene {
           <div class="ui-title">CHOOSE YOUR BATTLE PARTY</div>
           <div style="width:110px"></div>
         </div>
-        <div class="ui-body" style="justify-content:center;">
-          <div class="ui-panel ui-list-panel" style="max-width:480px;">
+        <div class="ui-body" style="justify-content:center; grid-template-columns:minmax(0, 560px);">
+          <div class="ui-panel ui-list-panel">
             <div class="ui-card-sub" style="padding:4px 8px 10px;">
               ${this.selectedIds.length} / ${this.cap} selected${full ? ' — max reached' : ''}
             </div>
             ${listHTML}
           </div>
         </div>
-        <div style="display:flex; justify-content:center; padding:16px;">
+        <div style="display:flex; justify-content:center; padding:8px;">
           <button class="ui-btn ui-btn-primary" style="width:min(320px, 90vw);" ${this.selectedIds.length ? '' : 'disabled'} data-confirm="1">
             Start Battle (${this.selectedIds.length})
           </button>

@@ -67,7 +67,7 @@ export class IndexScene extends Phaser.Scene {
 
   render() {
     mount(`
-      <div class="ui-screen">
+      <div class="ui-screen ui-index">
         <div class="ui-topbar">
           <button class="ui-navbtn" data-nav="back">◀ World Map</button>
           <div class="ui-title">INDEX</div>
