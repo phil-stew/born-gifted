@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { state, MAX_ROSTER_SIZE } from '../data/gameState.js';
 import { BACKDROPS } from '../data/storyBackdrops.js';
 import { HUB_CONFIGS } from '../data/hubConfigs.js';
-import { drawButton } from '../ui/canvasButton.js';
+import { drawBackButton } from '../ui/canvasButton.js';
 import { playMusic } from '../audio/music.js';
 import { playSfx, SFX } from '../audio/sound.js';
 
@@ -82,16 +82,10 @@ export class HubScene extends Phaser.Scene {
     // "have the back button at top of menues") — was the last tile in the
     // bottom services row (drawButtons), same style/position every other
     // menu's back button just moved to.
-    drawButton(this, {
-      x: 55, y: 20, w: 90, h: 28, label: '◀ LEAVE',
-      fontSize: '12px', radius: 6,
-      bg: 0x0c0c1a, bgHover: 0x111130, border: 0x223366, accent: 0x5577bb,
-      textColor: '#5577bb', textHoverColor: '#ffffff',
-      onClick: () => {
+    drawBackButton(this, { label: 'LEAVE', onClick: () => {
         this.cameras.main.fadeOut(300, 0, 0, 0);
         this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start('WorldMapScene'));
-      },
-    });
+      } });
 
     this.drawButtons(width, height);
     this.cameras.main.fadeIn(350, 0, 0, 0);

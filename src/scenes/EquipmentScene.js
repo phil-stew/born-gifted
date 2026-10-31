@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { state, equipItem, unequipSlot, effectiveStats, roleDisplayLabel, gearLayoutForUnit } from '../data/gameState.js';
 import { rarityColor, gearFrameName, materialFrameName, GEAR_SHEET, registerGearFrames, MATERIAL_ICON_FRAME } from '../data/items.js';
 import { stripBackgroundByKey } from '../data/heroSprites.js';
-import { drawButton } from '../ui/canvasButton.js';
+import { drawButton, drawBackButton } from '../ui/canvasButton.js';
 import { playSfx, SFX } from '../audio/sound.js';
 
 // 'weapon' is stored-data's name for what the Gear & Forge redesign calls
@@ -310,12 +310,6 @@ export class EquipmentScene extends Phaser.Scene {
   // Moved into the header (2026-07-11, "have the back button at top of
   // menues") — was bottom-left, now top-left alongside the title.
   drawBackBtn() {
-    drawButton(this, {
-      x: 76, y: 19, w: 128, h: 26, label: '◀  WORLD MAP',
-      fontSize: '13px', radius: 6,
-      bg: 0x0e0e20, bgHover: 0x181834, border: 0x334477, accent: 0xffffff,
-      textColor: '#7777aa',
-      onClick: () => this.scene.start('WorldMapScene'),
-    });
+    drawBackButton(this, { label: 'WORLD MAP', onClick: () => this.scene.start('WorldMapScene') });
   }
 }

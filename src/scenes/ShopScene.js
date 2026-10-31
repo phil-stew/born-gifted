@@ -4,6 +4,7 @@ import { getItem, rarityColor, gearFrameName, materialFrameName, rollGearItem, G
 import { stripBackgroundByKey } from '../data/heroSprites.js';
 import { playSfx, SFX } from '../audio/sound.js';
 import { playMusic } from '../audio/music.js';
+import { drawBackButton, drawCurrency, currencyLabel } from '../ui/canvasButton.js';
 
 const SLOT_LABEL = { weapon:'Weapon', footwear:'Shoes', handwear:'Gloves', chest:'Chest', headwear:'Headgear' };
 
@@ -162,23 +163,15 @@ export class ShopScene extends Phaser.Scene {
       fontSize: '16px', fontFamily: 'Georgia, serif', fontStyle: 'bold', color: TEXT_DARK,
     }).setOrigin(0.5).setDepth(10);
 
-    this.tytText = this.add.text(width - 14, 14, `⊕ ${state.tytrate}`, {
-      fontSize: '15px', fontFamily: 'monospace', fontStyle: 'bold', color: GOLD_DARK,
-    }).setOrigin(1, 0.5).setDepth(10);
+    this.tytText = drawCurrency(this, state.tytrate, width - 14, 21);
+    this.tytText.setColor('#3a2606').setStroke('#000000', 0);
 
     // Moved into the header (2026-07-11, "have the back button at top of
     // menues") — was bottom-left, now top-left, same row as the title.
-    const back = this.add.text(14, 14, '◀  BACK', {
-      fontSize: '14px', fontFamily: 'monospace', color: TEXT_MED,
-      backgroundColor: '#00000055', padding: { x: 10, y: 5 },
-    }).setOrigin(0, 0.5).setInteractive({ useHandCursor: true }).setDepth(10);
-    back.on('pointerover', () => back.setStyle({ color: TEXT_DARK }));
-    back.on('pointerout',  () => back.setStyle({ color: TEXT_MED }));
-    back.on('pointerdown', () => {
-      playSfx(this, SFX.click);
+    drawBackButton(this, { label: 'BACK', onClick: () => {
       this.cameras.main.fadeOut(300, 0, 0, 0);
       this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start('HubScene', this.hubData));
-    });
+    } });
 
     this.tabCon  = this.add.container(0, 0);
     this.listCon = this.add.container(0, 0);
@@ -203,7 +196,7 @@ export class ShopScene extends Phaser.Scene {
     // Opaque header bar — title/currency sit on this, not directly on the photo
     const g = this.add.graphics();
     g.fillStyle(PANEL_BG, 0.97);
-    g.fillRect(0, 0, width, 36);
+    g.fillRect(0, 0, width, 44);
     g.fillStyle(PANEL_BORDER, 1);
     g.fillRect(0, 36, width, 2);
   }
@@ -274,7 +267,7 @@ export class ShopScene extends Phaser.Scene {
     this.tabCon.removeAll(true);
     this.listCon.removeAll(true);
     this.detCon.removeAll(true);
-    this.tytText.setText(`⊕ ${state.tytrate}`);
+    this.tytText.setText(currencyLabel(state.tytrate));
     this.buildTabs();
     this.buildCategoryTabs();
     this.buildList();

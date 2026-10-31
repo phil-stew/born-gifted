@@ -3,7 +3,7 @@ import {
   ELEMENT_CYCLE, ELEMENT_BEATS, elementIcon,
   DESIGNATION_CYCLE, DESIGNATION_NAMES, DESIGNATION_BEATS, DESIGNATION_ICONS,
 } from '../data/gameState.js';
-import { drawButton } from '../ui/canvasButton.js';
+import { drawBackButton } from '../ui/canvasButton.js';
 
 const GLOSSARY = [
   { term: 'Tier',        def: 'A monster or unit\'s power band (T1/T2/T3). Higher-tier monsters hit harder and have more HP.' },
@@ -42,13 +42,7 @@ export class HandbookScene extends Phaser.Scene {
 
     // Back button moved into the header (2026-07-11, "have the back button
     // at top of menues") — was bottom-left, now top-left alongside the title.
-    drawButton(this, {
-      x: 55, y: 20, w: 90, h: 28, label: '◀ BACK',
-      fontSize: '12px', radius: 6,
-      bg: 0x0c0c1a, bgHover: 0x111130, border: 0x223366, accent: 0x5577bb,
-      textColor: '#5577bb', textHoverColor: '#ffffff',
-      onClick: () => this.scene.start('HubScene', this.hubData),
-    });
+    drawBackButton(this, { label: 'BACK', onClick: () => this.scene.start('HubScene', this.hubData) });
 
     this.buildElementWheel(70, 66);
     this.buildDesignationTriangle(width - 260, 66);

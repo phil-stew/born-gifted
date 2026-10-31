@@ -3,6 +3,7 @@ import { state, roleDisplayLabel, gearLayoutForUnit } from '../data/gameState.js
 import { FORGE_RECIPES, ORE_TIER_TO_RARITY, RARITY_GEAR_VALUE, rollGearItem, getItem } from '../data/items.js';
 import { playSfx, SFX } from '../audio/sound.js';
 import { playMusic } from '../audio/music.js';
+import { drawBackButton, drawCurrency, currencyLabel } from '../ui/canvasButton.js';
 
 // Cost to reinforce: 75 per level (level 0→1 costs 75, 1→2 costs 150, 2→3 costs 225)
 const REINFORCE_BASE = 75;
@@ -49,20 +50,11 @@ export class ForgeScene extends Phaser.Scene {
       fontSize: '16px', fontFamily: 'monospace', fontStyle: 'bold', color: '#cc8833',
     }).setOrigin(0.5);
 
-    this.tytText = this.add.text(width - 14, 14, `⊕ ${state.tytrate}`, {
-      fontSize: '14px', fontFamily: 'monospace', fontStyle: 'bold', color: '#ffdd66',
-    }).setOrigin(1, 0.5).setDepth(10);
+    this.tytText = drawCurrency(this, state.tytrate, width - 14, 21);
 
     // Moved into the header (2026-07-11, "have the back button at top of
     // menues") — was bottom-left, now top-left, same row as the title.
-    const back = this.add.text(14, 14, '◀  BACK', {
-      fontSize: '13px', fontFamily: 'monospace', color: '#7777aa',
-      backgroundColor: '#0e0e20', padding: { x: 10, y: 5 },
-    }).setOrigin(0, 0.5).setInteractive({ useHandCursor: true }).setDepth(10);
-    back.on('pointerover', () => back.setStyle({ color: '#ffffff' }));
-    back.on('pointerout',  () => back.setStyle({ color: '#7777aa' }));
-    back.on('pointerdown', () => {
-      playSfx(this, SFX.click);
+    drawBackButton(this, { label: 'BACK', onClick: () => {
       this.cameras.main.fadeOut(300, 0, 0, 0);
       this.cameras.main.once('camerafadeoutcomplete', () => {
         // The old "leaving the Forge after M3 reveals M4" one-off cutscene
@@ -71,7 +63,7 @@ export class ForgeScene extends Phaser.Scene {
         // WorldMapScene's M3 click handler, M0-M4 redesign Phase 3).
         this.scene.start('HubScene', this.hubData);
       });
-    });
+    } });
 
     this.tabCon  = this.add.container(0, 0);
     this.unitCon = this.add.container(0, 0);
@@ -87,7 +79,7 @@ export class ForgeScene extends Phaser.Scene {
     this.unitCon.removeAll(true);
     this.equipCon.removeAll(true);
     this.detCon.removeAll(true);
-    this.tytText.setText(`⊕ ${state.tytrate}`);
+    this.tytText.setText(currencyLabel(state.tytrate));
     this.buildModeTabs();
     this.buildUnitList();
     if (this.mode === 'craft') {

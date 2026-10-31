@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { state, roleDisplayLabel } from '../data/gameState.js';
 import { rarityColor, gearFrameName, materialFrameName, GEAR_SHEET, registerGearFrames, MATERIAL_ICON_FRAME } from '../data/items.js';
 import { stripBackgroundByKey } from '../data/heroSprites.js';
-import { drawButton } from '../ui/canvasButton.js';
+import { drawButton, drawBackButton, drawCurrency, currencyLabel } from '../ui/canvasButton.js';
 import { playSfx, SFX } from '../audio/sound.js';
 
 const TABS = ['ALL', 'EQUIPMENT', 'MATERIALS'];
@@ -68,27 +68,19 @@ export class InventoryScene extends Phaser.Scene {
       fontSize: '15px', fontFamily: 'monospace', fontStyle: 'bold', color: '#aaaacc',
     }).setOrigin(0.5);
 
-    this.tytText = this.add.text(width - 14, 12, `⊕ ${state.tytrate}`, {
-      fontSize: '13px', fontFamily: 'monospace', fontStyle: 'bold', color: '#ffdd66',
-    }).setOrigin(1, 0.5).setDepth(10);
+    this.tytText = drawCurrency(this, state.tytrate, width - 14, 21);
 
     // Moved into the header (2026-07-11, "have the back button at top of
     // menues") — was bottom-left, now top-left, same row as the title.
-    const back = this.add.text(14, 12, '◀  WORLD MAP', {
-      fontSize: '12px', fontFamily: 'monospace', color: '#7777aa',
-      backgroundColor: '#0e0e20', padding: { x: 10, y: 5 },
-    }).setOrigin(0, 0.5).setInteractive({ useHandCursor: true });
-    back.on('pointerover', () => back.setStyle({ color: '#ffffff' }));
-    back.on('pointerout',  () => back.setStyle({ color: '#7777aa' }));
-    back.on('pointerdown', () => { playSfx(this, SFX.click); this.scene.start('WorldMapScene'); });
+    drawBackButton(this, { label: 'WORLD MAP', onClick: () => { this.scene.start('WorldMapScene'); } });
 
-    const partyBtn = this.add.text(width - 14, height - 22, 'PARTY  ▶', {
-      fontSize: '12px', fontFamily: 'monospace', color: '#7799cc',
-      backgroundColor: '#0e1020', padding: { x: 10, y: 5 },
-    }).setOrigin(1, 0.5).setInteractive({ useHandCursor: true });
-    partyBtn.on('pointerover', () => partyBtn.setStyle({ color: '#aaccff' }));
-    partyBtn.on('pointerout',  () => partyBtn.setStyle({ color: '#7799cc' }));
-    partyBtn.on('pointerdown', () => { playSfx(this, SFX.click); this.scene.start('PartyScene'); });
+    drawButton(this, {
+      x: width - 88, y: height - 21, w: 160, h: 36, label: 'PARTY ▶',
+      fontSize: '19px', radius: 8,
+      bg: 0x223060, bgHover: 0x304a90, border: 0x6688dd, accent: 0xffffff,
+      textColor: '#ffffff', depth: 20,
+      onClick: () => this.scene.start('PartyScene'),
+    });
 
     this.tabCon  = this.add.container(0, 0);
     this.listCon = this.add.container(0, 0);
@@ -104,7 +96,7 @@ export class InventoryScene extends Phaser.Scene {
     this.listCon.removeAll(true);
     this.detCon.removeAll(true);
     this.overlyCon.removeAll(true);
-    this.tytText.setText(`⊕ ${state.tytrate}`);
+    this.tytText.setText(currencyLabel(state.tytrate));
     this.buildTabs();
     this.buildList();
     this.buildDetail();

@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { state, saveGame, allAcademyQuestsDone, allGaleQuestsDone, resolvePartyLines } from '../data/gameState.js';
 import { stripBackgroundByKey } from '../data/heroSprites.js';
 import { BACKDROPS } from '../data/storyBackdrops.js';
-import { drawButton } from '../ui/canvasButton.js';
+import { drawButton, drawCurrency } from '../ui/canvasButton.js';
 import { HUB_CONFIGS } from '../data/hubConfigs.js';
 import { getItem } from '../data/items.js';
 import { playMusic } from '../audio/music.js';
@@ -828,14 +828,12 @@ export class WorldMapScene extends Phaser.Scene {
     });
 
     // Tytrate
-    this.add.text(width - 16, height - 24, `T: ${state.tytrate}`, {
-      fontSize: '14px', fontFamily: 'monospace', color: '#ddcc44',
-    }).setOrigin(1, 0.5);
+    drawCurrency(this, state.tytrate, width - 14, height - 24);
 
     // Mission count
     const done = state.completedMissions.length;
-    this.add.text(width - 100, height - 24, `${done} / 18`, {
-      fontSize: '12px', fontFamily: 'monospace', color: '#555566',
+    this.add.text(width - 230, height - 24, `${done} / 18`, {
+      fontSize: '15px', fontFamily: 'monospace', color: '#9999aa',
     }).setOrigin(1, 0.5);
   }
 

@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { state, getAcademyQuests } from '../data/gameState.js';
-import { drawButton } from '../ui/canvasButton.js';
+import { drawButton, drawBackButton } from '../ui/canvasButton.js';
 
 // Academy quest list (Phase 7, M0-M4 redesign) — hand-authored story quests,
 // as opposed to the randomly generated task board (AcademyTaskListScene).
@@ -37,13 +37,7 @@ export class AcademyQuestListScene extends Phaser.Scene {
 
     // Back button moved into the header (2026-07-11, "have the back button
     // at top of menues") — was bottom-left, now top-left alongside the title.
-    drawButton(this, {
-      x: 55, y: 20, w: 90, h: 28, label: '◀ BACK',
-      fontSize: '12px', radius: 6,
-      bg: 0x0c0c1a, bgHover: 0x111130, border: 0x223366, accent: 0x5577bb,
-      textColor: '#5577bb', textHoverColor: '#ffffff',
-      onClick: () => this.scene.start('HubScene', this.hubData),
-    });
+    drawBackButton(this, { label: 'BACK', onClick: () => this.scene.start('HubScene', this.hubData) });
 
     this.listCon = this.add.container(0, 0);
     this.build();

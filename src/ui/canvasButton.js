@@ -74,3 +74,27 @@ export function drawButton(scene, {
     setActive(v) { isActive = v; draw(false); txt.setColor(isActive ? textHoverColor : textColor); },
   };
 }
+
+// Top-left back button shared by every canvas menu. Sized for a phone, where
+// the 600px-tall canvas renders at roughly 60% scale.
+export function drawBackButton(scene, { label = 'BACK', onClick, depth = 20 }) {
+  const text = `◀ ${label}`;
+  const w = text.length * 13 + 36;
+  return drawButton(scene, {
+    x: 8 + w / 2, y: 21, w, h: 38, label: text,
+    fontSize: '20px', radius: 8,
+    bg: 0x223060, bgHover: 0x304a90, border: 0x6688dd, accent: 0xffffff,
+    textColor: '#ffffff', depth, onClick,
+  });
+}
+
+export function currencyLabel(amount) {
+  return `Tytrate: ${amount}`;
+}
+
+export function drawCurrency(scene, amount, x, y, originY = 0.5) {
+  return scene.add.text(x, y, currencyLabel(amount), {
+    fontSize: '21px', fontFamily: 'monospace', fontStyle: 'bold', color: '#ffdd66',
+    stroke: '#000000', strokeThickness: 4,
+  }).setOrigin(1, originY).setDepth(20);
+}

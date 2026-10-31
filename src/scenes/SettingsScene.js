@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { drawButton } from '../ui/canvasButton.js';
+import { drawButton, drawBackButton } from '../ui/canvasButton.js';
 import { drawSlider } from '../ui/canvasSlider.js';
 import { playSfx, SFX } from '../audio/sound.js';
 import { getSfxVolume, setSfxVolume, getMusicVolume } from '../audio/settings.js';
@@ -25,12 +25,7 @@ export class SettingsScene extends Phaser.Scene {
     this.add.rectangle(cx, height / 2, width, height, 0x0a0a18);
 
     // Back button at the top, per this project's standing menu convention.
-    drawButton(this, {
-      x: 60, y: 26, w: 92, h: 32, label: '◀ BACK',
-      bg: 0x161630, bgHover: 0x223060, border: 0x3344aa, accent: 0xaaaaff,
-      textColor: '#aaaaff', depth: 20,
-      onClick: () => this.scene.start(this.returnScene, this.returnData),
-    });
+    drawBackButton(this, { label: 'BACK', onClick: () => this.scene.start(this.returnScene, this.returnData) });
 
     this.add.text(cx, 26, 'SETTINGS', {
       fontSize: '18px', fontFamily: 'Georgia, serif', fontStyle: 'bold', color: '#ffffff',
