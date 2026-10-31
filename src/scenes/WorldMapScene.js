@@ -741,12 +741,6 @@ export class WorldMapScene extends Phaser.Scene {
         );
       }
 
-      // Mission label
-      this.add.text(x, y, id, {
-        fontSize: '9px', fontFamily: 'monospace', fontStyle: 'bold',
-        color: '#ffffff',
-      }).setOrigin(0.5);
-
       // Shop/Forge badges — same 🛒/⚒ glyphs HubScene's own service tiles
       // use, so a hub's map marker previews what's inside it, for nodes
       // HUB_CONFIGS actually lists as having that service (every hub does
@@ -879,7 +873,7 @@ export class WorldMapScene extends Phaser.Scene {
     const isCompleted = state.completedMissions.includes(node.id);
     const status = isCompleted ? 'Completed' : 'Active';
     const kind = node.side ? 'Side Battle' : node.arc;
-    const label = `${node.id}: ${node.name}\n${kind}  ·  ${status}`;
+    const label = `${node.name}\n${kind}  ·  ${status}`;
     const { width, height } = this.scale;
     const tx = Math.min(Math.max(nx, 100), width - 100);
     const ty = ny > height / 2 ? ny - 58 : ny + 30;
@@ -984,12 +978,12 @@ export class WorldMapScene extends Phaser.Scene {
     // false after every completion, so replays need re-accepting too.
     if (node.id === 'M0a') {
       if (!state.questAccepted.M0a) {
-        this.showToast(`${node.id} — ${node.name}\nAccept this quest at the Hidden Village first.`);
+        this.showToast(`${node.name}\nAccept this quest at the Hidden Village first.`);
         return;
       }
       if (isCompleted) {
         if ((state.party[0]?.level ?? 1) >= 30) {
-          this.showToast(`${node.id} — ${node.name}\nYou've mastered this trial.`);
+          this.showToast(`${node.name}\nYou've mastered this trial.`);
         } else {
           state.repeatCounts.M0a = (state.repeatCounts.M0a ?? 0) + 1;
           state.currentMission = 'M0a';
@@ -1004,7 +998,7 @@ export class WorldMapScene extends Phaser.Scene {
 
     if (node.id === 'M0b') {
       if (!state.questAccepted.M0b) {
-        this.showToast(`${node.id} — ${node.name}\nAccept this quest at the Hidden Village first.`);
+        this.showToast(`${node.name}\nAccept this quest at the Hidden Village first.`);
         return;
       }
       if (isCompleted) {
@@ -1081,7 +1075,7 @@ export class WorldMapScene extends Phaser.Scene {
     // replay freely via the difficulty picker like any other mission.
     if (node.id === 'A1a' || node.id === 'A1b') {
       if (!state.questAccepted[node.id]) {
-        this.showToast(`${node.id} — ${node.name}\nAccept this quest at Ester Academy first.`);
+        this.showToast(`${node.name}\nAccept this quest at Ester Academy first.`);
         return;
       }
       if (isCompleted) {
@@ -1109,7 +1103,7 @@ export class WorldMapScene extends Phaser.Scene {
 
     if (node.id === 'A2a' || node.id === 'A2b' || node.id === 'A2c') {
       if (!state.questAccepted[node.id]) {
-        this.showToast(`${node.id} — ${node.name}\nAccept this quest at Hilbert Academy first.`);
+        this.showToast(`${node.name}\nAccept this quest at Hilbert Academy first.`);
         return;
       }
       if (isCompleted) {
@@ -1125,7 +1119,7 @@ export class WorldMapScene extends Phaser.Scene {
     // showDifficultyPicker() replay once it's won.
     if (node.id === 'M4') {
       if (isCompleted) {
-        this.showToast(`${node.id} — ${node.name}\nYour exam is behind you now.`);
+        this.showToast(`${node.name}\nYour exam is behind you now.`);
       } else if (!state.caveEntryShown) {
         state.caveEntryShown = true;
         state.currentMission = 'M4';
@@ -1211,7 +1205,7 @@ export class WorldMapScene extends Phaser.Scene {
     // BattleScene.js's checkEndConditions) — there's nothing left to
     // "enter" here, just a short idle line.
     if (node.id === 'M7a') {
-      this.showToast(`${node.id} — ${node.name}\n"Seek out the seven trials when you're ready."`);
+      this.showToast(`${node.name}\n"Seek out the seven trials when you're ready."`);
       return;
     }
 
@@ -1242,7 +1236,7 @@ export class WorldMapScene extends Phaser.Scene {
       return;
     }
 
-    this.showToast(`${node.id} — ${node.name}\nComing soon`);
+    this.showToast(`${node.name}\nComing soon`);
   }
 
   // ── Capital (M3) quest-stage machine (M0-M4 redesign, Phase 3) ──────────
