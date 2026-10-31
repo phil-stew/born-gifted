@@ -1208,6 +1208,14 @@ function distanceMultiplier(ability, dist) {
 export class BattleScene extends Phaser.Scene {
   constructor() { super({ key: 'BattleScene' }); }
 
+  // Once a battle is won or lost that result is final. Cleanup that runs after
+  // the killing blow (endUnitTurn and friends) can't reopen the battle.
+  get phase() { return this._phase; }
+  set phase(next) {
+    if (!this.battleOver) this._phase = next;
+  }
+  get battleOver() { return this._phase === 'victory' || this._phase === 'defeat'; }
+
   init(data) {
     // Two independent difficulty systems (2026-08-03) — an explicit
     // data.difficulty (WorldMapScene's per-replay Normal/Hard/Elite picker)
@@ -1220,6 +1228,7 @@ export class BattleScene extends Phaser.Scene {
     this.difficulty = data?.difficulty ?? 1.0;
     this.difficultyCfg = data?.difficulty != null ? null : getDifficultyConfig();
     this._initData = data ?? {};
+    this._phase = null;
     this.sys.settings.data = {}; // Phaser reuses this on a data-less start
   }
 
@@ -1597,6 +1606,7 @@ export class BattleScene extends Phaser.Scene {
     exitBtn.on('pointerover', () => exitBtn.setStyle({ color: '#ffffff' }));
     exitBtn.on('pointerout',  () => exitBtn.setStyle({ color: '#ff8888' }));
     exitBtn.on('pointerdown', () => {
+      if (this.battleOver) return;
       playSfx(this, SFX.battleClick);
       this.cameras.main.fadeOut(400, 0, 0, 0);
       this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start('WorldMapScene'));
@@ -2678,14 +2688,15 @@ export class BattleScene extends Phaser.Scene {
   }
 
   checkEndConditions() {
+    if (this.battleOver) return;
     if (this.isVictory()) {
       this.triggerVictory();
     } else if (this.playerUnits.every(p => p.isDead)) {
       if (this.missionCfg.scriptedDefeat) {
         this.triggerScriptedDefeat();
       } else {
+        this.phase = 'defeat';
         this.time.delayedCall(500, () => {
-          this.phase = 'defeat';
           playSfx(this, SFX.defeat);
           this.showEndBanner('DEFEAT', '#ff4444');
           this.time.delayedCall(2500, () => this.scene.start('WorldMapScene'));
@@ -4259,6 +4270,7 @@ export class BattleScene extends Phaser.Scene {
     let i = 0;
 
     const actNext = () => {
+      if (this.battleOver) return;
       if (i >= aliveEnemies.length) {
         this.time.delayedCall(400, () => this.startPlayerTurn());
         return;
