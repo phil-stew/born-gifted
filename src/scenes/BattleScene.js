@@ -1295,8 +1295,12 @@ export class BattleScene extends Phaser.Scene {
       const missionId = state.currentMission ?? 'M1';
       const missionCfg = MISSION_CONFIGS[missionId] ?? MISSION_CONFIGS['M1'];
       this.setEnemyContext(missionId, missionCfg);
+      const enemyUnits = this.rollEnemyUnits(missionCfg);
+      this.stripEnemySprites(missionCfg); // the preview's enemy icons need this
+      this.ensureRockTexture();
+      this.ensureGolemTexture();
       this.scene.start('PreBattleScene', {
-        battleData: { ...this._initData, enemyUnits: this.rollEnemyUnits(missionCfg) },
+        battleData: { ...this._initData, enemyUnits },
         reinforced: !!missionCfg.reinforce,
       });
       return;
@@ -1350,18 +1354,7 @@ export class BattleScene extends Phaser.Scene {
       const className = spriteKeyForRole(currentRoleId(u));
       if (className) stripHeroBackground(this, className);
     }
-    for (const heroClass of missionCfg.enemyHeroClasses ?? []) {
-      stripHeroBackground(this, heroClass);
-    }
-    // Monster sheets are baked with a solid black background (no alpha
-    // channel), same as the old critter rigs needed no stripping for but
-    // the new hero-pipeline art does. bgTol/bgBand (2026-08-04) — same
-    // per-sheet override mechanism stripHeroBackground already reads off
-    // HERO_SPRITES; this loop never threaded it through for monsters at
-    // all until Goblin King's cell-boundary weapon bleed needed one.
-    for (const { spriteKey: key, bgTol, bgBand, bgErase } of monsterSpriteInfos) {
-      stripBackgroundByKey(this, key, { cols: 6, rows: 6, tol: bgTol, band: bgBand, erase: bgErase });
-    }
+    this.stripEnemySprites(missionCfg);
     for (const u of battleParty) {
       const className = spriteKeyForRole(currentRoleId(u));
       if (className) createHeroAnims(this, className);
@@ -1631,6 +1624,21 @@ export class BattleScene extends Phaser.Scene {
     } else {
       this.showPhaseBanner('PLAYER TURN');
       this.redraw();
+    }
+  }
+
+  stripEnemySprites(missionCfg) {
+    for (const heroClass of missionCfg.enemyHeroClasses ?? []) {
+      stripHeroBackground(this, heroClass);
+    }
+    // Monster sheets are baked with a solid black background (no alpha
+    // channel), same as the old critter rigs needed no stripping for but
+    // the new hero-pipeline art does. bgTol/bgBand (2026-08-04) — same
+    // per-sheet override mechanism stripHeroBackground already reads off
+    // HERO_SPRITES; this loop never threaded it through for monsters at
+    // all until Goblin King's cell-boundary weapon bleed needed one.
+    for (const { spriteKey: key, bgTol, bgBand, bgErase } of this.monsterSpriteInfos(missionCfg)) {
+      stripBackgroundByKey(this, key, { cols: 6, rows: 6, tol: bgTol, band: bgBand, erase: bgErase });
     }
   }
 

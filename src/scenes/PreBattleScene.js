@@ -73,8 +73,12 @@ export class PreBattleScene extends Phaser.Scene {
     const unknown = enemy.oneShotKill;
     const stat = (label, value) => `<span class="ui-pb-stat">${label} <b>${unknown ? '???' : value}</b></span>`;
     const gear = Object.values(enemy.equip ?? {}).find(Boolean)?.rarity;
+    const url = enemy.heroClass
+      ? spriteFrameDataURL(this, heroKey(enemy.heroClass), firstFrame(enemy.heroClass))
+      : spriteFrameDataURL(this, enemy.spriteKey, 0);
     return `
       <div class="ui-card ui-pb-enemy">
+        ${url ? `<img class="ui-portrait-thumb" src="${url}" alt="">` : '<div class="ui-portrait-thumb"></div>'}
         <div class="ui-card-body">
           <div class="ui-card-name">${esc(enemy.name)}</div>
           <div class="ui-card-sub">Lv.${unknown ? '???' : enemy.level}${enemy.element ? ` &middot; ${esc(enemy.element)}` : ''}${gear ? ` &middot; ${RARITY_LABEL[gear] ?? esc(gear)} gear` : ''}</div>
