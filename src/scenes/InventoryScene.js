@@ -64,8 +64,8 @@ export class InventoryScene extends Phaser.Scene {
     bg.lineStyle(1, 0x222244, 1);
     bg.lineBetween(0, 40, width, 40);
 
-    this.add.text(width / 2, 12, 'INVENTORY', {
-      fontSize: '15px', fontFamily: 'monospace', fontStyle: 'bold', color: '#aaaacc',
+    this.add.text(width / 2, 21, 'INVENTORY', {
+      fontSize: '24px', fontFamily: 'monospace', fontStyle: 'bold', color: '#ffffff',
     }).setOrigin(0.5);
 
     this.tytText = drawCurrency(this, state.tytrate, width - 14, 21);
@@ -105,7 +105,8 @@ export class InventoryScene extends Phaser.Scene {
 
   buildTabs() {
     TABS.forEach((t, i) => {
-      const tx = this.listLayout().lx + i * 90, ty = 44, tw = 82, th = 24;
+      const big = this.W >= 1100;
+      const tx = this.listLayout().lx + i * (big ? 190 : 90), ty = 44, tw = big ? 182 : 82, th = big ? 32 : 24;
       const active = this.tab === t;
       const g = this.add.graphics();
       const draw = (h) => {
@@ -121,8 +122,8 @@ export class InventoryScene extends Phaser.Scene {
 
       const counts = { ALL: state.inventory.length, EQUIPMENT: state.inventory.filter(i => i.slot).length, MATERIALS: state.inventory.filter(i => i.type === 'material').length };
       this.tabCon.add(this.add.text(tx + tw / 2, ty + th / 2, `${t}  ${counts[t]}`, {
-        fontSize: '10px', fontFamily: 'monospace', fontStyle: active ? 'bold' : 'normal',
-        color: active ? '#aaaaff' : '#445566',
+        fontSize: big ? '17px' : '10px', fontFamily: 'monospace', fontStyle: active ? 'bold' : 'normal',
+        color: active ? '#ffffff' : '#99aacc',
       }).setOrigin(0.5));
 
       if (!active) {
@@ -169,8 +170,8 @@ export class InventoryScene extends Phaser.Scene {
   buildList() {
     const entries = this.getEntries();
     const { lx, lw, cols, rowH, boxH, rowW, big } = this.listLayout();
-    const startY = 72;
-    const panH = this.H - startY - 38;
+    const startY = 84;
+    const panH = this.H - startY - 44;
 
     const shadow = this.add.graphics();
     shadow.fillStyle(0x000000, 0.3);
@@ -234,7 +235,7 @@ export class InventoryScene extends Phaser.Scene {
       }));
       const subStr = item.type === 'material' ? 'MATERIAL' : (item.slot?.toUpperCase() ?? '') + (item.forClass ? ` · ${item.forClass}` : '');
       this.listCon.add(this.add.text(textLx, iy + (big ? 32 : 22), subStr, {
-        fontSize: big ? '13px' : '9px', fontFamily: 'monospace', color: item.type === 'material' ? '#557733' : '#445577',
+        fontSize: big ? '15px' : '9px', fontFamily: 'monospace', color: item.type === 'material' ? '#88bb55' : '#7799bb',
       }));
 
       // Stat mini-summary
@@ -242,7 +243,7 @@ export class InventoryScene extends Phaser.Scene {
       if (stats.length) {
         const statStr = stats.map(([k, v]) => `+${v}${k[0].toUpperCase()}`).join(' ');
         this.listCon.add(this.add.text(rx + rowW - 10, big ? iy + 33 : iy + 5, statStr, {
-          fontSize: big ? '13px' : '10px', fontFamily: 'monospace', color: '#4488aa',
+          fontSize: big ? '15px' : '10px', fontFamily: 'monospace', color: '#66bbdd',
         }).setOrigin(1, 0));
       }
 
@@ -256,8 +257,8 @@ export class InventoryScene extends Phaser.Scene {
 
   buildDetail() {
     const { lx, lw } = this.listLayout();
-    const dx = lx + lw + 8, dw = this.W - dx - 8, startY = 72;
-    const panH = this.H - startY - 38;
+    const dx = lx + lw + 8, dw = this.W - dx - 8, startY = 84;
+    const panH = this.H - startY - 44;
     const cx = dx + dw / 2;
 
     const shadow = this.add.graphics();
@@ -277,7 +278,7 @@ export class InventoryScene extends Phaser.Scene {
     const entry = this.selected;
     if (!entry) {
       this.detCon.add(this.add.text(cx, startY + panH / 2, 'Select an item', {
-        fontSize: '12px', fontFamily: 'monospace', color: '#2a2a3a',
+        fontSize: '17px', fontFamily: 'monospace', color: '#8888aa',
       }).setOrigin(0.5));
       return;
     }
@@ -290,33 +291,33 @@ export class InventoryScene extends Phaser.Scene {
 
     const rlvl = item.reinforceLevel ?? 0;
     this.detCon.add(this.add.text(cx, y, item.name, {
-      fontSize: '15px', fontFamily: 'Georgia, serif', fontStyle: 'bold', color: rlvl ? '#ffcc88' : '#ffffff',
+      fontSize: '22px', fontFamily: 'Georgia, serif', fontStyle: 'bold', color: rlvl ? '#ffcc88' : '#ffffff',
     }).setOrigin(0.5));
     y += 22;
 
     const rarHex = '#' + rarityColor(item.rarity).toString(16).padStart(6, '0');
     const typeStr = item.type === 'material' ? 'MATERIAL' : (item.slot?.toUpperCase() ?? '');
     this.detCon.add(this.add.text(cx, y, `${item.rarity.toUpperCase()}  ·  ${typeStr}`, {
-      fontSize: '10px', fontFamily: 'monospace', color: rarHex,
+      fontSize: '15px', fontFamily: 'monospace', color: rarHex,
     }).setOrigin(0.5));
-    y += 20;
+    y += 26;
 
     if (item.forClass) {
       this.detCon.add(this.add.text(cx, y, `FOR ${item.forClass.toUpperCase()}`, {
-        fontSize: '10px', fontFamily: 'monospace', color: '#8888aa',
+        fontSize: '15px', fontFamily: 'monospace', color: '#8888aa',
       }).setOrigin(0.5));
-      y += 18;
+      y += 24;
     }
 
     if (rlvl > 0) {
       this.detCon.add(this.add.text(cx, y, `${'✦'.repeat(rlvl)}${'✧'.repeat(3 - rlvl)}`, {
-        fontSize: '16px', fontFamily: 'monospace', color: '#cc7722',
+        fontSize: '21px', fontFamily: 'monospace', color: '#cc7722',
       }).setOrigin(0.5));
       y += 24;
     }
 
     this.detCon.add(this.add.text(cx, y, item.desc ?? '', {
-      fontSize: '11px', fontFamily: 'Georgia, serif', color: '#8888aa',
+      fontSize: '16px', fontFamily: 'Georgia, serif', color: '#8888aa',
       wordWrap: { width: dw - 24 }, align: 'center',
     }).setOrigin(0.5, 0));
     y += 52;
@@ -325,18 +326,18 @@ export class InventoryScene extends Phaser.Scene {
     if (stats.length) {
       for (const [stat, val] of stats) {
         this.detCon.add(this.add.text(cx, y, `+${val}  ${stat[0].toUpperCase() + stat.slice(1)}`, {
-          fontSize: '13px', fontFamily: 'monospace', color: '#44ccff',
+          fontSize: '18px', fontFamily: 'monospace', color: '#44ccff',
         }).setOrigin(0.5));
-        y += 20;
+        y += 26;
       }
       y += 8;
     }
 
     if (count > 1) {
       this.detCon.add(this.add.text(cx, y, `×${count} in inventory`, {
-        fontSize: '10px', fontFamily: 'monospace', color: '#445566',
+        fontSize: '15px', fontFamily: 'monospace', color: '#445566',
       }).setOrigin(0.5));
-      y += 18;
+      y += 24;
     }
 
     // Actions
@@ -354,7 +355,7 @@ export class InventoryScene extends Phaser.Scene {
       draw(false);
       this.detCon.add(g);
       this.detCon.add(this.add.text(cx, y + 18, 'EQUIP TO…', {
-        fontSize: '13px', fontFamily: 'monospace', fontStyle: 'bold', color: '#44bb66',
+        fontSize: '18px', fontFamily: 'monospace', fontStyle: 'bold', color: '#44bb66',
       }).setOrigin(0.5));
 
       const z = this.add.zone(cx, y + 18, 160, 36).setInteractive({ useHandCursor: true });
@@ -380,7 +381,7 @@ export class InventoryScene extends Phaser.Scene {
       draw(false);
       this.detCon.add(g);
       this.detCon.add(this.add.text(cx, y + 18, `SELL  ⊕${sellVal}`, {
-        fontSize: '12px', fontFamily: 'monospace', color: '#66cc66',
+        fontSize: '17px', fontFamily: 'monospace', color: '#66cc66',
       }).setOrigin(0.5));
       const z = this.add.zone(cx, y + 18, 160, 36).setInteractive({ useHandCursor: true });
       z.on('pointerover',  () => draw(true));
@@ -424,7 +425,7 @@ export class InventoryScene extends Phaser.Scene {
 
     if (this.equipStep === 'pick_unit') {
       this.overlyCon.add(this.add.text(bx + bw / 2, by + 14, 'Equip to which character?', {
-        fontSize: '12px', fontFamily: 'monospace', color: '#aaaacc',
+        fontSize: '17px', fontFamily: 'monospace', color: '#aaaacc',
       }).setOrigin(0.5));
 
       state.party.forEach((unit, i) => {
@@ -444,8 +445,8 @@ export class InventoryScene extends Phaser.Scene {
         g.fillStyle(unit.color, 1);
         g.fillCircle(bx + 26, uy + 22, 8);
 
-        this.overlyCon.add(this.add.text(bx + 42, uy + 8, unit.name, { fontSize:'12px', fontFamily:'monospace', fontStyle:'bold', color:'#ddddff' }));
-        this.overlyCon.add(this.add.text(bx + 42, uy + 26, `Lv.${unit.level}  ${roleDisplayLabel(unit)}`, { fontSize:'10px', fontFamily:'monospace', color:'#555577' }));
+        this.overlyCon.add(this.add.text(bx + 42, uy + 8, unit.name, { fontSize: '17px', fontFamily:'monospace', fontStyle:'bold', color:'#ddddff' }));
+        this.overlyCon.add(this.add.text(bx + 42, uy + 26, `Lv.${unit.level}  ${roleDisplayLabel(unit)}`, { fontSize: '15px', fontFamily:'monospace', color:'#555577' }));
 
         const z = this.add.zone(bx + bw / 2, uy + 22, bw - 20, 44).setInteractive({ useHandCursor: true });
         z.on('pointerover',  () => draw(true));
@@ -460,7 +461,7 @@ export class InventoryScene extends Phaser.Scene {
     const cancelY = by + bh - 38;
     const cancelBtn = drawButton(this, {
       x: bx + bw / 2, y: cancelY + 15, w: 120, h: 30, label: 'CANCEL',
-      fontSize: '11px', radius: 6,
+      fontSize: '16px', radius: 6,
       bg: 0x110a0a, bgHover: 0x1a0e0e, border: 0x664444, accent: 0x885555,
       textColor: '#885555',
       onClick: () => { this.equipStep = null; this.equipUnit = null; this.rebuild(); },

@@ -53,8 +53,8 @@ export class HandbookScene extends Phaser.Scene {
 
   buildElementWheel(x, y) {
     const w = 220, h = 220;
-    this.add.text(x + w / 2, y, 'ELEMENT WEAKNESSES', {
-      fontSize: '12px', fontFamily: 'monospace', fontStyle: 'bold', color: '#aaaacc',
+    this.add.text(x + w / 2, y - 14, 'ELEMENT WEAKNESSES', {
+      fontSize: '17px', fontFamily: 'monospace', fontStyle: 'bold', color: '#aaaacc',
     }).setOrigin(0.5, 0);
 
     const cx = x + w / 2, cy = y + h / 2 + 6, r = 78;
@@ -92,18 +92,18 @@ export class HandbookScene extends Phaser.Scene {
       dot.lineStyle(1.5, 0x445577, 1);
       dot.strokeCircle(p.x, p.y, 26);
       this.add.text(p.x, p.y - 6, elementIcon(el), { fontSize: '16px' }).setOrigin(0.5);
-      this.add.text(p.x, p.y + 14, el, { fontSize: '9px', fontFamily: 'monospace', color: '#aaaacc' }).setOrigin(0.5);
+      this.add.text(p.x, p.y + 14, el, { fontSize: '13px', fontFamily: 'monospace', color: '#aaaacc' }).setOrigin(0.5);
     });
 
     this.add.text(cx, y + h + 8, 'Beats the next element clockwise (1.5× dmg dealt, 0.8× dmg taken when beaten).', {
-      fontSize: '9px', fontFamily: 'monospace', color: '#556677', wordWrap: { width: w + 20 }, align: 'center',
+      fontSize: '13px', fontFamily: 'monospace', color: '#556677', wordWrap: { width: w + 20 }, align: 'center',
     }).setOrigin(0.5, 0);
   }
 
   buildDesignationTriangle(x, y) {
     const w = 240, h = 220;
-    this.add.text(x + w / 2, y, 'DESIGNATION TRIANGLE', {
-      fontSize: '12px', fontFamily: 'monospace', fontStyle: 'bold', color: '#aaaacc',
+    this.add.text(x + w / 2, y - 14, 'DESIGNATION TRIANGLE', {
+      fontSize: '17px', fontFamily: 'monospace', fontStyle: 'bold', color: '#aaaacc',
     }).setOrigin(0.5, 0);
 
     const cx = x + w / 2, cy = y + h / 2 + 10, r = 70;
@@ -140,18 +140,18 @@ export class HandbookScene extends Phaser.Scene {
       dot.lineStyle(1.5, 0x774433, 1);
       dot.strokeCircle(p.x, p.y, 28);
       this.add.text(p.x, p.y - 8, DESIGNATION_ICONS[d], { fontSize: '18px' }).setOrigin(0.5);
-      this.add.text(p.x, p.y + 14, DESIGNATION_NAMES[d], { fontSize: '9px', fontFamily: 'monospace', color: '#ccaa99' }).setOrigin(0.5);
+      this.add.text(p.x, p.y + 14, DESIGNATION_NAMES[d], { fontSize: '13px', fontFamily: 'monospace', color: '#ccaa99' }).setOrigin(0.5);
     });
 
     // Support sits outside the triangle, called out separately.
     this.add.text(cx, cy + r + 34, `${DESIGNATION_ICONS.S}  Support — outside the triangle, boosts/heals allies instead of fighting the cycle.`, {
-      fontSize: '9px', fontFamily: 'monospace', color: '#556677', wordWrap: { width: w + 20 }, align: 'center',
+      fontSize: '13px', fontFamily: 'monospace', color: '#556677', wordWrap: { width: w + 20 }, align: 'center',
     }).setOrigin(0.5, 0);
   }
 
   buildGlossary(x, y, w) {
     this.add.text(x, y, 'GLOSSARY', {
-      fontSize: '12px', fontFamily: 'monospace', fontStyle: 'bold', color: '#aaaacc',
+      fontSize: '17px', fontFamily: 'monospace', fontStyle: 'bold', color: '#aaaacc',
     });
 
     let gy = y + 22;
@@ -161,10 +161,10 @@ export class HandbookScene extends Phaser.Scene {
       const gx = x + col * (colW + 24);
       const rowY = gy + row * 46;
       this.add.text(gx, rowY, g.term, {
-        fontSize: '11px', fontFamily: 'monospace', fontStyle: 'bold', color: '#ffcc88',
+        fontSize: '16px', fontFamily: 'monospace', fontStyle: 'bold', color: '#ffcc88',
       });
       this.add.text(gx, rowY + 16, g.def, {
-        fontSize: '9px', fontFamily: 'monospace', color: '#7788aa',
+        fontSize: '13px', fontFamily: 'monospace', color: '#7788aa',
         wordWrap: { width: colW }, lineSpacing: 2,
       });
     });

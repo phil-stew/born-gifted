@@ -70,12 +70,14 @@ export class HubScene extends Phaser.Scene {
     }
 
     this.add.text(width / 2, 20, this.hubName.toUpperCase(), {
-      fontSize: '20px', fontFamily: 'monospace', fontStyle: 'bold',
+      fontSize: '26px', fontFamily: 'monospace', fontStyle: 'bold',
       color: this.hubType === 'academy' ? '#aaaaff' : '#ffcc66',
+      stroke: '#000000', strokeThickness: 5,
     }).setOrigin(0.5);
 
     this.add.text(width / 2, 46, this.hubType === 'academy' ? '— Academy City —' : '— Town —', {
-      fontSize: '11px', fontFamily: 'monospace', color: '#555566',
+      fontSize: '17px', fontFamily: 'monospace', color: '#ffffff',
+      stroke: '#000000', strokeThickness: 4,
     }).setOrigin(0.5);
 
     // Leave, moved out of the services row into the header (2026-07-11,
@@ -163,7 +165,7 @@ export class HubScene extends Phaser.Scene {
     const SERVICE_DEFS = {
       shop:  { key: 'Shop',  icon: '🛒', desc: 'Buy & sell items',      locked: false },
       forge: { key: 'Forge', icon: '⚒',  desc: forgeUnlocked ? 'Reinforce equipment' : 'Visit the Capital to unlock', locked: !forgeUnlocked },
-      handbook: { key: 'Handbook', icon: '📖', desc: handbookUnlocked ? 'Elements, designations, glossary' : 'Finish the exam questline to unlock', locked: !handbookUnlocked },
+      handbook: { key: 'Handbook', icon: '📖', desc: handbookUnlocked ? 'Elements and glossary' : 'Finish the exam questline to unlock', locked: !handbookUnlocked },
       taskList:  { key: 'Tasks',  icon: '📋', desc: 'Fetch quests for Tytrate', locked: false },
       questList: { key: 'Quests', icon: '⚑',  desc: 'Story quest progress',     locked: false },
       recruit: { key: 'Recruit', icon: '🎓', desc: !recruitUnlocked ? 'Finish the exam questline to unlock' : rosterFull ? `Roster full (${MAX_ROSTER_SIZE}/${MAX_ROSTER_SIZE})` : `Recruit a new teammate (${state.party.length}/${MAX_ROSTER_SIZE})`, locked: !recruitUnlocked || rosterFull },
@@ -179,12 +181,15 @@ export class HubScene extends Phaser.Scene {
 
     // Button width shrinks to fit as more services get added to a hub (M3
     // has up to 4, A1/A2 up to 5 with Recruit) — fixed 210px only ever fit 3.
-    const gap = 16, maxRowW = width - 40;
-    const btnW = Math.min(210, Math.floor((maxRowW - gap * (services.length - 1)) / services.length));
-    const btnH = 60;
-    const totalW = services.length * (btnW + gap) - gap;
-    let bx = (width - totalW) / 2;
-    const by = height * 0.64;
+    // Up to 4 per row, so labels stay readable on a phone.
+    const gap = 14, maxRowW = width - 40;
+    const perRow = Math.min(services.length, 4);
+    const rows = Math.ceil(services.length / perRow);
+    const btnW = Math.min(290, Math.floor((maxRowW - gap * (perRow - 1)) / perRow));
+    const btnH = 72;
+    const rowStartX = (width - (perRow * btnW + (perRow - 1) * gap)) / 2;
+    let bx = rowStartX;
+    let by = height - rows * (btnH + gap) - 6;
 
     const COLORS = {
       Shop:     { idle: 0x0b180d, hover: 0x112215, border: 0x1e6630, text: '#44bb66' },
@@ -216,10 +221,10 @@ export class HubScene extends Phaser.Scene {
 
       const displayLabel = (svc.label ?? svc.key).toUpperCase();
       this.add.text(myBx + btnW / 2, by + 14, locked ? `🔒  ${displayLabel}` : `${svc.icon}  ${displayLabel}`, {
-        fontSize: '15px', fontFamily: 'monospace', fontStyle: 'bold', color: locked ? '#333344' : c.text,
+        fontSize: '21px', fontFamily: 'monospace', fontStyle: 'bold', color: locked ? '#666677' : c.text,
       }).setOrigin(0.5, 0);
-      this.add.text(myBx + btnW / 2, by + 36, svc.desc, {
-        fontSize: '10px', fontFamily: 'monospace', color: locked ? '#2a2a33' : '#445566',
+      this.add.text(myBx + btnW / 2, by + 42, svc.desc, {
+        fontSize: '15px', fontFamily: 'monospace', color: locked ? '#555566' : '#99aabb',
       }).setOrigin(0.5, 0);
 
       if (!locked) {
@@ -248,8 +253,8 @@ export class HubScene extends Phaser.Scene {
           });
         });
       }
-
       bx += btnW + gap;
+      if (bx + btnW > rowStartX + maxRowW + 1 || bx > rowStartX + (perRow - 1) * (btnW + gap) + 1) { bx = rowStartX; by += btnH + gap; }
     }
   }
 }
