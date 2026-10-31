@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { state, maxBattlePartySize, maxHp, roleDisplayLabel, currentRoleId } from '../data/gameState.js';
+import { state, maxBattlePartySize, maxHp, roleDisplayLabel, currentRoleId, ELEMENT_BEATS, elementIcon } from '../data/gameState.js';
 import { loadHeroSprites, stripHeroBackground, heroKey, firstFrame, spriteKeyForRole } from '../data/heroSprites.js';
 import { mount, unmount, onClick, spriteFrameDataURL, esc } from '../ui/domUI.js';
 import { BACKDROPS } from '../data/storyBackdrops.js';
@@ -53,6 +53,21 @@ export class PreBattleScene extends Phaser.Scene {
     return spriteFrameDataURL(this, heroKey(spriteKey), firstFrame(spriteKey));
   }
 
+  // How this hero's element lines up against this fight's enemies. Matches
+  // elementMultiplier in BattleScene: +50% vs an enemy it beats, and that
+  // works both ways, so an enemy that beats the hero hits it +50% too.
+  matchupHTML(unit) {
+    const enemies = (this.battleData.enemyUnits ?? []).filter(e => e.element);
+    const strong = enemies.filter(e => e.alwaysWeak || ELEMENT_BEATS[unit.element] === e.element).length;
+    const weak = enemies.filter(e => ELEMENT_BEATS[e.element] === unit.element).length;
+    return `
+      <div class="ui-pb-matchup">
+        <span>${elementIcon(unit.element)} ${esc(unit.element ?? '')}</span>
+        ${strong ? `<span class="good">▲ Strong vs ${strong}</span>` : ''}
+        ${weak ? `<span class="bad">▼ Weak vs ${weak}</span>` : ''}
+      </div>`;
+  }
+
   cardHTML(unit) {
     const selected = this.selectedIds.includes(unit.id);
     const url = this.portraitURL(unit);
@@ -62,6 +77,7 @@ export class PreBattleScene extends Phaser.Scene {
         <div class="ui-card-body">
           <div class="ui-card-name">${esc(unit.name.split(' ')[0])}</div>
           <div class="ui-card-sub">Lv.${unit.level} &nbsp;${esc(roleDisplayLabel(unit))} &nbsp;&middot;&nbsp; HP ${maxHp(unit)}</div>
+          ${this.matchupHTML(unit)}
         </div>
         <div class="ui-badge">${selected ? '✅' : '⬜'}</div>
       </div>
@@ -73,6 +89,7 @@ export class PreBattleScene extends Phaser.Scene {
     const unknown = enemy.oneShotKill;
     const stat = (label, value) => `<span class="ui-pb-stat">${label} <b>${unknown ? '???' : value}</b></span>`;
     const gear = Object.values(enemy.equip ?? {}).find(Boolean)?.rarity;
+    const weakTo = Object.keys(ELEMENT_BEATS).find(el => ELEMENT_BEATS[el] === enemy.element);
     const url = enemy.heroClass
       ? spriteFrameDataURL(this, heroKey(enemy.heroClass), firstFrame(enemy.heroClass))
       : spriteFrameDataURL(this, enemy.spriteKey, 0);
@@ -81,9 +98,9 @@ export class PreBattleScene extends Phaser.Scene {
         ${url ? `<img class="ui-portrait-thumb" src="${url}" alt="">` : '<div class="ui-portrait-thumb"></div>'}
         <div class="ui-card-body">
           <div class="ui-card-name">${esc(enemy.name)}</div>
-          <div class="ui-card-sub">Lv.${unknown ? '???' : enemy.level}${enemy.element ? ` &middot; ${esc(enemy.element)}` : ''}${gear ? ` &middot; ${RARITY_LABEL[gear] ?? esc(gear)} gear` : ''}</div>
+          <div class="ui-card-sub">Lv.${unknown ? '???' : enemy.level}${enemy.element ? ` &middot; ${elementIcon(enemy.element)} ${esc(enemy.element)}` : ''}${enemy.alwaysWeak ? ' &middot; <span class="ui-pb-good">Weak to all</span>' : weakTo ? ` &middot; <span class="ui-pb-good">Weak to ${elementIcon(weakTo)} ${esc(weakTo)}</span>` : ''}</div>
           <div class="ui-pb-stats">
-            ${stat('HP', enemy.maxHp)}${stat('STR', enemy.strength)}${stat('SPD', enemy.speed)}${stat('END', enemy.endurance)}
+            ${stat('HP', enemy.maxHp)}${stat('STR', enemy.strength)}${stat('SPD', enemy.speed)}${stat('END', enemy.endurance)}${gear ? `<span class="ui-pb-stat">${RARITY_LABEL[gear] ?? esc(gear)} gear</span>` : ''}
           </div>
         </div>
       </div>
@@ -110,6 +127,7 @@ export class PreBattleScene extends Phaser.Scene {
         <div class="ui-body ui-pb-body">
           <div class="ui-panel ui-list-panel">
             <div class="ui-pb-head">Your team &middot; ${this.selectedIds.length} / ${this.cap}${full ? ' (max)' : ''}</div>
+            <div class="ui-pb-tip">▲ heroes deal 50% more to those enemies</div>
             ${listHTML}
           </div>
           <div class="ui-panel ui-list-panel">
