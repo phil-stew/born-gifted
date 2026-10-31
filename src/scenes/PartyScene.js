@@ -42,7 +42,7 @@ export class PartyScene extends Phaser.Scene {
 
   init(data) {
     this.selId = data?.selId ?? state.party[0]?.id ?? null;
-    this.detailTab = 'stats';
+    this.detailTab = data?.tab ?? 'stats';
     this.expandedAbility = null;
     this.picker = null;
     this.promoStep = null;   // null | 'prompt' | 'sport' | 'role'

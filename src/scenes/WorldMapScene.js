@@ -7,6 +7,7 @@ import { HUB_CONFIGS } from '../data/hubConfigs.js';
 import { getItem } from '../data/items.js';
 import { playMusic } from '../audio/music.js';
 import { playSfx, SFX } from '../audio/sound.js';
+import { showLoadoutReminder } from '../ui/loadoutReminder.js';
 
 // Background art (mapbackg.webp, see drawBackground) is a fixed 1024×1024
 // source image, always drawn "cover"-fit against whatever the live canvas
@@ -572,6 +573,7 @@ export class WorldMapScene extends Phaser.Scene {
     this.drawNodes();
     this.drawUI(width, height);
     this.drawHeroMarker();
+    showLoadoutReminder(this);
   }
 
   // Ambient corner dressing, tucked into the empty margins around the node
