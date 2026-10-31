@@ -1,9 +1,9 @@
 // Item database — slots: weapon | footwear | handwear | chest | headwear
-// `sport` drives icon lookup via gearFrameName (see ITEM_SPORT_TO_CLASS /
+// `sport` drives icon lookup via gearItemFrame (see ITEM_SPORT_TO_CLASS /
 // GEAR_CLASS_COL / GEAR_SLOT_ROW below) — rarity is shown separately via
 // rarityColor(), not baked into the icon art.
 
-import { TALENT_STAT_KEY, roleDisplayLabel } from './gameState.js';
+import { TALENT_STAT_KEY, roleDisplayLabel, SPORTS } from './gameState.js';
 
 export const ITEMS = [
 
@@ -220,8 +220,7 @@ export const GEAR_SLOT_ROW = { weapon: 0, headwear: 1, footwear: 2, chest: 3, ha
 // items.js's existing `sport` field predates the class-grouping system and
 // uses its own display strings (Basketball, Soccer, ...) — map each to the
 // class grouping whose column art fits it, so ~80 existing items don't need
-// per-item rewrites. Universal (no-sport) items have no matching column and
-// get no icon, same as before this rework.
+// per-item rewrites. Universal and rolled gear has no sport — see gearItemFrame.
 export const ITEM_SPORT_TO_CLASS = {
   Basketball: 'Ball', Soccer: 'Ball', Football: 'Ball', Volleyball: 'Ball', Hockey: 'Ball',
   Baseball: 'Bat & Ball',
@@ -230,10 +229,17 @@ export const ITEM_SPORT_TO_CLASS = {
   Track: 'Athletics',
 };
 
-// Returns the Phaser frame name for a specific item icon (sport + slot)
-export function gearFrameName(sport, slot) {
-  const cls = ITEM_SPORT_TO_CLASS[sport];
-  if (!cls || !GEAR_SLOT_ROW.hasOwnProperty(slot)) return null;
+// Class grouping of a role by display name, for Class Items that only carry
+// forClass. A few role names repeat across sports; the first match wins.
+function classForRoleName(roleName) {
+  return Object.values(SPORTS).find(s => s.roles?.some(r => r.name === roleName))?.class;
+}
+
+// Returns the Phaser frame name for an item's icon. Gear with no sport or
+// class falls back to the plain Athletics column.
+export function gearItemFrame(item, slot = item?.slot) {
+  if (!GEAR_SLOT_ROW.hasOwnProperty(slot)) return null;
+  const cls = ITEM_SPORT_TO_CLASS[item?.sport] ?? classForRoleName(item?.forClass) ?? 'Athletics';
   return `gear_${cls}_${slot}`;
 }
 

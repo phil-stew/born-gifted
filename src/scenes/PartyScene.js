@@ -4,7 +4,7 @@ import {
   roleDisplayLabel, currentRoleId, roleById, pendingPromotion, chainById,
   sportById, t3SportOptions, promoteUnit, gearLayoutForUnit, equipItem, dismissUnit,
 } from '../data/gameState.js';
-import { rarityColor, gearFrameName, registerGearFrames, GEAR_SHEET } from '../data/items.js';
+import { rarityColor, gearItemFrame, registerGearFrames, GEAR_SHEET } from '../data/items.js';
 import { loadHeroSprites, stripHeroBackground, heroKey, firstFrame, spriteKeyForRole, stripBackgroundByKey } from '../data/heroSprites.js';
 import { mount, unmount, onClick, spriteFrameDataURL, iconDataURL, esc } from '../ui/domUI.js';
 import { loadoutSectionsHTML, loadoutPickerHTML, wireLoadoutEvents } from '../ui/loadoutPanel.js';
@@ -74,12 +74,11 @@ export class PartyScene extends Phaser.Scene {
     return spriteFrameDataURL(this, heroKey(spriteKey), firstFrame(spriteKey));
   }
 
-  // Per-item art only exists for sport-mapped gear (see ITEM_SPORT_TO_CLASS);
-  // universal/procedural gear has no matching sheet cell. Returns an HTML
-  // snippet either way — a real icon image when art exists, otherwise the
-  // slot's fallback glyph — so every gear row always shows *something*.
+  // Returns an HTML snippet either way — a real icon image when art exists,
+  // otherwise the slot's fallback glyph — so every gear row always shows
+  // *something*.
   gearIconHTML(item, slot) {
-    const frame = item?.sport ? gearFrameName(item.sport, slot) : null;
+    const frame = item ? gearItemFrame(item, slot) : null;
     const url = frame ? iconDataURL(this, 'gears', frame, GEAR_ICON_SIZE) : null;
     if (url) return `<img class="ui-gear-icon" src="${url}" alt="">`;
     return `<span class="ui-gear-icon ui-gear-icon-fallback">${SLOT_ICON[slot] ?? '❔'}</span>`;

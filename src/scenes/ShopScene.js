@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { state, gearLayoutForUnit, roleDisplayLabel } from '../data/gameState.js';
-import { getItem, gearFrameName, materialFrameName, rollGearItem, GEAR_SHEET, GEAR_CLASS_COL, GEAR_SLOT_ROW, MATERIAL_ICON_FRAME } from '../data/items.js';
+import { getItem, gearItemFrame, materialFrameName, rollGearItem, GEAR_SHEET, GEAR_CLASS_COL, GEAR_SLOT_ROW, MATERIAL_ICON_FRAME } from '../data/items.js';
 import { stripBackgroundByKey } from '../data/heroSprites.js';
 import { playSfx, SFX } from '../audio/sound.js';
 import { playMusic } from '../audio/music.js';
@@ -167,7 +167,7 @@ export class ShopScene extends Phaser.Scene {
   iconHTML(item, size) {
     let texKey = null, frame = null;
     if (item?.type === 'material') { texKey = 'materials'; frame = materialFrameName(item.id); }
-    else if (item?.sport) { texKey = 'gears'; frame = gearFrameName(item.sport, item.slot); }
+    else if (item?.slot) { texKey = 'gears'; frame = gearItemFrame(item); }
     const url = frame ? iconDataURL(this, texKey, frame, size * 2) : null;
     return url ? `<img class="ui-row-icon" style="width:${size}px;height:${size}px" src="${url}" alt="">` : '';
   }

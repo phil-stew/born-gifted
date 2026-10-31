@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { state, roleDisplayLabel } from '../data/gameState.js';
-import { rarityColor, gearFrameName, materialFrameName, GEAR_SHEET, registerGearFrames, MATERIAL_ICON_FRAME } from '../data/items.js';
+import { rarityColor, gearItemFrame, materialFrameName, GEAR_SHEET, registerGearFrames, MATERIAL_ICON_FRAME } from '../data/items.js';
 import { stripBackgroundByKey } from '../data/heroSprites.js';
 import { drawButton, drawBackButton, drawCurrency, currencyLabel } from '../ui/canvasButton.js';
 import { playSfx, SFX } from '../audio/sound.js';
@@ -40,9 +40,9 @@ export class InventoryScene extends Phaser.Scene {
     if (item?.type === 'material') {
       texKey = 'materials';
       frame  = materialFrameName(item.id);
-    } else if (item?.sport) {
+    } else if (item?.slot) {
       texKey = 'gears';
-      frame  = gearFrameName(item.sport, item.slot);
+      frame  = gearItemFrame(item);
     } else {
       return null;
     }
