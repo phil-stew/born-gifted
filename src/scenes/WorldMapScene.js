@@ -91,9 +91,9 @@ const NODES = [
   { id:'M1',  x:224, y:422, short:'Sirblanc', arc:'Tutorial',name:'Sirblanc Outskirts', connectsFrom:'M0' },
   { id:'M2',  x:326, y:365, short:'Thunder Pl.', arc:'Tutorial',name:'Thunder Plains',     connectsFrom:'M1' },
   { id:'M3',  x:474, y:330, short:'Capital', arc:'Capital', name:'The Capital',        connectsFrom:'M2' },
-  { id:'M3a', x:474, y:240, nameAt:'left', short:'N. Cave', arc:'Capital', name:'Northern Cave',      connectsFrom:'M3', side:true },
+  { id:'M3a', x:474, y:240, short:'N. Cave', arc:'Capital', name:'Northern Cave',      connectsFrom:'M3', side:true },
   { id:'M3b', x:474, y:443, short:'Hil. Lands', arc:'Capital', name:'Hilbert Low Lands',  connectsFrom:'M3', side:true },
-  { id:'A1',  x:589, y:250, short:'Est. Acad', arc:'Capital', name:'Ester Academy',      connectsFrom:'M3' },
+  { id:'A1',  x:600, y:250, short:'Est. Acad', arc:'Capital', name:'Ester Academy',      connectsFrom:'M3' },
   { id:'A2',  x:589, y:416, short:'Hil. Acad', arc:'Capital', name:'Hilbert Academy',    connectsFrom:'M3' },
   // Ester Academy's 3 quests (2026-07-11) — own nodes off A1, same
   // "distinct from M3a/M3b" treatment Hilbert's A2a/A2b/A2c got. Only 2 get
@@ -104,7 +104,7 @@ const NODES = [
   // base circle (see drawNodes), so they need more clearance around M4's
   // node at (540,158) than two plain circles would — kept at least ~50px
   // from any neighboring node center to avoid the diamond outlines touching.
-  { id:'A1a', x:691, y:232, short:'Dragon Roost', arc:'Capital', name:"Dragon's Roost",     connectsFrom:'A1', side:true },
+  { id:'A1a', x:691, y:232, short:'Roost', arc:'Capital', name:"Dragon's Roost",     connectsFrom:'A1', side:true },
   { id:'A1b', x:800, y:280, short:'Boulder', arc:'Capital', name:'The Great Boulder',  connectsFrom:'A1', side:true },
   // Hilbert Academy's 3 quests (2026-07-11) — own nodes off A2, distinct
   // from M3a/M3b's Capital-trial fights above (see BattleScene.js's
@@ -122,8 +122,8 @@ const NODES = [
   // connector line, rather than trailing off M4/each other. Both unlock
   // together off the same 6-quests-done gate now (order-independent), not
   // sequentially.
-  { id:'AT1', x:530, y:234, short:'Trials I', nameAt:'above', arc:'Tournament', name:'Altroes Trials I',   connectsFrom:'A1' },
-  { id:'AT2', x:589, y:512, short:'Trials II', arc:'Tournament', name:'Altroes Trials II',  connectsFrom:'A2' },
+  { id:'AT1', x:530, y:234, short:'Tr. I', arc:'Academy', name:'Altroes Trials I',   connectsFrom:'A1' },
+  { id:'AT2', x:589, y:512, short:'Tr. II', arc:'Academy', name:'Altroes Trials II',  connectsFrom:'A2' },
   // M5 (2026-07-11 follow-up, "connect m5 to m4... Gale unlocked after
   // beat both trails") — connects straight from M4 instead of AT2, moved
   // toward the Gale side of the map, and gated by a live "AT1 AND AT2 both
@@ -156,7 +156,7 @@ const NODES = [
   // no quest board/task list invented for either (wasn't asked for, same
   // "minimum viable hub" call Gale got). Both unlock alongside Gale itself
   // (same live "AT1 AND AT2 both completed" check in create()).
-  { id:'AF',  x:858, y:230, short:'Art. Acad', arc:'Tournament', name:'Artfall Academy',    connectsFrom:'M5' },
+  { id:'AF',  x:858, y:230, short:'Artfall', arc:'Tournament', name:'Artfall Academy',    connectsFrom:'M5' },
   { id:'ZE',  x:896, y:371, arc:'Tournament', name:'Zester',             connectsFrom:'M5' },
   // Alpha King Dragon (2026-07-11) — boss node NE of Artfall Academy,
   // "3 times hp and 3 times attack" reads as the game's existing
@@ -164,7 +164,7 @@ const NODES = [
   // monsters.js) — no new multiplier mechanic needed, just the standard
   // boss-tier ladder with a custom name, same as King Wolf/King Lion/
   // Goblin King. Unlocks alongside AF/ZE/M5 (same live check).
-  { id:'DK',  x:920, y:232, short:'King Dragon', nameAt:'above', arc:'Tournament', name:'Alpha King Dragon',  connectsFrom:'AF', side:true },
+  { id:'DK',  x:920, y:232, short:'Dragon', arc:'Tournament', name:'Alpha King Dragon',  connectsFrom:'AF', side:true },
   // Monster Hunt (2026-07-11) — repeatable score-attack quest NE of Zester,
   // "gale gives out 3 quest[s]... kill as many monster as you can in 6
   // turn[s]." Unlocks alongside AF/ZE/DK/M5 (same live check).
@@ -174,7 +174,7 @@ const NODES = [
   // gears") — capstone battle, unlocked only once ALL 3 of Gale's own
   // quests are done (separate live check from the AF/ZE/DK/M5/MH one,
   // which only needs AT1+AT2 — see allGaleQuestsDone in gameState.js).
-  { id:'GT',  x:755, y:232, short:'Gale Tourn.', nameAt:'above', arc:'Tournament', name:'Gale Tournament',    connectsFrom:'AF', side:true },
+  { id:'GT',  x:755, y:232, short:'Gale T.', arc:'Tournament', name:'Gale Tournament',    connectsFrom:'AF', side:true },
   // M6 — The Corrupted One's monsters (2026-07-17, "south east of m5...
   // moving towards new area... it will branch down"). Required main-chain
   // step (not side:true) so it draws a solid connector rather than dashed,
@@ -183,7 +183,7 @@ const NODES = [
   // just the line, the real gate is a separate check" pattern M5/AT1/AT2
   // already use. Placed in the empty space south-east of Gale/Zester with
   // room below it for whatever the new area turns into.
-  { id:'M6',  x:870, y:470, nameAt:'right', arc:'Blight', name:'Blightreach',        connectsFrom:'M5' },
+  { id:'M6',  x:870, y:470, arc:'Blight', name:'Blightreach',        connectsFrom:'M5' },
   // M7 — the villain's reveal (2026-07-17, "M7 south of m6 the villian
   // will show himself... taking there spot in the tournemnt... the hero
   // should lose them fight no matter what"). Required main-chain step,
@@ -204,7 +204,7 @@ const NODES = [
   // toast-only handling for it (there's nothing to "enter"). Deliberately
   // has no HUB_CONFIGS entry, so [[feedback_forge_every_hub]]'s "every hub
   // gets forge" rule doesn't apply to it — it was never made a real hub.
-  { id:'M7a', x:966, y:578, nameAt:'above', short:'Noble Deity', arc:'Trial', name:"The Noble Deity",     connectsFrom:'M7' },
+  { id:'M7a', x:966, y:578, short:'Deity', arc:'Trial', name:"The Noble Deity",     connectsFrom:'M7' },
   // The 7 Trials (2026-07-17, "7 trail... 1 trial for each weapon class")
   // — one per CLASS_GEAR_LAYOUT/classGrouping key (gameState.js), the same
   // 7 groupings GEAR_CLASS_COL/items.js already treats as authoritative.
@@ -216,13 +216,13 @@ const NODES = [
   // id to its classGrouping string for both the battle's enemy flavor and
   // VictoryScene's reward wiring (rollGodTierClassItem per matching-class
   // party member).
-  { id:'T1',  x:115, y:768, noLine:true, short:'Athletics', nameAt:'above', arc:'Trial', name:'Trial of Athletics',     connectsFrom:'M7a', side:true },
-  { id:'T2',  x:247, y:768, noLine:true, short:'Martial Arts', nameAt:'above', arc:'Trial', name:'Trial of Martial Arts',  connectsFrom:'M7a', side:true },
-  { id:'T3',  x:380, y:768, noLine:true, short:'Performance', nameAt:'above', arc:'Trial', name:'Trial of Performance',   connectsFrom:'M7a', side:true },
-  { id:'T4',  x:512, y:768, noLine:true, short:'Target', nameAt:'above', arc:'Trial', name:'Trial of Target',        connectsFrom:'M7a', side:true },
-  { id:'T5',  x:644, y:768, noLine:true, short:'Ball', nameAt:'above', arc:'Trial', name:'Trial of Ball',          connectsFrom:'M7a', side:true },
-  { id:'T6',  x:777, y:768, nameAt:'right', noLine:true, short:'Bat & Ball', arc:'Trial', name:'Trial of Bat & Ball',    connectsFrom:'M7a', side:true },
-  { id:'T7',  x:909, y:768, nameAt:'right', noLine:true, short:'Racquet', arc:'Trial', name:'Trial of Racquet',       connectsFrom:'M7a', side:true },
+  { id:'T1',  x:115, y:768, noLine:true, short:'Athletics', arc:'Trial', name:'Trial of Athletics',     connectsFrom:'M7a', side:true },
+  { id:'T2',  x:247, y:768, noLine:true, short:'Martial Arts', arc:'Trial', name:'Trial of Martial Arts',  connectsFrom:'M7a', side:true },
+  { id:'T3',  x:380, y:768, noLine:true, short:'Performance', arc:'Trial', name:'Trial of Performance',   connectsFrom:'M7a', side:true },
+  { id:'T4',  x:512, y:768, noLine:true, short:'Target', arc:'Trial', name:'Trial of Target',        connectsFrom:'M7a', side:true },
+  { id:'T5',  x:644, y:768, noLine:true, short:'Ball', arc:'Trial', name:'Trial of Ball',          connectsFrom:'M7a', side:true },
+  { id:'T6',  x:777, y:768, noLine:true, short:'Bat & Ball', arc:'Trial', name:'Trial of Bat & Ball',    connectsFrom:'M7a', side:true },
+  { id:'T7',  x:909, y:768, noLine:true, short:'Racquet', arc:'Trial', name:'Trial of Racquet',       connectsFrom:'M7a', side:true },
   // Lametus Capital + its 2 academies (2026-07-17, "after m7a is
   // completed the m8 apears which becomes the lametus capital... one
   // school in the east of M8 and the other west"). Unlocked all at once
@@ -231,9 +231,9 @@ const NODES = [
   // ever added to unlockedMissions, never completedMissions, same as
   // M5/AF/ZE. Sits between M7 and the trial row — checked clearance
   // against T6/T7's diamond markers below it.
-  { id:'M8',  x:870, y:683, nameAt:'above', short:'Lam. Capital', arc:'Lametus', name:'Lametus Capital',  connectsFrom:'M7' },
-  { id:'A3',  x:781, y:683, nameAt:'left', short:'Wren. Acad', arc:'Lametus', name:'Wrenfield Academy', connectsFrom:'M8' },
-  { id:'A4',  x:960, y:683, nameAt:'above', short:'Cal. Acad', arc:'Lametus', name:'Calder Academy',    connectsFrom:'M8' },
+  { id:'M8',  x:870, y:683, short:'Lametus', arc:'Lametus', name:'Lametus Capital',  connectsFrom:'M7' },
+  { id:'A3',  x:781, y:683, short:'Wren. Acad', arc:'Lametus', name:'Wrenfield Academy', connectsFrom:'M8' },
+  { id:'A4',  x:960, y:683, short:'Cal. Acad', arc:'Lametus', name:'Calder Academy',    connectsFrom:'M8' },
   // The Golem Trial (2026-07-18, "North of A3 they will fight the
   // Golems as there last trial") — required (not side:true): it's the
   // Final Tournament's entry requirement, not an optional God Tier grind
@@ -247,30 +247,20 @@ const NODES = [
   // any other main-chain step, even though first entry normally happens
   // automatically through TG's own cutscene rather than a click here — see
   // NEW_AREA_INTRO.FT above.
-  { id:'FT',  x:826, y:530, nameAt:'above', short:'Final Tourn.', arc:'Blight', name:'The Final Tournament', connectsFrom:'TG' },
+  { id:'FT',  x:826, y:530, short:'Final Tourn.', arc:'Blight', name:'The Final Tournament', connectsFrom:'TG' },
 ];
 
+// Three map colors, one per kingdom. Side missions use a lighter shade.
+const FIRE = 0xe03a1e, WATER = 0x2f7fe0, LEAF = 0x2fae55;
 const ARC_COLORS = {
-  Home:       0xffcc66,
-  Tutorial:   0x44cc88,
-  Capital:    0xcc88ff,
-  Academy:    0x4488ff,
-  Selection:  0xffaa44,
-  Tournament: 0xff4444,
-  // The Corrupted One's arc (2026-07-17) — dark purple instead of
-  // Tournament's red so the map reads a new, more ominous story beat
-  // starting here, distinct from Gale's tournament-and-trials content.
-  Blight:     0x8822cc,
-  // The Noble Deity's arc (2026-07-17) — warm gold, deliberately the
-  // opposite end of the palette from Blight's corruption-purple so the
-  // "ally/hope" beat reads as visually distinct from the "villain" one.
-  Trial:      0xffcc33,
-  // Lametus Capital + its 2 academies (2026-07-17) — soft green, matching
-  // the LAMETUS kingdom label's own color (#aaffbb) rather than either of
-  // the story-beat colors above (Blight/Trial) since this is just "the
-  // kingdom itself," not tied to the villain or the Deity specifically.
-  Lametus:    0x66dd88,
+  Home: FIRE, Tutorial: FIRE, Capital: FIRE, Academy: FIRE,
+  Selection: WATER, Tournament: WATER,
+  Blight: LEAF, Trial: LEAF, Lametus: LEAF,
 };
+function lighten(color) {
+  const mix = c => Math.round(c + (255 - c) * 0.5);
+  return (mix(color >> 16) << 16) | (mix((color >> 8) & 255) << 8) | mix(color & 255);
+}
 
 // One-time story beat shown the first time each region cave/unique-area
 // mission is entered — mirrors the M2/M4 pattern. Reuses the existing
@@ -694,7 +684,7 @@ export class WorldMapScene extends Phaser.Scene {
     for (let i = 0; i < this.nodes.length; i++) {
       const node = this.nodes[i];
       const { id, x, y, arc } = node;
-      const color = ARC_COLORS[arc];
+      const color = node.side ? lighten(ARC_COLORS[arc]) : ARC_COLORS[arc];
       const isCompleted = state.completedMissions.includes(id);
 
       // Future levels stay fully unrendered until unlocked — no circle, no
@@ -711,9 +701,10 @@ export class WorldMapScene extends Phaser.Scene {
         gfx.fillCircle(x, y, NODE_R);
         gfx.lineStyle(2, color, 0.6);
         gfx.strokeCircle(x, y, NODE_R);
-        this.add.text(x, y, '✓', {
+        this.add.text(x + NODE_R - 2, y - NODE_R + 2, '✓', {
           fontSize: '20px', fontFamily: 'monospace', color: '#ffffff',
-        }).setOrigin(0.5).setAlpha(0.7);
+          stroke: '#000000', strokeThickness: 3,
+        }).setOrigin(0.5).setDepth(5);
 
       } else {
         // Active: bright fill + pulse ring
@@ -763,18 +754,12 @@ export class WorldMapScene extends Phaser.Scene {
         }
       }
 
-      // Place name — tooltips never show on a touch screen, so it stays on
-      // the map. Crowded nodes set nameAt; the rest sit below the side
-      // diamond or the Shop/Forge badges.
-      const nameBelow = hasShop || hasForge ? NODE_R + 16 : node.side ? NODE_R + 8 : NODE_R + 2;
-      const [nameX, nameY, originX, originY] = node.nameAt === 'above' ? [x, y - NODE_R - (node.side ? 10 : 4), 0.5, 1]
-        : node.nameAt === 'right' ? [x + NODE_R + 12, y, 0, 0.5]
-        : node.nameAt === 'left' ? [x - NODE_R - 12, y, 1, 0.5]
-        : [x, y + nameBelow, 0.5, 0];
-      this.add.text(nameX, nameY, node.short ?? node.name, {
+      // Place name, centered on the circle and allowed to overflow it.
+      // Tooltips never show on a touch screen, so it stays on the map.
+      this.add.text(x, y, node.short ?? node.name, {
         fontSize: '15px', fontFamily: 'monospace', fontStyle: 'bold', color: '#ffffff',
         stroke: '#000000', strokeThickness: 4,
-      }).setOrigin(originX, originY).setAlpha(isCompleted ? 0.7 : 1);
+      }).setOrigin(0.5).setDepth(5);
 
       // Hit zone — use Zone (Phaser's invisible interactive object)
       const hit = this.add.zone(x, y, NODE_R * 2 + 12, NODE_R * 2 + 12).setInteractive({ useHandCursor: true });
