@@ -272,6 +272,7 @@ export const MATERIAL_ICON_FRAME = {
   gold_ore:   [450, 359, 290, 284],
   mystic_ore: [782, 359, 303, 284],
   mint_sprig:     [1132, 359, 254, 284],
+  heal_herb:      [1132, 359, 254, 284], // no art of its own, shares the sprig
   lavender_bloom: [137, 655, 217, 298],
   wild_berries:   [397, 655, 236, 298],
   health_potion:  [694, 655, 199, 298],
