@@ -3,6 +3,7 @@
 // Battle stays pure Phaser/pixel-art; this never touches BattleScene.
 
 import { playSfx, SFX } from '../audio/sound.js';
+import { rarityColor } from '../data/items.js';
 
 const root = document.getElementById('ui-root');
 
@@ -131,4 +132,10 @@ export function esc(str) {
   return String(str ?? '').replace(/[&<>"']/g, (c) => ({
     '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
   }[c]));
+}
+
+// Filled pill, so 'common' still reads on the Shop's light parchment.
+export function rarityBadgeHTML(rarity) {
+  const color = '#' + rarityColor(rarity).toString(16).padStart(6, '0');
+  return `<span class="ui-rarity" style="background:${color}">${esc(rarity.toUpperCase())}</span>`;
 }
