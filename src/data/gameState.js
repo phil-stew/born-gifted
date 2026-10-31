@@ -764,12 +764,15 @@ const BASE_GROWTH = { speed: 1, strength: 1, stamina: 1, endurance: 1 };
 
 // Stat gains per level-up: base growth, doubled per talent pick that matches
 // the stat (so picking the same talent twice quadruples that stat's growth).
+export function statGrowthMult(unit, stat) {
+  const picks = (unit.talents ?? []).filter(t => TALENT_STAT_KEY[t] === stat).length;
+  return Math.pow(2, picks);
+}
+
 function levelUpGains(unit) {
-  const talents = unit.talents ?? [];
   const gains = {};
   for (const stat of Object.keys(BASE_GROWTH)) {
-    const picks = talents.filter(t => TALENT_STAT_KEY[t] === stat).length;
-    gains[stat] = BASE_GROWTH[stat] * Math.pow(2, picks);
+    gains[stat] = BASE_GROWTH[stat] * statGrowthMult(unit, stat);
   }
   return gains;
 }

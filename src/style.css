@@ -978,4 +978,25 @@ canvas {
   .ui-forge .ui-rarity { font-size: 11px; padding: 0 7px; }
   .ui-forge .ui-section-label { font-size: 10px; margin: 3px 0 2px; padding-bottom: 1px; }
   .ui-forge .ui-action-btn { min-height: 38px; margin-top: 5px; font-size: 14px; }
+
+  .ui-shop .ui-body { grid-template-columns: minmax(190px, 30%) 1fr; gap: 6px; padding-top: 6px; padding-bottom: 6px; }
+  .ui-shop .ui-list-panel { gap: 3px; padding: 5px; }
+  .ui-shop .ui-detail-panel { padding: 8px 12px; }
+  .ui-shop .ui-detail-tabs { gap: 3px; flex-wrap: nowrap; }
+  .ui-shop .ui-detail-tab { min-height: 30px; font-size: 12px; padding: 0 2px; }
+  .ui-shop .ui-row { min-height: 0; padding: 3px 8px; font-size: 13px; }
+  .ui-shop .ui-row-icon { width: 24px !important; height: 24px !important; }
+  .ui-shop .ui-item-head .ui-row-icon { width: 48px !important; height: 48px !important; }
+  .ui-shop .ui-item-name { font-size: 15px; margin-bottom: 2px; }
+  .ui-shop .ui-item-tags, .ui-shop .ui-item-desc { margin: 3px 0; font-size: 12px; }
+  .ui-shop .ui-item-stat { font-size: 13px; }
+  .ui-shop .ui-rarity { font-size: 11px; padding: 0 7px; }
+  .ui-shop .ui-action-btn { min-height: 38px; margin-top: 6px; font-size: 14px; }
+
+  .ui-quest-list { grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 6px; padding-top: 6px; padding-bottom: 6px; }
+  .ui-quest-card { padding: 6px 10px; border-radius: var(--ui-radius-sm); }
+  .ui-quest-name { font-size: 14px; margin-bottom: 1px; }
+  .ui-quest-text, .ui-quest-reward, .ui-quest-status { font-size: 12px; }
+  .ui-quest-status { margin-top: 3px; }
+  .ui-quest-card .ui-action-btn { min-height: 34px; margin-top: 5px; font-size: 13px; }
 }

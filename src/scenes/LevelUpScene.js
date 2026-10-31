@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { pendingPromotion, t3SportOptions, sportById, chainById, promoteUnit, roleDisplayLabel } from '../data/gameState.js';
+import { pendingPromotion, t3SportOptions, sportById, chainById, promoteUnit, roleDisplayLabel, statGrowthMult } from '../data/gameState.js';
 import { drawButton } from '../ui/canvasButton.js';
 import { playSfx, playStinger, SFX } from '../audio/sound.js';
 
@@ -241,11 +241,12 @@ export class LevelUpScene extends Phaser.Scene {
       rowBg.fillStyle(Phaser.Display.Color.HexStringToColor(stat.color.replace('#', '0x')).color, 0.1);
       rowBg.fillRoundedRect(width / 2 - 280, sy, 560, 62, 8);
 
-      this.add.text(width / 2 - 260, sy + 31, stat.label, {
+      const mult = statGrowthMult(lu.unit, stat.key);
+      this.add.text(width / 2 - 260, sy + 31, mult > 1 ? `${stat.label} ×${mult}` : stat.label, {
         fontSize: '24px', fontFamily: 'monospace', fontStyle: 'bold', color: stat.color,
       }).setOrigin(0, 0.5);
 
-      this.add.text(width / 2 + 150, sy + 31, `+${count}`, {
+      this.add.text(width / 2 + 150, sy + 31, `+${count * mult}`, {
         fontSize: '24px', fontFamily: 'monospace', fontStyle: 'bold', color: '#ffffff',
       }).setOrigin(0.5);
 
@@ -267,8 +268,9 @@ export class LevelUpScene extends Phaser.Scene {
       const order = ['speed', 'strength', 'stamina', 'endurance'];
       while (leftover > 0) { this.allocated[order[i % 4]]++; leftover--; i++; }
       for (const key of order) {
-        lu.unit[key] += this.allocated[key];
-        lu.gains[key] = (lu.gains[key] ?? 0) + this.allocated[key];
+        const gained = this.allocated[key] * statGrowthMult(lu.unit, key);
+        lu.unit[key] += gained;
+        lu.gains[key] = (lu.gains[key] ?? 0) + gained;
       }
       this.bonusAllocated = true;
       this.subPhase = 'stats';

@@ -78,6 +78,18 @@ const PRIMARY_STAT_BOOST = 1.3;
 // forever (2026-07-09 feedback: "when king wolf hit lvl 40 lvl increase
 // should stop").
 const REPEAT_LEVEL_CAP = 40;
+
+// Enemy level per mission, climbing in story order. Bosses and uniques fight
+// BOSS_LEVEL_BONUS above that. Difficulty and repeat scaling apply on top.
+const MISSION_ENEMY_LEVEL = {
+  M1: 1, M2: 2, M0a: 3, M3a: 4, M3b: 5, M0b: 6,
+  A2c: 7, A2a: 8, A2b: 9, A1a: 10, A1b: 11, M4: 12,
+  AT1: 14, AT2: 15, MH: 16, DK: 17, GT: 18,
+  M6: 20, M7: 22,
+  T1: 24, T2: 24, T3: 24, T4: 24, T5: 24, T6: 24, T7: 24,
+  TG: 26, FT: 28,
+};
+const BOSS_LEVEL_BONUS = 2;
 // Flat per-level stat growth for monsters (2026-08-01, "game is too easy if
 // monster don't get increased stats via leveling") — level previously only
 // fed HP/XP/kit-size (see buildEnemyUnit), leaving raw speed/strength/
@@ -1566,7 +1578,7 @@ export class BattleScene extends Phaser.Scene {
     // Stored for spawnReinforcements (2026-07-11) to reuse the exact same
     // scaling a mission's initial roster gets, so a mid-battle wave isn't
     // weaker/stronger than the enemies already on the board.
-    this._enemyCtx = { diff, repeatLevelBonus, repeatHpMult, repeatAtkMult, region: missionCfg.region, scaledLevel };
+    this._enemyCtx = { missionId, diff, repeatLevelBonus, repeatHpMult, repeatAtkMult, region: missionCfg.region, scaledLevel };
     // `enemies` is normally a static array (built once at module load via
     // inline buildMonster() calls), but a mission that wants a freshly
     // randomized roster each time it's entered (Cave Depths' "3 random
@@ -1684,7 +1696,10 @@ export class BattleScene extends Phaser.Scene {
   // instead of duplicating it. Reads this._enemyCtx, set once in create().
   buildEnemyUnit(d) {
     const { diff, repeatLevelBonus, repeatHpMult, repeatAtkMult, region, scaledLevel } = this._enemyCtx;
-    const lv = Math.min(REPEAT_LEVEL_CAP, scaledLevel(d.level) + repeatLevelBonus);
+    const missionLevel = MISSION_ENEMY_LEVEL[this._enemyCtx.missionId];
+    const baseLevel = missionLevel == null ? d.level
+      : missionLevel + (d.kind === 'boss' || d.kind === 'unique' ? BOSS_LEVEL_BONUS : 0);
+    const lv = Math.min(REPEAT_LEVEL_CAP, scaledLevel(baseLevel) + repeatLevelBonus);
     const { primaryStat, element } = rollRegionArchetype(region);
     const levelGrowth = MONSTER_LEVEL_GROWTH * (lv - 1);
     const scaled = {
