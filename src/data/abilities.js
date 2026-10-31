@@ -257,7 +257,7 @@ export const ABILITIES = {
     // abilities in this file). Heals off the CASTER's max HP per the sheet's
     // literal wording ("5% of this unit's max HP"), not the target's.
     cost: 2, range: 3, targetType: 'player', effect: 'healAllyPctOfCasterMaxHp', amount: 0.05,
-    desc: "Heals target ally 5% of THIS unit's max HP  ·  range 3 (assumed)  ·  2 SP",
+    desc: "Heals target ally 5% of THIS unit's max HP  ·  range 3  ·  2 SP",
   },
   life_effort: {
     id: 'life_effort', name: 'Life Effort', icon: '❤', category: 'passive',
@@ -269,7 +269,7 @@ export const ABILITIES = {
     // Range and restore amount not given on the sheet — assumed 3 / 15% to
     // match the retired dual-tree 'Performance' skill this replaces.
     cooldown: 2, range: 3, targetType: 'player', effect: 'restoreSp', restorePct: 0.15,
-    desc: 'Restore SP to target ally  ·  range 3, 15% (assumed)  ·  CD 2',
+    desc: 'Restore SP to target ally  ·  range 3, 15%  ·  CD 2',
   },
 
   // ── Designation ability sets (Combat / Defender / Ranged) ─────────────────
@@ -284,17 +284,17 @@ export const ABILITIES = {
     id: 'fake_out', name: 'Fake Out', icon: '🤾', category: 'special',
     // Range not given on the sheet — assumed 2.
     cost: 3, range: 2, targetType: 'enemy', multiplier: 2.2, nonAffinity: true,
-    desc: '2.2× dmg  ·  non-affinity  ·  range 2 (assumed)  ·  3 SP',
+    desc: '2.2× dmg  ·  non-affinity  ·  range 2  ·  3 SP',
   },
   offside: {
     id: 'offside', name: 'Offside', icon: '🚩', category: 'special',
     cost: 3, range: 2, targetType: 'enemy', multiplier: 2.5, fixedElement: 'Wind',
-    desc: '2.5× dmg  ·  Wind  ·  range 2 (assumed)  ·  3 SP',
+    desc: '2.5× dmg  ·  Wind  ·  range 2  ·  3 SP',
   },
   shield: {
     id: 'shield', name: 'Shield', icon: '🛡', category: 'skill',
     cooldown: 3, range: 2, targetType: 'player', multiplier: 0, effect: 'shieldPct', amount: 0.10,
-    desc: "Shields target ally for 10% of their max HP  ·  range 2 (assumed)  ·  CD 3",
+    desc: "Shields target ally for 10% of their max HP  ·  range 2  ·  CD 3",
   },
   stopper: {
     id: 'stopper', name: 'Stopper', icon: '🧱', category: 'passive',
@@ -445,7 +445,7 @@ export const ABILITIES = {
   routine: {
     id: 'routine', name: 'Routine', icon: '🌟', category: 'special',
     cost: 10, range: 3, targetType: 'player', multiplier: 0, effect: 'atkBuffAlly', atkMultiplier: 2.0, duration: 1,
-    desc: "Target unit's ATK +200% for 1 turn  ·  range 3 (assumed)  ·  10 SP",
+    desc: "Target unit's ATK +200% for 1 turn  ·  range 3  ·  10 SP",
   },
   refresh: {
     id: 'refresh', name: 'Refresh', icon: '💫', category: 'skill',
@@ -486,7 +486,7 @@ export const ABILITIES = {
     id: 'baton_pass', name: 'Baton Pass', icon: '🎽', category: 'skill',
     onlySportIds: ['running', 'jumping', 'sprinting'],
     cooldown: 5, range: 3, targetType: 'player', multiplier: 0, effect: 'extraTurnAlly',
-    desc: 'Target ally acts again  ·  range 3 (assumed)  ·  CD 5  ·  Sprinter/Jumper/Runner subgroup',
+    desc: 'Target ally acts again  ·  range 3  ·  CD 5  ·  Sprinter/Jumper/Runner subgroup',
   },
   sky_dive: {
     id: 'sky_dive', name: 'Sky Dive', icon: '🪂', category: 'special',
@@ -562,7 +562,7 @@ export const ABILITIES = {
     // Cooldown not given on the sheet — assumed 3 (matches Guard).
     cooldown: 3, targetType: 'self', selfActivate: true, effect: 'damageReductionPct',
     amount: 0.30, duration: 2, untilMoved: true,
-    desc: '-30% dmg taken for 2 turns or until moved  ·  3×3 self-centered  ·  CD 3 (assumed)  ·  Wado-ryu/Heavyweight',
+    desc: '-30% dmg taken for 2 turns or until moved  ·  3×3 self-centered  ·  CD 3  ·  Wado-ryu/Heavyweight',
   },
 };
 
