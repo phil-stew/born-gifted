@@ -961,4 +961,21 @@ canvas {
   .ui-loot .ui-quest-text { font-size: 12px; }
   .ui-loot .ui-footer { display: flex; justify-content: center; padding-top: 4px; padding-bottom: 6px; }
   .ui-loot .ui-action-btn { width: 240px; min-height: 40px; font-size: 15px; }
+
+  .ui-forge .ui-body-3 { grid-template-columns: 112px minmax(0, 1fr) minmax(0, 1.15fr); gap: 6px; padding-top: 6px; padding-bottom: 6px; }
+  .ui-forge .ui-list-panel { gap: 3px; padding: 5px; }
+  .ui-forge .ui-detail-panel { padding: 6px 10px; }
+  .ui-forge .ui-row { min-height: 0; padding: 4px 8px; font-size: 13px; }
+  .ui-forge .ui-row-sub { font-size: 11px; }
+  .ui-forge .ui-row-price { font-size: 12px; }
+  .ui-forge .ui-detail-tabs { gap: 4px; margin-top: 2px; flex-wrap: nowrap; }
+  .ui-forge .ui-detail-tab { min-height: 30px; font-size: 12px; padding: 0 4px; }
+  .ui-forge .ui-item-name { font-size: 14px; margin-bottom: 2px; }
+  .ui-forge .ui-item-desc { margin: 3px 0; font-size: 12px; }
+  .ui-forge .ui-item-stat { font-size: 13px; line-height: 1.25; }
+  .ui-forge .ui-item-tags { margin-top: 3px; font-size: 12px; }
+  .ui-forge .ui-forge-stars { font-size: 18px; line-height: 1.1; }
+  .ui-forge .ui-rarity { font-size: 11px; padding: 0 7px; }
+  .ui-forge .ui-section-label { font-size: 10px; margin: 3px 0 2px; padding-bottom: 1px; }
+  .ui-forge .ui-action-btn { min-height: 38px; margin-top: 5px; font-size: 14px; }
 }
