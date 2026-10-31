@@ -8,6 +8,7 @@ import { getItem } from '../data/items.js';
 import { playMusic } from '../audio/music.js';
 import { playSfx, SFX } from '../audio/sound.js';
 import { showLoadoutReminder } from '../ui/loadoutReminder.js';
+import { currentObjective } from '../data/objective.js';
 
 // Background art (mapbackg.webp, see drawBackground) is a fixed 1024×1024
 // source image, always drawn "cover"-fit against whatever the live canvas
@@ -767,10 +768,11 @@ export class WorldMapScene extends Phaser.Scene {
   }
 
   drawUI(width, height) {
-    // Title
-    this.add.text(width / 2, 16, 'WORLD MAP', {
-      fontSize: '14px', fontFamily: 'monospace', fontStyle: 'bold', color: '#888899',
-    }).setOrigin(0.5, 0);
+    // Main Mission
+    this.add.text(width / 2, 20, `Main Mission: ${currentObjective()}`, {
+      fontSize: '22px', fontFamily: 'monospace', fontStyle: 'bold', color: '#ffee88',
+      stroke: '#000000', strokeThickness: 5,
+    }).setOrigin(0.5).setDepth(20);
 
     // Bottom bar background
     const barGfx = this.add.graphics();
