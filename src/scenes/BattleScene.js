@@ -45,6 +45,7 @@ const TILE_Y_OFFSET = -5;
 // tuned empirically against the hero/monster sprite foot anchors (scaled
 // proportionally with the tile size above — re-tune if it looks off).
 const HL_Y_ADJUST = 13;
+const MOVE_OUTLINE = 0x0a1a50, ATTACK_OUTLINE = 0x4a1400;
 
 const rand = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
 
@@ -4836,19 +4837,24 @@ export class BattleScene extends Phaser.Scene {
     return g;
   }
 
-  drawDiamond(col, row, color, alpha) {
+  drawDiamond(col, row, color, alpha, outline = null) {
     const { x, y: y0 } = this.gridToScreen(col, row);
     // Nudged past TILE_Y_OFFSET (which only matches the ground-tile art) so the
     // diamond's widest point lines up with where unit sprites actually stand.
     const y = y0 + TILE_Y_OFFSET + HL_Y_ADJUST;
     const g = this.nextHlGfx((col + row) * 10 + 2);
     g.fillStyle(color, alpha);
-    g.fillPoints([
+    const corners = [
       { x, y },
       { x: x + TW2, y: y + TH2 },
       { x, y: y + TILE_H },
       { x: x - TW2, y: y + TH2 },
-    ], true);
+    ];
+    g.fillPoints(corners, true);
+    if (outline !== null) {
+      g.lineStyle(2.5, outline, 0.95);
+      g.strokePoints(corners, true, true);
+    }
   }
 
   redraw() {
@@ -4866,7 +4872,7 @@ export class BattleScene extends Phaser.Scene {
       for (const key of this.moveRange) {
         if (this.unitMap.has(key)) continue;
         const [col, row] = key.split(',').map(Number);
-        this.drawDiamond(col, row, key === hovKey ? 0x2f7fe0 : 0x1a46b8, dimmed ? 0.3 : 0.65);
+        this.drawDiamond(col, row, key === hovKey ? 0x9edaff : 0x88aaff, dimmed ? 0.2 : 0.45, MOVE_OUTLINE);
       }
     }
 
@@ -4881,7 +4887,7 @@ export class BattleScene extends Phaser.Scene {
           if (col < 0 || col >= COLS || row < 0 || row >= ROWS) continue;
           const occ = this.unitMap.get(`${col},${row}`);
           const isTarget = occ?.team === 'enemy' && !occ.isDead;
-          this.drawDiamond(col, row, isTarget ? 0xd00000 : 0x7a2200, isTarget ? 0.85 : 0.65);
+          this.drawDiamond(col, row, isTarget ? 0xff2200 : 0xffaa33, isTarget ? 0.7 : 0.4, ATTACK_OUTLINE);
         }
       }
       // Directional lines
@@ -4891,7 +4897,7 @@ export class BattleScene extends Phaser.Scene {
           if (col < 0 || col >= COLS || row < 0 || row >= ROWS) break;
           const occ = this.unitMap.get(`${col},${row}`);
           const isTarget = occ?.team === 'enemy' && !occ.isDead;
-          this.drawDiamond(col, row, isTarget ? 0xd00000 : 0x7a2200, isTarget ? 0.85 : 0.65);
+          this.drawDiamond(col, row, isTarget ? 0xff2200 : 0xffaa33, isTarget ? 0.7 : 0.4, ATTACK_OUTLINE);
           if (occ) break;
         }
       }
@@ -4909,7 +4915,7 @@ export class BattleScene extends Phaser.Scene {
           if (dist < 1 || !this.abilityRangeMatches(this.selectedUnit, this.activeAbility, dist)) continue;
           const occ = this.unitMap.get(`${col},${row}`);
           const isTarget = occ?.team === this.activeAbility.targetType;
-          this.drawDiamond(col, row, isTarget ? 0xd00000 : 0x7a2200, isTarget ? 0.85 : 0.65);
+          this.drawDiamond(col, row, isTarget ? 0xff2200 : 0xffaa33, isTarget ? 0.7 : 0.4, ATTACK_OUTLINE);
         }
       }
     }
