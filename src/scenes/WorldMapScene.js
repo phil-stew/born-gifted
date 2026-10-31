@@ -24,6 +24,17 @@ import { currentObjective } from '../data/objective.js';
 // on the art.
 const MAP_BAND_TOP = 200, MAP_BAND_BOTTOM = 790;
 
+// Quest missions stay off the map until their quest is first accepted. A
+// completed one stays visible, since VictoryScene clears M0a/M0b's acceptance
+// after each win and they still need to show for replays.
+const ACCEPT_FIRST_NODES = new Set(['M0a', 'M0b', 'A1a', 'A1b', 'A2a', 'A2b', 'A2c']);
+
+function isNodeVisible(id) {
+  if (state.completedMissions.includes(id)) return true;
+  if (!state.unlockedMissions.includes(id)) return false;
+  return !ACCEPT_FIRST_NODES.has(id) || !!state.questAccepted[id];
+}
+
 function mapPt(imgX, imgY, width, height) {
   const s = Math.max(width / 1024, height / 1024);
   const offsetX = (width - 1024 * s) / 2;
@@ -639,8 +650,7 @@ export class WorldMapScene extends Phaser.Scene {
       // Matches drawNodes()' skip: a line into a still-locked node would
       // point at empty space and hint a future node is there, so it's
       // withheld until that node actually unlocks.
-      const isUnlocked = state.unlockedMissions.includes(b.id) || state.completedMissions.includes(b.id);
-      if (!isUnlocked) continue;
+      if (!isNodeVisible(b.id)) continue;
       const color = ARC_COLORS[a.arc];
       if (b.side) {
         this.drawDashedLine(gfx, a.x, a.y, b.x, b.y, color, 0.55);
@@ -685,13 +695,12 @@ export class WorldMapScene extends Phaser.Scene {
       const { id, x, y, arc } = node;
       const color = ARC_COLORS[arc];
       const isCompleted = state.completedMissions.includes(id);
-      const isUnlocked  = state.unlockedMissions.includes(id);
 
       // Future levels stay fully unrendered until unlocked — no circle, no
       // label, no diamond outline, nothing at (x, y) to spoil what's ahead
       // or even that a node exists there. drawConnections() has its own
       // matching skip for the line leading into it.
-      if (!isUnlocked && !isCompleted) continue;
+      if (!isNodeVisible(id)) continue;
 
       const gfx = this.add.graphics();
 
