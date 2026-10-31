@@ -42,6 +42,6 @@ export function currentObjective() {
   if (!done('M7')) return 'Head to The Grand Arena';
   if (!state.missionIntroShown.includes('M8')) return 'Travel to Lametus Capital';
   if (!done('TG')) return 'Clear Stonewake Pass';
-  if (!done('FT')) return 'Win The Final Tournament';
+  if (!done('FT')) return 'Win The Final Tournament at The Grand Arena';
   return 'Story complete! Keep exploring';
 }

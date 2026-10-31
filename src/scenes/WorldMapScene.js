@@ -29,9 +29,10 @@ const MAP_BAND_TOP = 200, MAP_BAND_BOTTOM = 790;
 // after each win and they still need to show for replays.
 const ACCEPT_FIRST_NODES = new Set(['M0a', 'M0b', 'A1a', 'A1b', 'A2a', 'A2b', 'A2c']);
 
-// The Altroes Trials are fought from the Arena node and side battles from
-// their hub's Battles menu, not their own map markers.
-const OFF_MAP_NODES = new Set(['AT1', 'AT2', ...Object.values(HUB_CONFIGS).flatMap(h => h.battles ?? [])]);
+// The Altroes Trials are fought from the Arena node, the Final Tournament
+// from the Grand Arena and side battles from their hub's Battles menu, not
+// their own map markers.
+const OFF_MAP_NODES = new Set(['AT1', 'AT2', 'FT', ...Object.values(HUB_CONFIGS).flatMap(h => h.battles ?? [])]);
 
 function isNodeVisible(id) {
   return !OFF_MAP_NODES.has(id) && isNodeOpen(id);
@@ -1121,6 +1122,14 @@ export class WorldMapScene extends Phaser.Scene {
 
     // M4: Arena Atlros — the exam boss, non-repeatable (per spec), so no
     // showDifficultyPicker() replay once it's won.
+    // M7 itself is a scripted loss, so once it's done the Grand Arena is only
+    // the Final Tournament's venue.
+    if (node.id === 'M7' && isCompleted) {
+      if (state.unlockedMissions.includes('FT')) this.onMissionClick(this.nodes.find(n => n.id === 'FT'));
+      else this.showToast(`${node.name}\nThe arena stands empty for now.`);
+      return;
+    }
+
     if (node.id === 'M4') {
       if (isCompleted && state.unlockedMissions.includes('AT1')) {
         const trial = id => () => this.onMissionClick(this.nodes.find(n => n.id === id));
