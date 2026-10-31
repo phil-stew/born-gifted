@@ -29,7 +29,11 @@ const MAP_BAND_TOP = 200, MAP_BAND_BOTTOM = 790;
 // after each win and they still need to show for replays.
 const ACCEPT_FIRST_NODES = new Set(['M0a', 'M0b', 'A1a', 'A1b', 'A2a', 'A2b', 'A2c']);
 
+// The Altroes Trials are fought from the Arena node, not their own markers.
+const OFF_MAP_NODES = new Set(['AT1', 'AT2']);
+
 function isNodeVisible(id) {
+  if (OFF_MAP_NODES.has(id)) return false;
   if (state.completedMissions.includes(id)) return true;
   if (!state.unlockedMissions.includes(id)) return false;
   return !ACCEPT_FIRST_NODES.has(id) || !!state.questAccepted[id];
@@ -1104,7 +1108,16 @@ export class WorldMapScene extends Phaser.Scene {
     // M4: Arena Atlros — the exam boss, non-repeatable (per spec), so no
     // showDifficultyPicker() replay once it's won.
     if (node.id === 'M4') {
-      if (isCompleted) {
+      if (isCompleted && state.unlockedMissions.includes('AT1')) {
+        const trial = id => () => this.onMissionClick(this.nodes.find(n => n.id === id));
+        const label = (id, text) => state.completedMissions.includes(id) ? `${text} ✓` : text;
+        this.showChoicePrompt({
+          title: node.name,
+          body: 'The Altroes Trials are held here.\n\nWhich will you take?',
+          yesLabel: label('AT1', 'TRIAL I'), noLabel: label('AT2', 'TRIAL II'),
+          onYes: trial('AT1'), onNo: trial('AT2'), cancelable: true,
+        });
+      } else if (isCompleted) {
         this.showToast(`${node.name}\nYour exam is behind you now.`);
       } else if (!state.caveEntryShown) {
         state.caveEntryShown = true;
@@ -1377,7 +1390,7 @@ export class WorldMapScene extends Phaser.Scene {
             location: 'THE CAPITAL  ·  Gates',
             backdrop: BACKDROPS.capital,
             lines: [
-              { speaker: 'Narrator', color: '#888899', text: 'Word spreads fast. Two Trials await — Altroes doesn\'t care which you take first.' },
+              { speaker: 'Narrator', color: '#888899', text: 'Word spreads fast. Two Trials await at Arena Atlros — Altroes doesn\'t care which you take first.' },
               { speaker: 'Reno',     color: '#4488ff', text: '...Let\'s find out what we\'re really made of.' },
             ],
             nextScene: 'WorldMapScene', nextSceneData: {},
@@ -1393,7 +1406,7 @@ export class WorldMapScene extends Phaser.Scene {
   }
 
   // Generic yes/no modal — same visual language as showDifficultyPicker.
-  showChoicePrompt({ title, body, onYes, onNo, yesLabel = 'YES', noLabel = 'NOT YET' }) {
+  showChoicePrompt({ title, body, onYes, onNo, yesLabel = 'YES', noLabel = 'NOT YET', cancelable = false }) {
     const { width, height } = this.scale;
     const PW = 380, PH = 260;
     const px = (width - PW) / 2, py = (height - PH) / 2;
@@ -1438,10 +1451,20 @@ export class WorldMapScene extends Phaser.Scene {
     const noBtn = drawButton(this, {
       x: px + PW / 2 + 90, y: py + PH - 34, w: 140, h: 38, label: noLabel,
       bg: 0x0c0c1a, bgHover: 0x161628, border: 0x334466, accent: 0x556688,
-      textColor: '#556688',
+      textColor: cancelable ? '#ffffff' : '#556688',
       onClick: () => { con.destroy(true); onNo?.(); },
     });
     con.add(noBtn.container);
+
+    if (cancelable) {
+      const closeBtn = drawButton(this, {
+        x: px + PW - 26, y: py + 26, w: 36, h: 32, label: '✕',
+        bg: 0x0c0c1a, bgHover: 0x161628, border: 0x334466, accent: 0x556688,
+        textColor: '#aaaacc', textHoverColor: '#ffffff',
+        onClick: () => con.destroy(true),
+      });
+      con.add(closeBtn.container);
+    }
   }
 
   showDifficultyPicker(node) {
