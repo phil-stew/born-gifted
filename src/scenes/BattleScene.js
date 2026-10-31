@@ -1587,7 +1587,7 @@ export class BattleScene extends Phaser.Scene {
     // Top HUD bar background
     const hudBg = this.add.graphics().setDepth(1000);
     hudBg.fillStyle(0x08101e, 0.95);
-    hudBg.fillRect(0, 0, width, 30);
+    hudBg.fillRect(0, 0, width, 34);
     hudBg.lineStyle(2, 0x2a3a6a, 1);
     hudBg.lineBetween(0, 30, width, 30);
 
@@ -1601,16 +1601,16 @@ export class BattleScene extends Phaser.Scene {
     if (this.tutorialActive) this.createTutorialUI();
 
     // Selected-unit info — centred in header
-    this.infoText = this.add.text(width / 2, 6, '', {
-      fontSize: '14px', color: '#dde4ff', fontFamily: 'monospace', fontStyle: 'bold',
+    this.infoText = this.add.text(width / 2, 5, '', {
+      fontSize: '20px', color: '#dde4ff', fontFamily: 'monospace', fontStyle: 'bold',
     }).setOrigin(0.5, 0).setDepth(1001);
 
     // Dim stage label centered, Turn counter right-aligned
-    this.add.text(width / 2, 8, stageCfg.label, {
-      fontSize: '10px', color: '#334455', fontFamily: 'monospace',
-    }).setOrigin(0.5, 0).setDepth(1001);
-    this.turnText = this.add.text(width - 10, 8, 'Turn 1', {
-      fontSize: '13px', color: '#99aaee', fontFamily: 'monospace',
+    this.add.text(160, 9, stageCfg.label, {
+      fontSize: '14px', color: '#8899aa', fontFamily: 'monospace',
+    }).setOrigin(0, 0).setDepth(1001);
+    this.turnText = this.add.text(width - 10, 5, 'Turn 1', {
+      fontSize: '20px', color: '#ccd6ff', fontFamily: 'monospace',
     }).setOrigin(1, 0).setDepth(1001);
 
     if (diff > 1.0) {
@@ -1629,18 +1629,18 @@ export class BattleScene extends Phaser.Scene {
     }
 
     this.actionHint = this.add.text(width / 2, height - 6, '', {
-      fontSize: '13px', color: '#99bbcc', fontFamily: 'monospace',
+      fontSize: '20px', color: '#ffffff', stroke: '#000000', strokeThickness: 4, fontFamily: 'monospace',
     }).setOrigin(0.5, 1).setDepth(1001);
 
     this.drawReferenceHud(width);
 
     // Exit button
-    const exitBtn = this.add.text(10, 6, '✕  RETREAT', {
-      fontSize: '12px', fontFamily: 'monospace', color: '#aa5555',
-      padding: { x: 6, y: 3 },
+    const exitBtn = this.add.text(8, 2, '✕ RETREAT', {
+      fontSize: '20px', fontFamily: 'monospace', fontStyle: 'bold', color: '#ff8888',
+      padding: { x: 8, y: 5 },
     }).setOrigin(0, 0).setDepth(1002).setInteractive({ useHandCursor: true });
-    exitBtn.on('pointerover', () => exitBtn.setStyle({ color: '#ff7777' }));
-    exitBtn.on('pointerout',  () => exitBtn.setStyle({ color: '#aa5555' }));
+    exitBtn.on('pointerover', () => exitBtn.setStyle({ color: '#ffffff' }));
+    exitBtn.on('pointerout',  () => exitBtn.setStyle({ color: '#ff8888' }));
     exitBtn.on('pointerdown', () => {
       playSfx(this, SFX.battleClick);
       this.cameras.main.fadeOut(400, 0, 0, 0);
@@ -1883,7 +1883,8 @@ export class BattleScene extends Phaser.Scene {
     e.enemyTint = ENEMY_TINT;
     const lvColor = e.level >= 6 ? '#ff6666' : e.level >= 3 ? '#ffaa44' : '#aaaaaa';
     e.lvLabel = this.add.text(x, y + TH2 - 58, `${elementIcon(e.element)} Lv.${e.level}`, {
-      fontSize: '9px', fontFamily: 'monospace', color: lvColor,
+      fontSize: '15px', fontFamily: 'monospace', fontStyle: 'bold', color: lvColor,
+      stroke: '#000000', strokeThickness: 3,
     }).setOrigin(0.5, 1).setDepth(660);
 
     // Debuff icon — mirrors playerUnits' buffIcon; shown whenever
@@ -2114,7 +2115,7 @@ export class BattleScene extends Phaser.Scene {
   showEmptyTileMenu(sx, sy) {
     this.hideActionMenu();
     const { width, height } = this.scale;
-    const IH = 32, PAD = 6, MW = 180;
+    const IH = 50, PAD = 8, MW = 280;
     // Undo only offered while it's still a clean, fully-reversible
     // rollback — position only, nothing else touched the board since
     // (the moved unit hasn't also attacked/used an ability, and is alive).
@@ -2126,7 +2127,7 @@ export class BattleScene extends Phaser.Scene {
     const MH = items.length * IH + PAD * 2;
     const toRight = sx + 20 + MW < width - 4;
     const mx = toRight ? sx + 20 : sx - 20 - MW;
-    const my = Math.min(Math.max(sy - MH / 2, 6), height - MH - 6);
+    const my = Math.min(Math.max(sy - MH / 2, 38), height - MH - 36);
 
     const con = this.add.container(mx, my).setDepth(4000);
     this.emptyTileMenu = con;
@@ -2161,9 +2162,9 @@ export class BattleScene extends Phaser.Scene {
       draw(false);
       con.add(g);
 
-      const tc = disabled ? '#3a3a52' : '#ffffff';
+      const tc = disabled ? '#8a8aa8' : '#ffffff';
       con.add(this.add.text(12, iy + IH / 2, `${icon}  ${label}`, {
-        fontSize: '12px', fontFamily: 'monospace', fontStyle: disabled ? 'normal' : 'bold', color: tc,
+        fontSize: '20px', fontFamily: 'monospace', fontStyle: disabled ? 'normal' : 'bold', color: tc,
         stroke: '#000000', strokeThickness: disabled ? 0 : 3,
       }).setOrigin(0, 0.5));
 
@@ -2835,7 +2836,7 @@ export class BattleScene extends Phaser.Scene {
     // Position beside unit: right if space, left otherwise
     const toRight = ux + 60 + MW < width - 4;
     const mx = toRight ? ux + 60 : ux - 60 - MW;
-    const my = Math.min(Math.max(uy - MH / 2, 6), height - MH - 6);
+    const my = Math.min(Math.max(uy - MH / 2, 38), height - MH - 36);
 
     const con = this.add.container(mx, my).setDepth(4000);
     this.actionMenu = con;
@@ -2872,7 +2873,7 @@ export class BattleScene extends Phaser.Scene {
 
     // Unit name header
     const nameHdr = this.add.text(MW / 2, PAD + 9, unit.name.split(' ')[0].toUpperCase(), {
-      fontSize: '14px', fontFamily: 'monospace', fontStyle: 'bold',
+      fontSize: '17px', fontFamily: 'monospace', fontStyle: 'bold',
       color: '#' + unit.color.toString(16).padStart(6, '0'),
       stroke: '#000000', strokeThickness: 5,
     }).setOrigin(0.5, 0);
@@ -2902,21 +2903,21 @@ export class BattleScene extends Phaser.Scene {
       draw(false);
       con.add(g);
 
-      const tc = disabled ? '#3a3a52' : '#e8eeff';
-      const ic = disabled ? '#2a2a44' : '#' + unit.color.toString(16).padStart(6, '0');
+      const tc = disabled ? '#8a8aa8' : '#e8eeff';
+      const ic = disabled ? '#6a6a88' : '#' + unit.color.toString(16).padStart(6, '0');
 
       con.add(this.add.text(15, iy + IH / 2, icon, {
-        fontSize: '18px', fontFamily: 'monospace', color: ic,
+        fontSize: '22px', fontFamily: 'monospace', color: ic,
         stroke: '#000000', strokeThickness: 5,
       }).setOrigin(0, 0.5));
       con.add(this.add.text(42, iy + IH / 2, label, {
-        fontSize: '18px', fontFamily: 'monospace', fontStyle: disabled ? 'normal' : 'bold', color: tc,
+        fontSize: '22px', fontFamily: 'monospace', fontStyle: disabled ? 'normal' : 'bold', color: tc,
         stroke: '#000000', strokeThickness: disabled ? 0 : 5,
       }).setOrigin(0, 0.5));
 
       if (sub && !disabled) {
         con.add(this.add.text(MW - 12, iy + IH / 2, sub, {
-          fontSize: '14px', fontFamily: 'monospace', color: '#7799cc',
+          fontSize: '17px', fontFamily: 'monospace', color: '#7799cc',
           stroke: '#000000', strokeThickness: 3,
         }).setOrigin(1, 0.5));
       }
@@ -3074,7 +3075,7 @@ export class BattleScene extends Phaser.Scene {
     const MW = 300, MH = (abilities.length + 1) * IH + PAD * 2;
     const toRight = ux + 60 + MW < width - 4;
     const mx = toRight ? ux + 60 : ux - 60 - MW;
-    const my = Math.min(Math.max(uy - MH / 2, 6), height - MH - 6);
+    const my = Math.min(Math.max(uy - MH / 2, 38), height - MH - 36);
 
     const con = this.add.container(mx, my).setDepth(4000);
     this.actionMenu = con;
@@ -3106,7 +3107,7 @@ export class BattleScene extends Phaser.Scene {
     drawBack(false);
     con.add(backG);
     con.add(this.add.text(15, PAD + IH / 2, '← Back', {
-      fontSize:'17px', fontFamily:'monospace', color:'#88aadd', stroke:'#000000', strokeThickness:5,
+      fontSize:'21px', fontFamily:'monospace', color:'#88aadd', stroke:'#000000', strokeThickness:5,
     }).setOrigin(0, 0.5));
     const bz = this.add.zone(MW/2, PAD + IH/2, MW, IH).setInteractive({ useHandCursor:true });
     bz.on('pointerover', () => drawBack(true)); bz.on('pointerout', () => drawBack(false));
@@ -3132,7 +3133,7 @@ export class BattleScene extends Phaser.Scene {
       const tc = canUse ? '#ffffff' : '#252535';
       const sc = canUse ? '#66aaff' : '#1e2233';
       const nameText = this.add.text(15, iy + IH / 2, `${ab.icon}  ${ab.name}`, {
-        fontSize:'18px', fontFamily:'monospace', fontStyle:'bold', color: tc,
+        fontSize:'22px', fontFamily:'monospace', fontStyle:'bold', color: tc,
         stroke: '#000000', strokeThickness: canUse ? 5 : 0,
       }).setOrigin(0, 0.5);
       con.add(nameText);
@@ -3149,7 +3150,7 @@ export class BattleScene extends Phaser.Scene {
       }
 
       con.add(this.add.text(MW - 12, iy + IH / 2, this.abilitySubLabel(unit, ab), {
-        fontSize:'15px', fontFamily:'monospace', color: sc,
+        fontSize:'19px', fontFamily:'monospace', color: sc,
         stroke: '#000000', strokeThickness: canUse ? 3 : 0,
       }).setOrigin(1, 0.5));
 
@@ -3246,7 +3247,7 @@ export class BattleScene extends Phaser.Scene {
     const MW = 300, MH = (rowCount + 1) * IH + PAD * 2;
     const toRight = ux + 60 + MW < width - 4;
     const mx = toRight ? ux + 60 : ux - 60 - MW;
-    const my = Math.min(Math.max(uy - MH / 2, 6), height - MH - 6);
+    const my = Math.min(Math.max(uy - MH / 2, 38), height - MH - 36);
 
     const con = this.add.container(mx, my).setDepth(4000);
     this.actionMenu = con;
@@ -3278,7 +3279,7 @@ export class BattleScene extends Phaser.Scene {
     drawBack(false);
     con.add(backG);
     con.add(this.add.text(15, PAD + IH / 2, '← Back', {
-      fontSize:'17px', fontFamily:'monospace', color:'#88aadd', stroke:'#000000', strokeThickness:5,
+      fontSize:'21px', fontFamily:'monospace', color:'#88aadd', stroke:'#000000', strokeThickness:5,
     }).setOrigin(0, 0.5));
     const bz = this.add.zone(MW/2, PAD + IH/2, MW, IH).setInteractive({ useHandCursor:true });
     bz.on('pointerover', () => drawBack(true)); bz.on('pointerout', () => drawBack(false));
@@ -3287,7 +3288,7 @@ export class BattleScene extends Phaser.Scene {
 
     if (!groups.length) {
       con.add(this.add.text(MW / 2, PAD + IH + IH / 2, 'No items', {
-        fontSize:'17px', fontFamily:'monospace', color:'#334466',
+        fontSize:'21px', fontFamily:'monospace', color:'#334466',
       }).setOrigin(0.5));
     }
 
@@ -3307,11 +3308,11 @@ export class BattleScene extends Phaser.Scene {
       con.add(g);
 
       con.add(this.add.text(15, iy + IH / 2, item.name, {
-        fontSize:'18px', fontFamily:'monospace', fontStyle:'bold', color:'#ffffff',
+        fontSize:'22px', fontFamily:'monospace', fontStyle:'bold', color:'#ffffff',
         stroke: '#000000', strokeThickness: 5,
       }).setOrigin(0, 0.5));
       con.add(this.add.text(MW - 12, iy + IH / 2, `×${count}`, {
-        fontSize:'15px', fontFamily:'monospace', color:'#66aaff',
+        fontSize:'19px', fontFamily:'monospace', color:'#66aaff',
         stroke: '#000000', strokeThickness: 3,
       }).setOrigin(1, 0.5));
 
@@ -3345,7 +3346,7 @@ export class BattleScene extends Phaser.Scene {
     const MW = 315, MH = (targets.length + 1) * IH + PAD * 2;
     const toRight = ux + 60 + MW < width - 4;
     const mx = toRight ? ux + 60 : ux - 60 - MW;
-    const my = Math.min(Math.max(uy - MH / 2, 6), height - MH - 6);
+    const my = Math.min(Math.max(uy - MH / 2, 38), height - MH - 36);
 
     const con = this.add.container(mx, my).setDepth(4000);
     this.actionMenu = con;
@@ -3377,7 +3378,7 @@ export class BattleScene extends Phaser.Scene {
     drawBack(false);
     con.add(backG);
     con.add(this.add.text(15, PAD + IH / 2, '← Back', {
-      fontSize:'17px', fontFamily:'monospace', color:'#88aadd', stroke:'#000000', strokeThickness:5,
+      fontSize:'21px', fontFamily:'monospace', color:'#88aadd', stroke:'#000000', strokeThickness:5,
     }).setOrigin(0, 0.5));
     const bz = this.add.zone(MW/2, PAD + IH/2, MW, IH).setInteractive({ useHandCursor:true });
     bz.on('pointerover', () => drawBack(true)); bz.on('pointerout', () => drawBack(false));
@@ -3401,13 +3402,13 @@ export class BattleScene extends Phaser.Scene {
 
       const label = target === actor ? `${target.name.split(' ')[0]} (self)` : target.name.split(' ')[0];
       con.add(this.add.text(15, iy + 14, label, {
-        fontSize:'18px', fontFamily:'monospace', fontStyle:'bold', color:'#ffffff',
+        fontSize:'22px', fontFamily:'monospace', fontStyle:'bold', color:'#ffffff',
         stroke: '#000000', strokeThickness: 5,
       }).setOrigin(0, 0.5));
       const statBits = [`HP ${target.hp}/${target.maxHp}`];
       if (item.spPct != null && target.maxSp != null) statBits.push(`SP ${target.sp}/${target.maxSp}`);
       con.add(this.add.text(15, iy + 35, statBits.join('  ·  '), {
-        fontSize:'14px', fontFamily:'monospace', color: target.hp < target.maxHp ? '#66ff88' : '#7799bb',
+        fontSize:'17px', fontFamily:'monospace', color: target.hp < target.maxHp ? '#66ff88' : '#7799bb',
       }).setOrigin(0, 0.5));
 
       const z = this.add.zone(MW/2, iy + IH/2, MW, IH).setInteractive({ useHandCursor:true });
@@ -3481,7 +3482,7 @@ export class BattleScene extends Phaser.Scene {
     const { x: ux, y: uy } = this.gridToScreen(unit.col, unit.row);
     const { width, height } = this.scale;
     const designations = unit.designations ?? [];
-    const PW = 160, PH = 128;
+    const PW = 290, PH = 200;
     const px = Math.min(Math.max(ux - PW / 2, 4), width - PW - 4);
     const py = uy > height / 2 ? uy - PH - 50 : uy + 40;
 
@@ -3504,7 +3505,7 @@ export class BattleScene extends Phaser.Scene {
     con.add(bg);
 
     con.add(this.add.text(PW / 2, 8, unit.name.split(' ')[0], {
-      fontSize:'11px', fontFamily:'monospace', fontStyle:'bold', color:'#aaccff',
+      fontSize:'19px', fontFamily:'monospace', fontStyle:'bold', color:'#aaccff',
       stroke:'#000000', strokeThickness:3,
     }).setOrigin(0.5,0));
 
@@ -3514,8 +3515,8 @@ export class BattleScene extends Phaser.Scene {
       designations.length ? designations.map(d => designationIcon(d)).join(' ') : null,
     ].filter(Boolean).join('   ');
     if (badges) {
-      con.add(this.add.text(PW / 2, 22, badges, {
-        fontSize:'11px', fontFamily:'monospace', color:'#ddccaa', stroke:'#000000', strokeThickness:3,
+      con.add(this.add.text(PW / 2, 32, badges, {
+        fontSize:'17px', fontFamily:'monospace', color:'#ddccaa', stroke:'#000000', strokeThickness:3,
       }).setOrigin(0.5, 0));
     }
 
@@ -3526,7 +3527,7 @@ export class BattleScene extends Phaser.Scene {
       { label: 'SPD', val: `${unit.speed}`,  color: '#44aaff' },
       { label: 'END', val: `${unit.endurance}`, color: '#44cccc' },
     ];
-    const PH2 = 44 + rows.length * 17 + 6;
+    const PH2 = 62 + rows.length * 24 + 8;
     if (PH2 !== PH) {
       shadow.clear();
       shadow.fillStyle(0x000000, 0.32);
@@ -3540,12 +3541,12 @@ export class BattleScene extends Phaser.Scene {
       bg.fillRoundedRect(0, 0, PW, 3, { tl: RADIUS, tr: RADIUS, bl: 0, br: 0 });
     }
     rows.forEach(({ label, val, color }, i) => {
-      const ry = 44 + i * 17;
-      con.add(this.add.text(10, ry, label, {
-        fontSize:'10px', fontFamily:'monospace', color:'#7799bb', stroke:'#000000', strokeThickness:2,
+      const ry = 62 + i * 24;
+      con.add(this.add.text(12, ry, label, {
+        fontSize:'18px', fontFamily:'monospace', color:'#7799bb', stroke:'#000000', strokeThickness:2,
       }));
-      con.add(this.add.text(PW - 10, ry, val, {
-        fontSize:'10px', fontFamily:'monospace', fontStyle:'bold', color, stroke:'#000000', strokeThickness:2,
+      con.add(this.add.text(PW - 12, ry, val, {
+        fontSize:'18px', fontFamily:'monospace', fontStyle:'bold', color, stroke:'#000000', strokeThickness:2,
       }).setOrigin(1,0));
     });
 
@@ -3561,8 +3562,8 @@ export class BattleScene extends Phaser.Scene {
   createTutorialUI() {
     const { width } = this.scale;
 
-    this.tutorialBannerText = this.add.text(width / 2, 40, '', {
-      fontSize: '13px', fontFamily: 'monospace', fontStyle: 'bold', color: '#ffee88',
+    this.tutorialBannerText = this.add.text(width / 2, 52, '', {
+      fontSize: '21px', fontFamily: 'monospace', fontStyle: 'bold', color: '#ffee88',
       stroke: '#000000', strokeThickness: 4, align: 'center',
       wordWrap: { width: width - 140 },
     }).setOrigin(0.5).setDepth(5001);
@@ -3570,11 +3571,12 @@ export class BattleScene extends Phaser.Scene {
     // Left-aligned under RETREAT, not top-right — drawReferenceHud's
     // designation/element cheat-sheet panel already owns that whole corner
     // (px..width-6, y 34-98).
-    this.tutorialSkipBtn = this.add.text(10, 34, 'Skip tutorial ✕', {
-      fontSize: '10px', fontFamily: 'monospace', color: '#8899bb',
+    this.tutorialSkipBtn = this.add.text(10, 38, 'Skip tutorial ✕', {
+      fontSize: '18px', fontFamily: 'monospace', color: '#ccd6ff',
+      backgroundColor: '#0a0a18', padding: { x: 6, y: 4 },
     }).setOrigin(0, 0).setDepth(5001).setInteractive({ useHandCursor: true });
     this.tutorialSkipBtn.on('pointerover', () => this.tutorialSkipBtn.setColor('#ffffff'));
-    this.tutorialSkipBtn.on('pointerout',  () => this.tutorialSkipBtn.setColor('#8899bb'));
+    this.tutorialSkipBtn.on('pointerout',  () => this.tutorialSkipBtn.setColor('#ccd6ff'));
     this.tutorialSkipBtn.on('pointerdown', (ptr, lx, ly, evt) => {
       evt?.stopPropagation();
       playSfx(this, SFX.click);
