@@ -1220,6 +1220,7 @@ export class BattleScene extends Phaser.Scene {
     this.difficulty = data?.difficulty ?? 1.0;
     this.difficultyCfg = data?.difficulty != null ? null : getDifficultyConfig();
     this._initData = data ?? {};
+    this.sys.settings.data = {}; // Phaser reuses this on a data-less start
   }
 
   // The 5 always-loaded base species (every mission might spawn any of
@@ -1278,8 +1279,7 @@ export class BattleScene extends Phaser.Scene {
     // promotion) role sprite, not always T1, so a promoted unit shows its
     // promoted appearance in battle.
     // Whichever units will actually fight — the capped first-N by default,
-    // or the player's own picks from BattlePartySelectScene once the roster
-    // outgrows the cap (see getBattleParty/battlePartyIds in gameState.js).
+    // or the player's own picks from PreBattleScene (see getBattleParty/battlePartyIds in gameState.js).
     const battleParty = getBattleParty(state);
     const classNames = battleParty.map(u => spriteKeyForRole(currentRoleId(u))).filter(Boolean);
     loadHeroSprites(this, classNames);
@@ -1288,16 +1288,17 @@ export class BattleScene extends Phaser.Scene {
   }
 
   create() {
-    // Roster bigger than the battle cap and no pick made yet for this fight
-    // (2026-07-08 feedback: "player is given option to pick when party size
-    // is 5 or more") — bounce straight to the picker before building any
-    // battle state; it hands back into this same BattleScene start (with the
-    // original data) once the player confirms a lineup. battlePartyIds is
-    // cleared right after getBattleParty() reads it below, so a later battle
-    // with a changed roster (recruit/dismiss) always re-prompts instead of
-    // silently reusing a stale pick.
-    if (state.party.length > maxBattlePartySize(state) && !state.battlePartyIds) {
-      this.scene.start('BattlePartySelectScene', { battleData: this._initData });
+    // Every battle stops at the Pre-Battle screen first. It rolls the enemies
+    // here so random rosters and archetypes match what the player previewed,
+    // then starts this scene again with those units and the chosen team.
+    if (!this._initData.enemyUnits) {
+      const missionId = state.currentMission ?? 'M1';
+      const missionCfg = MISSION_CONFIGS[missionId] ?? MISSION_CONFIGS['M1'];
+      this.setEnemyContext(missionId, missionCfg);
+      this.scene.start('PreBattleScene', {
+        battleData: { ...this._initData, enemyUnits: this.rollEnemyUnits(missionCfg) },
+        reinforced: !!missionCfg.reinforce,
+      });
       return;
     }
 
@@ -1522,66 +1523,13 @@ export class BattleScene extends Phaser.Scene {
 
     // ── Enemies — driven by mission config ────────────────────────────────
     const diff = this.difficulty ?? 1.0;
-    const cfg = this.difficultyCfg; // null when data.difficulty was explicit (replay picker) — see init()
-    const heroLevel = Math.max(1, ...state.party.map(u => u.level));
-    // Level FLOOR relative to the party's own level — two independent
-    // sources depending on how this battle was entered (2026-08-03):
-    //  - Replay picker (cfg === null): the original isReplay-gated formula,
-    //    unchanged — Normal +0 / Hard +1 / Elite +2, only ever active on a
-    //    replay (see the 2026-08-03 "too hard starting out" fix below).
-    //  - Settings tier (cfg set): each tier states its own floor outright —
-    //    Newbie disables it entirely (levelFloorOffset: null, so `false`
-    //    below always wins and no floor applies, first-time OR replay
-    //    alike — "enemy levels don't scale to player"), Veteran/Perilous
-    //    apply unconditionally (0 / +2) since picking one of those in
-    //    Settings is itself the deliberate "make it harder" choice — no
-    //    isReplay gate needed the way the legacy replay-picker path has one.
-    let levelFloor = 0;
-    if (cfg) {
-      if (cfg.levelFloorOffset != null) levelFloor = heroLevel + cfg.levelFloorOffset;
-    } else {
-      // isReplay-gated (2026-08-03 fix, "monsters hit too hard on normal
-      // starting out") — this floor was firing on FIRST-time plays too, and
-      // STARTER_LEVEL is 5 (gameState.js), well above M1/M2's authored base
-      // level of 1-2, so every brand-new save's first fight was silently
-      // getting floored up to a level-5 encounter. The floor's whole
-      // premise — "the party has outgrown this mission" — only makes sense
-      // once the mission's actually been cleared once already.
-      const isReplay = state.completedMissions.includes(missionId);
-      if (isReplay) levelFloor = heroLevel + (diff >= 1.5 ? 2 : diff >= 1.2 ? 1 : 0);
-    }
-    const scaledLevel = (base) => Math.max(1, Math.round(base + (diff - 1) * 10), levelFloor);
-    // M0a/M0b repeat-scaling (M0-M4 redesign, Phase 5; extended to M0b
-    // 2026-07-07) — each replay after the first escalates enemies: level
-    // +2, HP (endurance/stamina) +25%, attack (strength) +10%, per repeat.
-    // Layered on top of the normal diff-multiplier scaling every mission
-    // already gets; neutral (0/1) for every other mission since only
-    // M0a/M0b's repeat counts ever get incremented (see WorldMapScene).
-    // REPEAT_LEVEL_CAP (2026-07-09, "when king wolf hit lvl 40 lvl increase
-    // should stop") — applies to the shared repeat-scaling mechanism itself,
-    // not just King Wolf/M0b, so it automatically covers every repeatable
-    // mission using this same repeatCount path (currently M0a and M0b).
-    // Only the level number is capped; HP/attack keep scaling with repeats
-    // past that point (not asked to change).
-    // disableRepeatScaling (Newbie tier, 2026-08-03) — "repeat enemy levels
-    // don't scale" — even M0a/M0b's separate per-replay escalation is held
-    // neutral under Newbie, so it always stays at the same baseline fight
-    // no matter how many times it's replayed.
-    const repeatCount = (cfg?.disableRepeatScaling) ? 0
-      : (missionId === 'M0a' || missionId === 'M0b') ? (state.repeatCounts[missionId] ?? 0) : 0;
-    const repeatLevelBonus = repeatCount * 2;
-    const repeatHpMult = 1 + 0.25 * repeatCount;
-    const repeatAtkMult = 1 + 0.10 * repeatCount;
-    // Stored for spawnReinforcements (2026-07-11) to reuse the exact same
-    // scaling a mission's initial roster gets, so a mid-battle wave isn't
-    // weaker/stronger than the enemies already on the board.
-    this._enemyCtx = { missionId, diff, repeatLevelBonus, repeatHpMult, repeatAtkMult, region: missionCfg.region, scaledLevel };
+    const cfg = this.difficultyCfg; // null on a replay-picker battle — see init()
+    this.setEnemyContext(missionId, missionCfg);
     // `enemies` is normally a static array (built once at module load via
     // inline buildMonster() calls), but a mission that wants a freshly
     // randomized roster each time it's entered (Cave Depths' "3 random
     // type of monster") needs it evaluated NOW instead — see A2c below.
-    const enemyDefs = typeof missionCfg.enemies === 'function' ? missionCfg.enemies() : missionCfg.enemies;
-    this.enemyUnits = enemyDefs.map(d => this.buildEnemyUnit(d));
+    this.enemyUnits = this._initData.enemyUnits ?? this.rollEnemyUnits(missionCfg);
     for (const e of this.enemyUnits) this.spawnEnemyVisual(e);
     // The Corrupted One's ally-count buff (FT, 2026-08-03) — captured once,
     // pre-buff, as the floor recomputeCorruptedOneBuff() scales off; then
@@ -1684,6 +1632,71 @@ export class BattleScene extends Phaser.Scene {
       this.showPhaseBanner('PLAYER TURN');
       this.redraw();
     }
+  }
+
+  rollEnemyUnits(missionCfg) {
+    const enemyDefs = typeof missionCfg.enemies === 'function' ? missionCfg.enemies() : missionCfg.enemies;
+    return enemyDefs.map(d => this.buildEnemyUnit(d));
+  }
+
+  // Works out this battle's enemy scaling. Runs before the Pre-Battle screen
+  // too, so what it previews is what the fight uses.
+  setEnemyContext(missionId, missionCfg) {
+    const diff = this.difficulty ?? 1.0;
+    const cfg = this.difficultyCfg; // null when data.difficulty was explicit (replay picker) — see init()
+    const heroLevel = Math.max(1, ...state.party.map(u => u.level));
+    // Level FLOOR relative to the party's own level — two independent
+    // sources depending on how this battle was entered (2026-08-03):
+    //  - Replay picker (cfg === null): the original isReplay-gated formula,
+    //    unchanged — Normal +0 / Hard +1 / Elite +2, only ever active on a
+    //    replay (see the 2026-08-03 "too hard starting out" fix below).
+    //  - Settings tier (cfg set): each tier states its own floor outright —
+    //    Newbie disables it entirely (levelFloorOffset: null, so `false`
+    //    below always wins and no floor applies, first-time OR replay
+    //    alike — "enemy levels don't scale to player"), Veteran/Perilous
+    //    apply unconditionally (0 / +2) since picking one of those in
+    //    Settings is itself the deliberate "make it harder" choice — no
+    //    isReplay gate needed the way the legacy replay-picker path has one.
+    let levelFloor = 0;
+    if (cfg) {
+      if (cfg.levelFloorOffset != null) levelFloor = heroLevel + cfg.levelFloorOffset;
+    } else {
+      // isReplay-gated (2026-08-03 fix, "monsters hit too hard on normal
+      // starting out") — this floor was firing on FIRST-time plays too, and
+      // STARTER_LEVEL is 5 (gameState.js), well above M1/M2's authored base
+      // level of 1-2, so every brand-new save's first fight was silently
+      // getting floored up to a level-5 encounter. The floor's whole
+      // premise — "the party has outgrown this mission" — only makes sense
+      // once the mission's actually been cleared once already.
+      const isReplay = state.completedMissions.includes(missionId);
+      if (isReplay) levelFloor = heroLevel + (diff >= 1.5 ? 2 : diff >= 1.2 ? 1 : 0);
+    }
+    const scaledLevel = (base) => Math.max(1, Math.round(base + (diff - 1) * 10), levelFloor);
+    // M0a/M0b repeat-scaling (M0-M4 redesign, Phase 5; extended to M0b
+    // 2026-07-07) — each replay after the first escalates enemies: level
+    // +2, HP (endurance/stamina) +25%, attack (strength) +10%, per repeat.
+    // Layered on top of the normal diff-multiplier scaling every mission
+    // already gets; neutral (0/1) for every other mission since only
+    // M0a/M0b's repeat counts ever get incremented (see WorldMapScene).
+    // REPEAT_LEVEL_CAP (2026-07-09, "when king wolf hit lvl 40 lvl increase
+    // should stop") — applies to the shared repeat-scaling mechanism itself,
+    // not just King Wolf/M0b, so it automatically covers every repeatable
+    // mission using this same repeatCount path (currently M0a and M0b).
+    // Only the level number is capped; HP/attack keep scaling with repeats
+    // past that point (not asked to change).
+    // disableRepeatScaling (Newbie tier, 2026-08-03) — "repeat enemy levels
+    // don't scale" — even M0a/M0b's separate per-replay escalation is held
+    // neutral under Newbie, so it always stays at the same baseline fight
+    // no matter how many times it's replayed.
+    const repeatCount = (cfg?.disableRepeatScaling) ? 0
+      : (missionId === 'M0a' || missionId === 'M0b') ? (state.repeatCounts[missionId] ?? 0) : 0;
+    const repeatLevelBonus = repeatCount * 2;
+    const repeatHpMult = 1 + 0.25 * repeatCount;
+    const repeatAtkMult = 1 + 0.10 * repeatCount;
+    // Stored for spawnReinforcements (2026-07-11) to reuse the exact same
+    // scaling a mission's initial roster gets, so a mid-battle wave isn't
+    // weaker/stronger than the enemies already on the board.
+    this._enemyCtx = { missionId, diff, repeatLevelBonus, repeatHpMult, repeatAtkMult, region: missionCfg.region, scaledLevel };
   }
 
   // Builds one scaled enemy unit object from a mission-config enemy def (a

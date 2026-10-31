@@ -41,6 +41,7 @@ export class PartyScene extends Phaser.Scene {
   }
 
   init(data) {
+    this.returnTo = data?.returnTo ?? { scene: 'WorldMapScene', label: 'World Map' };
     this.selId = data?.selId ?? state.party[0]?.id ?? null;
     this.detailTab = data?.tab ?? 'stats';
     this.expandedAbility = null;
@@ -102,7 +103,7 @@ export class PartyScene extends Phaser.Scene {
     mount(`
       <div class="ui-screen ui-party">
         <div class="ui-topbar">
-          <button class="ui-navbtn" data-nav="back">◀ World Map</button>
+          <button class="ui-navbtn" data-nav="back">◀ ${esc(this.returnTo.label)}</button>
           <div class="ui-title">PARTY</div>
           <button class="ui-navbtn accent" data-nav="inventory">Inventory ▶</button>
         </div>
@@ -360,7 +361,7 @@ export class PartyScene extends Phaser.Scene {
   }
 
   wireEvents() {
-    onClick('[data-nav="back"]', () => this.scene.start('WorldMapScene'));
+    onClick('[data-nav="back"]', () => this.scene.start(this.returnTo.scene, this.returnTo.data));
     onClick('[data-nav="inventory"]', () => this.scene.start('InventoryScene'));
 
     onClick('[data-select]', (e, node) => {

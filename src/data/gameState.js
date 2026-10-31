@@ -496,7 +496,7 @@ export const state = {
 // can't just steamroll the exam with a full roster before it's "earned."
 // Once past that window, the real permanent cap is MAX_BATTLE_PARTY_SIZE
 // (2026-07-08 feedback: roster can grow past 20, but only 4 fight at once —
-// see getBattleParty/BattlePartySelectScene below for how a larger roster
+// see getBattleParty/PreBattleScene below for how a larger roster
 // picks which 4 go in).
 export const MAX_BATTLE_PARTY_SIZE = 4;
 export function maxBattlePartySize(state) {
@@ -507,7 +507,7 @@ export function maxBattlePartySize(state) {
 }
 
 // Which specific units (by id) fight this battle, when the roster is bigger
-// than the cap — set by BattlePartySelectScene, consumed once by BattleScene
+// than the cap — set by PreBattleScene, consumed once by BattleScene
 // then cleared (state.battlePartyIds below) so a later battle with a changed
 // roster (recruit/dismiss) always re-prompts instead of reusing a stale pick.
 // Not part of the persisted save shape (see saveGame) — purely a same-session

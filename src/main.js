@@ -5,7 +5,7 @@ import { CharacterCreationScene } from './scenes/CharacterCreationScene.js';
 import { RecruitClassScene } from './scenes/RecruitClassScene.js';
 import { WorldMapScene }  from './scenes/WorldMapScene.js';
 import { BattleScene }    from './scenes/BattleScene.js';
-import { BattlePartySelectScene } from './scenes/BattlePartySelectScene.js';
+import { PreBattleScene } from './scenes/PreBattleScene.js';
 import { VictoryScene }   from './scenes/VictoryScene.js';
 import { LootScene }      from './scenes/LootScene.js';
 import { LevelUpScene }   from './scenes/LevelUpScene.js';
@@ -108,7 +108,7 @@ const config = {
     autoCenter: Phaser.Scale.CENTER_BOTH,
     zoom: Phaser.Scale.ZOOM_2X,
   },
-  scene: [GameScene, CharacterCreationScene, RecruitClassScene, WorldMapScene, BattleScene, BattlePartySelectScene, VictoryScene, LootScene, LevelUpScene, StoryScene, HubScene, ShopScene, ForgeScene, PartyScene, InventoryScene, RewardPopupScene, AcademyTaskListScene, AcademyQuestListScene, HandbookScene, VillageQuestListScene, HubBattlesScene, IndexScene, SettingsScene],
+  scene: [GameScene, CharacterCreationScene, RecruitClassScene, WorldMapScene, BattleScene, PreBattleScene, VictoryScene, LootScene, LevelUpScene, StoryScene, HubScene, ShopScene, ForgeScene, PartyScene, InventoryScene, RewardPopupScene, AcademyTaskListScene, AcademyQuestListScene, HandbookScene, VillageQuestListScene, HubBattlesScene, IndexScene, SettingsScene],
 };
 
 window.__game = new Phaser.Game(config);

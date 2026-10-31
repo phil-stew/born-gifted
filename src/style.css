@@ -1001,3 +1001,21 @@ button.ui-quest-card { color: inherit; font: inherit; text-align: left; cursor: 
   .ui-quest-status { margin-top: 3px; }
   .ui-quest-card .ui-action-btn { min-height: 34px; margin-top: 5px; font-size: 13px; }
 }
+
+/* Pre-Battle screen: team on the left, enemies on the right, always. */
+.ui-pb-body { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+.ui-pb-head { font-size: 16px; font-weight: 700; color: var(--ui-text-muted); padding: 2px 4px; }
+.ui-pb-enemy { cursor: default; }
+.ui-pb-stats { display: flex; flex-wrap: wrap; gap: 2px 14px; margin-top: 4px; }
+.ui-pb-stat { font-size: 14px; color: var(--ui-text-muted); }
+.ui-pb-stat b { color: var(--ui-text); }
+.ui-pb-foot { display: flex; justify-content: center; padding: 8px; }
+@media (max-height: 500px) {
+  .ui-prebattle .ui-card { padding: 5px 8px; gap: 8px; }
+  .ui-prebattle .ui-list-panel { gap: 4px; padding: 6px; }
+  .ui-prebattle .ui-card-name { font-size: 15px; }
+  .ui-prebattle .ui-card-sub { font-size: 12px; }
+  .ui-prebattle .ui-pb-head { font-size: 13px; }
+  .ui-prebattle .ui-pb-stat { font-size: 12px; }
+  .ui-prebattle .ui-pb-foot { padding: 4px; }
+}
