@@ -106,6 +106,26 @@ canvas {
   animation: ui-fade-in 220ms ease both;
 }
 
+/* Party and Index let the world map show faintly behind their panels. */
+.ui-party, .ui-index {
+  --ui-panel: rgba(26, 26, 46, 0.72);
+  --ui-panel-raised: rgba(36, 36, 60, 0.8);
+  --ui-text-muted: #b4b4c8;
+  --ui-text-faint: #8a8aa6;
+  background:
+    linear-gradient(rgba(7, 8, 15, 0.5), rgba(7, 8, 15, 0.5)),
+    url('/world/title/mapbackg.webp') center / cover no-repeat,
+    var(--ui-bg-deep);
+}
+
+.ui-party .ui-topbar, .ui-index .ui-topbar, .ui-index .ui-index-tabbar {
+  background: rgba(8, 8, 15, 0.72);
+}
+
+.ui-party .ui-title, .ui-index .ui-title {
+  color: var(--ui-text);
+}
+
 @keyframes ui-fade-in {
   from { opacity: 0; }
   to   { opacity: 1; }

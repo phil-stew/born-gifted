@@ -6,6 +6,7 @@ import { drawButton, drawBackButton, drawCurrency, currencyLabel } from '../ui/c
 import { playSfx, SFX } from '../audio/sound.js';
 
 const TABS = ['ALL', 'EQUIPMENT', 'MATERIALS'];
+const PANEL_ALPHA = 0.72;
 
 export class InventoryScene extends Phaser.Scene {
   constructor() { super({ key: 'InventoryScene' }); }
@@ -18,6 +19,7 @@ export class InventoryScene extends Phaser.Scene {
   }
 
   preload() {
+    if (!this.textures.exists('mapbackg'))  this.load.image('mapbackg',  'world/title/mapbackg.webp');
     if (!this.textures.exists('gears'))     this.load.image('gears',     'gears/gearitems.png');
     if (!this.textures.exists('materials')) this.load.image('materials', 'items/rawmaterials.png');
   }
@@ -56,10 +58,14 @@ export class InventoryScene extends Phaser.Scene {
 
     this._registerFrames();
 
+    // World map shows faintly through the menu, matching Party and Index.
+    const map = this.add.image(width / 2, height / 2, 'mapbackg');
+    map.setScale(Math.max(width / map.width, height / map.height));
+
     const bg = this.add.graphics();
-    bg.fillStyle(0x07080f, 1);
+    bg.fillStyle(0x07080f, 0.5);
     bg.fillRect(0, 0, width, height);
-    bg.fillStyle(0x0c0c1a, 1);
+    bg.fillStyle(0x0c0c1a, 0.8);
     bg.fillRect(0, 0, width, 40);
     bg.lineStyle(1, 0x222244, 1);
     bg.lineBetween(0, 40, width, 40);
@@ -111,7 +117,7 @@ export class InventoryScene extends Phaser.Scene {
       const g = this.add.graphics();
       const draw = (h) => {
         g.clear();
-        g.fillStyle(active ? 0x16162a : (h ? 0x111128 : 0x0c0c1a), 1);
+        g.fillStyle(active ? 0x16162a : (h ? 0x111128 : 0x0c0c1a), 0.85);
         g.fillRoundedRect(tx, ty, tw, th, 6);
         g.lineStyle(1.5, active ? 0x4455aa : 0x1e1e33, 1);
         g.strokeRoundedRect(tx, ty, tw, th, 6);
@@ -179,7 +185,7 @@ export class InventoryScene extends Phaser.Scene {
     this.listCon.add(shadow);
 
     const bg = this.add.graphics();
-    bg.fillStyle(0x0b0b18, 1);
+    bg.fillStyle(0x1a1a2e, PANEL_ALPHA);
     bg.fillRoundedRect(lx, startY, lw, panH, 8);
     bg.lineStyle(1.5, 0x1e1e33, 1);
     bg.strokeRoundedRect(lx, startY, lw, panH, 8);
@@ -204,7 +210,7 @@ export class InventoryScene extends Phaser.Scene {
       const g = this.add.graphics();
       const draw = (h) => {
         g.clear();
-        g.fillStyle(isSelectedIdx ? 0x16162e : (h ? 0x101028 : 0x0b0b18), 1);
+        g.fillStyle(isSelectedIdx ? 0x16162e : 0x101028, isSelectedIdx || h ? 0.9 : 0);
         g.fillRoundedRect(rx, iy, rowW - 2, boxH, 6);
         if (isSelectedIdx) {
           g.lineStyle(1.5, 0x4455bb, 0.7);
@@ -258,7 +264,7 @@ export class InventoryScene extends Phaser.Scene {
     this.detCon.add(shadow);
 
     const bg = this.add.graphics();
-    bg.fillStyle(0x0b0b18, 1);
+    bg.fillStyle(0x1a1a2e, PANEL_ALPHA);
     bg.fillRoundedRect(dx, startY, dw, panH, 8);
     bg.lineStyle(1.5, 0x1e1e33, 1);
     bg.strokeRoundedRect(dx, startY, dw, panH, 8);
