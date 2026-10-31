@@ -32,7 +32,7 @@ export class PreBattleScene extends Phaser.Scene {
     this.battleData = data?.battleData ?? {};
     this.rules = data?.rules ?? [];
     this.cap = maxBattlePartySize(state);
-    this.showHints = battleHintsOn();
+    this.showHints = battleHintsOn(this.battleData.difficulty);
     // Default to whoever's first in roster order, so confirming immediately
     // reproduces the old no-picker behavior.
     this.selectedIds = (data?.selectedIds ?? state.party.slice(0, this.cap).map(u => u.id))
