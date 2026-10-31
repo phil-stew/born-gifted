@@ -952,4 +952,13 @@ canvas {
   .ui-index .ui-index-ability, .ui-index .ui-index-monster { padding: 6px 8px; }
   .ui-index .ui-index-ability-grid, .ui-index .ui-index-monster-grid { gap: 6px; }
   .ui-index .ui-index-step, .ui-index .ui-index-list { font-size: 13px; }
+
+  .ui-loot .ui-topbar { padding-top: 4px; padding-bottom: 4px; }
+  .ui-loot .ui-title-gold { font-size: 17px; }
+  .ui-loot .ui-quest-list { grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 6px; padding-top: 6px; padding-bottom: 6px; }
+  .ui-loot .ui-quest-card { padding: 5px 10px; border-radius: var(--ui-radius-sm); }
+  .ui-loot .ui-quest-name { font-size: 14px; margin-bottom: 0; }
+  .ui-loot .ui-quest-text { font-size: 12px; }
+  .ui-loot .ui-footer { display: flex; justify-content: center; padding-top: 4px; padding-bottom: 6px; }
+  .ui-loot .ui-action-btn { width: 240px; min-height: 40px; font-size: 15px; }
 }

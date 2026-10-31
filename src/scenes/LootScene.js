@@ -32,7 +32,7 @@ export class LootScene extends Phaser.Scene {
     }).join('');
 
     mount(`
-      <div class="ui-screen">
+      <div class="ui-screen ui-loot">
         <div class="ui-topbar ui-topbar-center"><div class="ui-title ui-title-gold">Loot</div></div>
         <div class="ui-quest-list" data-scroll-id="loot">
           ${cardsHTML || '<div class="ui-empty-note">No loot this time.</div>'}
