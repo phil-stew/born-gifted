@@ -5,6 +5,7 @@ import { HUB_CONFIGS } from '../data/hubConfigs.js';
 import { drawBackButton } from '../ui/canvasButton.js';
 import { playMusic } from '../audio/music.js';
 import { playSfx, SFX } from '../audio/sound.js';
+import { hubBattles } from './HubBattlesScene.js';
 
 // Sirblanc/Hidden Village is Reno's home town — once the player has left it
 // (M1 cleared), revisiting the hub uses a photo backdrop instead of the
@@ -178,6 +179,7 @@ export class HubScene extends Phaser.Scene {
     // header button in create(), see the "have the back button at top of
     // menues" comment there.
     const services = this.services.map(key => SERVICE_DEFS[key]).filter(Boolean);
+    if (hubBattles(this.nodeId).length) services.unshift({ key: 'Battles', icon: '⚔', desc: 'Fight nearby battles', locked: false });
 
     // Button width shrinks to fit as more services get added to a hub (M3
     // has up to 4, A1/A2 up to 5 with Recruit) — fixed 210px only ever fit 3.
@@ -199,6 +201,7 @@ export class HubScene extends Phaser.Scene {
       Quests:   { idle: 0x18140d, hover: 0x282013, border: 0x776633, text: '#ddbb66' },
       VillageQuests: { idle: 0x18140d, hover: 0x282013, border: 0x776633, text: '#ddbb66' },
       Recruit:  { idle: 0x0d1a12, hover: 0x14281c, border: 0x22884a, text: '#55dd88' },
+      Battles:  { idle: 0x1a0d0d, hover: 0x281414, border: 0x883333, text: '#ee7766' },
     };
 
     for (const svc of services) {
@@ -236,7 +239,8 @@ export class HubScene extends Phaser.Scene {
           playSfx(this, SFX.click);
           this.cameras.main.fadeOut(300, 0, 0, 0);
           this.cameras.main.once('camerafadeoutcomplete', () => {
-            if (svc.key === 'Shop')  this.scene.start('ShopScene',  { shopId: this.shopId, hubData: this.hubData });
+            if (svc.key === 'Battles') this.scene.start('HubBattlesScene', { nodeId: this.nodeId });
+            else if (svc.key === 'Shop')  this.scene.start('ShopScene',  { shopId: this.shopId, hubData: this.hubData });
             else if (svc.key === 'Forge') this.scene.start('ForgeScene', { hubData: this.hubData });
             else if (svc.key === 'Handbook') this.scene.start('HandbookScene', { hubData: this.hubData });
             else if (svc.key === 'Tasks')  this.scene.start('AcademyTaskListScene',  { nodeId: this.nodeId, hubData: this.hubData });

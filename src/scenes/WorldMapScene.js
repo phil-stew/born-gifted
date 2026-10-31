@@ -29,11 +29,15 @@ const MAP_BAND_TOP = 200, MAP_BAND_BOTTOM = 790;
 // after each win and they still need to show for replays.
 const ACCEPT_FIRST_NODES = new Set(['M0a', 'M0b', 'A1a', 'A1b', 'A2a', 'A2b', 'A2c']);
 
-// The Altroes Trials are fought from the Arena node, not their own markers.
-const OFF_MAP_NODES = new Set(['AT1', 'AT2']);
+// The Altroes Trials are fought from the Arena node and side battles from
+// their hub's Battles menu, not their own map markers.
+const OFF_MAP_NODES = new Set(['AT1', 'AT2', ...Object.values(HUB_CONFIGS).flatMap(h => h.battles ?? [])]);
 
 function isNodeVisible(id) {
-  if (OFF_MAP_NODES.has(id)) return false;
+  return !OFF_MAP_NODES.has(id) && isNodeOpen(id);
+}
+
+export function isNodeOpen(id) {
   if (state.completedMissions.includes(id)) return true;
   if (!state.unlockedMissions.includes(id)) return false;
   return !ACCEPT_FIRST_NODES.has(id) || !!state.questAccepted[id];
@@ -88,7 +92,7 @@ function mapPt(imgX, imgY, width, height) {
 // dynamic canvas width), same visual positions, just resolution-independent
 // now.
 const NODE_R = 21; // map circle radius
-const NODES = [
+export const NODES = [
   { id:'M0',  x:128, y:358, short:'H. Village', arc:'Home',    name:'Hidden Village' },
   { id:'M0a', x:51,  y:282, short:'H. Cave', arc:'Home',    name:'Hidden Cave',    connectsFrom:'M0', side:true },
   { id:'M0b', x:51,  y:435, short:'Wolf Den', arc:'Home',    name:"Wolf's Den",     connectsFrom:'M0', side:true },
@@ -493,6 +497,12 @@ const MAP_ASSET_CELL = {
 export class WorldMapScene extends Phaser.Scene {
   constructor() { super({ key: 'WorldMapScene' }); }
 
+  // enterNode: a hub's Battles menu sends its pick back through
+  // onMissionClick so accept gates, intros and replays stay in one place.
+  init(data) {
+    this.enterNode = data?.enterNode ?? null;
+  }
+
   preload() {
     // hero sprites loaded in BattleScene; WorldMap needs none
     if (!this.textures.exists('mapscenery')) this.load.image('mapscenery', 'tiles/mapasset/treesrock.png');
@@ -581,6 +591,10 @@ export class WorldMapScene extends Phaser.Scene {
     this.drawUI(width, height);
     this.drawHeroMarker();
     showLoadoutReminder(this);
+    if (this.enterNode) {
+      this.sys.settings.data = {}; // Phaser reuses this on a data-less start
+      this.onMissionClick(this.nodes.find(n => n.id === this.enterNode));
+    }
   }
 
   // Ambient corner dressing, tucked into the empty margins around the node

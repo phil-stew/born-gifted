@@ -37,7 +37,7 @@ export class VillageQuestListScene extends Phaser.Scene {
     const everCompleted = state.completedMissions.includes(q.id);
     let action;
     if (mastered) action = '<div class="ui-quest-status ok">Mastered</div>';
-    else if (accepted) action = '<div class="ui-quest-status ok">Accepted — head to the map!</div>';
+    else if (accepted) action = '<div class="ui-quest-status ok">Accepted — find it under Battles</div>';
     else action = `<button class="ui-action-btn" data-accept="${q.id}">${everCompleted ? 'Re-Accept' : 'Accept'}</button>`;
     return `
       <div class="ui-quest-card ${accepted || mastered ? 'ready' : ''}">

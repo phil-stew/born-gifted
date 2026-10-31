@@ -867,6 +867,7 @@ canvas {
 }
 
 .ui-quest-card.ready { border-color: #4ecc6e; }
+button.ui-quest-card { color: inherit; font: inherit; text-align: left; cursor: pointer; }
 .ui-quest-name { font-size: 19px; font-weight: 700; margin-bottom: 4px; }
 .ui-quest-text { font-size: 16px; line-height: 1.35; color: var(--ui-text-muted); }
 .ui-quest-text.ok, .ui-quest-status.ok { color: #6fdc8c; }

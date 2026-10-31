@@ -29,7 +29,7 @@ export class AcademyQuestListScene extends Phaser.Scene {
     let status;
     if (q.done) status = '<div class="ui-quest-status ok">Complete</div>';
     else if (!q.missionId) status = '<div class="ui-quest-status">In Progress</div>';
-    else if (q.accepted) status = '<div class="ui-quest-status ok">Accepted — head to the map!</div>';
+    else if (q.accepted) status = '<div class="ui-quest-status ok">Accepted — find it under Battles</div>';
     else status = `<button class="ui-action-btn" data-accept="${esc(q.missionId)}">Accept</button>`;
     return `
       <div class="ui-quest-card ${q.done ? 'ready' : ''}">

@@ -35,20 +35,24 @@ export const HUB_CONFIGS = {
   M0: {
     type: 'village', name: 'Hidden Village', shopId: 'town_sirblanc',
     services: ['shop', 'forge', 'villageQuests'],
+    battles: ['M0a', 'M0b'],
   },
   M3: {
     type: 'capital', name: 'The Capital', shopId: 'generic',
     services: ['shop', 'forge', 'handbook'],
+    battles: ['M3a', 'M3b'],
   },
   A1: {
     type: 'academy', name: 'Ester Academy', shopId: 'generic',
     recruitPool: 'Athletics',
     services: ['shop', 'forge', 'taskList', 'questList', 'recruit'],
+    battles: ['A1a', 'A1b'],
   },
   A2: {
     type: 'academy', name: 'Hilbert Academy', shopId: 'academy_hilbert',
     recruitPool: ['Bat & Ball', 'Ball'],
     services: ['shop', 'forge', 'taskList', 'questList', 'recruit'],
+    battles: ['A2a', 'A2b', 'A2c'],
   },
   // Gale (2026-07-11, "M5 will be redone as Gale, the next kingdom city,
   // not a battle scene") — first hub outside the Capital/academies. No
@@ -79,11 +83,13 @@ export const HUB_CONFIGS = {
     type: 'academy', name: 'Artfall Academy', shopId: 'generic',
     recruitPool: 'Martial Arts',
     services: ['shop', 'forge', 'recruit'],
+    battles: ['GT', 'DK'],
   },
   ZE: {
     type: 'city', name: 'Zester', shopId: 'generic',
     recruitPool: 'Performance',
     services: ['shop', 'forge', 'recruit'],
+    battles: ['MH'],
   },
   // Lametus Capital (2026-07-17, "after m7a is completed the m8 apears
   // which becomes the lametus capital") — same minimum-viable "kingdom
