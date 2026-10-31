@@ -7,11 +7,11 @@ import {
 } from '../data/abilities.js';
 import { onClick, esc } from './domUI.js';
 
-// Playbook/Specials/Skills/Class Skills editor shown in PartyScene's Skills
-// tab. `host` is the owning scene: it keeps `expandedAbility` (ability id
+// Playbook/Specials/Skills/Class Skills editor shown in PartyScene's A. Skills
+// tab, and Class tab when `section` is 'class'. `host` is the owning scene: it keeps `expandedAbility` (ability id
 // whose details row is open) and `picker` ({ category, slotIndex } while the
 // picker modal is open), and re-renders via host.render().
-export function loadoutSectionsHTML(host, unit) {
+export function loadoutSectionsHTML(host, unit, section) {
   const abilityRow = (ab, subLabel) => {
     const expanded = host.expandedAbility === ab.id;
     return `
@@ -60,25 +60,28 @@ export function loadoutSectionsHTML(host, unit) {
       ${ab ? `<span class="ui-ability-desc">${esc(ab.desc)}</span>` : ''}
     </div>`).join('');
 
+  if (section === 'class') {
+    return `
+      <div class="ui-section">
+        <div class="ui-section-label">Class Skills &middot; tap a slot to change</div>
+        ${pool.length ? `<div class="ui-skill-grid">${classSkillsHTML}</div>` : '<div class="ui-empty-note">— no passives known yet —</div>'}
+      </div>`;
+  }
+
   return `
     <div class="ui-section">
-      <div class="ui-section-label">Specials (SP) — tap a slot to change &middot; ${specials.length} known</div>
-      ${specials.length ? specialSlotsHTML : '<div class="ui-empty-note">— none yet —</div>'}
+      <div class="ui-section-label">Specials (SP) &middot; ${specials.length} known</div>
+      ${specials.length ? `<div class="ui-skill-grid">${specialSlotsHTML}</div>` : '<div class="ui-empty-note">— none yet —</div>'}
     </div>
 
     <div class="ui-section">
-      <div class="ui-section-label">Skills (cooldown) — tap a slot to change &middot; ${skills.length} known</div>
-      ${skills.length ? skillSlotsHTML : '<div class="ui-empty-note">— none yet —</div>'}
+      <div class="ui-section-label">Skills (cooldown) &middot; ${skills.length} known</div>
+      ${skills.length ? `<div class="ui-skill-grid">${skillSlotsHTML}</div>` : '<div class="ui-empty-note">— none yet —</div>'}
     </div>
 
     <div class="ui-section">
-      <div class="ui-section-label">Class Skills — tap a slot to change</div>
-      ${pool.length ? classSkillsHTML : '<div class="ui-empty-note">— no passives known yet —</div>'}
-    </div>
-
-    <div class="ui-section">
-      <div class="ui-section-label">Playbook — tap for details</div>
-      ${[ATTACK, THROW].map(a => abilityRow(a, '')).join('')}
+      <div class="ui-section-label">Playbook &middot; tap for details</div>
+      <div class="ui-skill-grid">${[ATTACK, THROW].map(a => abilityRow(a, '')).join('')}</div>
     </div>`;
 }
 

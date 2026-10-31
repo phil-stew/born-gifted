@@ -17,7 +17,8 @@ const SLOT_LABEL = { weapon: 'Class Item', footwear: 'Shoes', handwear: 'Gloves'
 const SLOT_ICON = { weapon: '🏆', footwear: '👟', handwear: '🧤', chest: '🛡', headwear: '⛑' };
 const GEAR_ICON_SIZE = 22;
 const DETAIL_TABS = [
-  { id: 'stats', label: 'Stats' }, { id: 'equipment', label: 'Equipment' }, { id: 'skills', label: 'Skills' },
+  { id: 'stats', label: 'Stats' }, { id: 'equipment', label: 'Equipment' },
+  { id: 'skills', label: 'A. Skills' }, { id: 'class', label: 'Class' },
 ];
 const STAT_DEFS = [
   { key: 'speed', label: 'Speed' }, { key: 'strength', label: 'Strength' },
@@ -232,7 +233,8 @@ export class PartyScene extends Phaser.Scene {
         <div class="ui-slot-grid">${slotsHTML}</div>
       </div>`;
 
-    const tabHTML = this.detailTab === 'skills' ? loadoutSectionsHTML(this, unit)
+    const tabHTML = this.detailTab === 'skills' ? loadoutSectionsHTML(this, unit, 'attack')
+      : this.detailTab === 'class' ? loadoutSectionsHTML(this, unit, 'class')
       : this.detailTab === 'equipment' ? equipmentTabHTML : statsTabHTML;
 
     return `

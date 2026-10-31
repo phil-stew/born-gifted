@@ -930,7 +930,11 @@ canvas {
   .ui-party .ui-slot-grid { gap: 4px; }
   .ui-party .ui-slot { font-size: 13px; padding: 4px 8px; min-height: 0; }
   .ui-party .ui-slot-label { font-size: 10px; }
-  .ui-party .ui-skill-slot, .ui-party .ui-ability-row { padding: 4px 8px; margin-bottom: 3px; }
+  .ui-party .ui-skill-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
+  .ui-party .ui-skill-slot, .ui-party .ui-ability-row { padding: 3px 8px; margin: 0; min-height: 0; }
+  .ui-party .ui-skill-slot { display: block; }
+  .ui-party .ui-skill-slot .ui-ability-name, .ui-party .ui-skill-slot .ui-ability-cost { display: inline; margin-right: 6px; }
+  .ui-party .ui-skill-slot .ui-ability-desc { display: block; margin: 0; line-height: 1.2; }
   .ui-party .ui-ability-name { font-size: 13px; }
   .ui-party .ui-ability-desc, .ui-party .ui-ability-cost { font-size: 12px; }
 
