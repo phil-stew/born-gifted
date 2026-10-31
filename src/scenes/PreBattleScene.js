@@ -1,10 +1,14 @@
 import Phaser from 'phaser';
-import { state, maxBattlePartySize, maxHp, roleDisplayLabel, currentRoleId, ELEMENT_BEATS, elementIcon } from '../data/gameState.js';
+import { state, maxBattlePartySize, maxHp, roleDisplayLabel, currentRoleId, currentDesignations, ELEMENT_BEATS, elementIcon, DESIGNATION_BEATS, DESIGNATION_NAMES, designationIcon } from '../data/gameState.js';
 import { loadHeroSprites, stripHeroBackground, heroKey, firstFrame, spriteKeyForRole } from '../data/heroSprites.js';
 import { mount, unmount, onClick, spriteFrameDataURL, esc } from '../ui/domUI.js';
 import { BACKDROPS } from '../data/storyBackdrops.js';
 import { NODES } from './WorldMapScene.js';
 import { battleHintsOn } from '../data/battleHints.js';
+import { remindersFor } from '../ui/loadoutReminder.js';
+
+// A hero this far below the toughest enemy gets a warning on the Pre-Battle screen.
+const LOW_LEVEL_GAP = 5;
 
 // This screen can come up before ANY mission in any of the 3 kingdoms (it's
 // a roster-cap gate, not a story beat — see the class comment below), so
@@ -26,7 +30,7 @@ export class PreBattleScene extends Phaser.Scene {
 
   init(data) {
     this.battleData = data?.battleData ?? {};
-    this.reinforced = data?.reinforced ?? false;
+    this.rules = data?.rules ?? [];
     this.cap = maxBattlePartySize(state);
     this.showHints = battleHintsOn();
     // Default to whoever's first in roster order, so confirming immediately
@@ -65,9 +69,33 @@ export class PreBattleScene extends Phaser.Scene {
     return `
       <div class="ui-pb-matchup">
         <span>${elementIcon(unit.element)} ${esc(unit.element ?? '')}</span>
-        ${strong && this.showHints ? `<span class="good">▲ Strong vs ${strong}</span>` : ''}
-        ${weak && this.showHints ? `<span class="bad">▼ Weak vs ${weak}</span>` : ''}
-      </div>`;
+        ${strong && this.showHints ? `<span class="good">▲${strong}</span>` : ''}
+        ${weak && this.showHints ? `<span class="bad">▼${weak}</span>` : ''}
+        ${this.showHints ? this.designationHTML(unit) : ''}
+      </div>
+      ${this.showHints ? this.warningHTML(unit) : ''}`;
+  }
+
+  // Same triangle as designationMultiplier in BattleScene. A unit that both
+  // beats and loses to an enemy cancels out to neutral there, so neither counts.
+  designationHTML(unit) {
+    const mine = currentDesignations(unit);
+    const beats = (a, b) => a.some(d => b.includes(DESIGNATION_BEATS[d]));
+    const enemies = (this.battleData.enemyUnits ?? []).map(e => e.designations ?? []);
+    const strong = enemies.filter(e => beats(mine, e) && !beats(e, mine)).length;
+    const weak = enemies.filter(e => beats(e, mine) && !beats(mine, e)).length;
+    return `
+      <span>${mine.map(d => `${designationIcon(d)} ${esc(DESIGNATION_NAMES[d] ?? d)}`).join(' ')}</span>
+      ${strong ? `<span class="good">▲${strong}</span>` : ''}
+      ${weak ? `<span class="bad">▼${weak}</span>` : ''}`;
+  }
+
+  warningHTML(unit) {
+    const top = Math.max(0, ...(this.battleData.enemyUnits ?? []).filter(e => !e.oneShotKill).map(e => e.level));
+    const text = top - unit.level >= LOW_LEVEL_GAP
+      ? `${top - unit.level} levels below the enemies`
+      : remindersFor(unit)[0]?.text;
+    return text ? `<div class="ui-pb-warn">⚠ ${esc(text)}</div>` : '';
   }
 
   cardHTML(unit) {
@@ -92,6 +120,7 @@ export class PreBattleScene extends Phaser.Scene {
     const stat = (label, value) => `<span class="ui-pb-stat">${label} <b>${unknown ? '???' : value}</b></span>`;
     const gear = Object.values(enemy.equip ?? {}).find(Boolean)?.rarity;
     const weakTo = Object.keys(ELEMENT_BEATS).find(el => ELEMENT_BEATS[el] === enemy.element);
+    const weakDesig = Object.keys(DESIGNATION_BEATS).find(d => enemy.designations?.includes(DESIGNATION_BEATS[d]));
     const url = enemy.heroClass
       ? spriteFrameDataURL(this, heroKey(enemy.heroClass), firstFrame(enemy.heroClass))
       : spriteFrameDataURL(this, enemy.spriteKey, 0);
@@ -100,7 +129,7 @@ export class PreBattleScene extends Phaser.Scene {
         ${url ? `<img class="ui-portrait-thumb" src="${url}" alt="">` : '<div class="ui-portrait-thumb"></div>'}
         <div class="ui-card-body">
           <div class="ui-card-name">${esc(enemy.name)}</div>
-          <div class="ui-card-sub">Lv.${unknown ? '???' : enemy.level}${enemy.element ? ` &middot; ${elementIcon(enemy.element)} ${esc(enemy.element)}` : ''}${!this.showHints ? '' : enemy.alwaysWeak ? ' &middot; <span class="ui-pb-good">Weak to all</span>' : weakTo ? ` &middot; <span class="ui-pb-good">Weak to ${elementIcon(weakTo)} ${esc(weakTo)}</span>` : ''}</div>
+          <div class="ui-card-sub">Lv.${unknown ? '???' : enemy.level}${enemy.element ? ` &middot; ${elementIcon(enemy.element)} ${esc(enemy.element)}` : ''}${!this.showHints ? '' : enemy.alwaysWeak ? ' &middot; <span class="ui-pb-good">Weak to all</span>' : weakTo ? ` &middot; <span class="ui-pb-good">Weak to ${elementIcon(weakTo)} ${esc(weakTo)}${weakDesig ? `, ${designationIcon(weakDesig)} ${esc(DESIGNATION_NAMES[weakDesig])}` : ''}</span>` : ''}</div>
           <div class="ui-pb-stats">
             ${stat('HP', enemy.maxHp)}${stat('STR', enemy.strength)}${stat('SPD', enemy.speed)}${stat('END', enemy.endurance)}${gear ? `<span class="ui-pb-stat">${RARITY_LABEL[gear] ?? esc(gear)} gear</span>` : ''}
           </div>
@@ -129,13 +158,13 @@ export class PreBattleScene extends Phaser.Scene {
         <div class="ui-body ui-pb-body">
           <div class="ui-panel ui-list-panel">
             <div class="ui-pb-head">Your team &middot; ${this.selectedIds.length} / ${this.cap}${full ? ' (max)' : ''}</div>
-            ${this.showHints ? '<div class="ui-pb-tip">▲ heroes deal 50% more to those enemies</div>' : ''}
+            ${this.showHints ? '<div class="ui-pb-tip">▲ deals extra damage to that many enemies, ▼ takes extra</div>' : ''}
             ${listHTML}
           </div>
           <div class="ui-panel ui-list-panel">
             <div class="ui-pb-head">Enemies &middot; ${this.battleData.enemyUnits?.length ?? 0}</div>
+            ${this.rules.map(r => `<div class="ui-pb-rule">${esc(r)}</div>`).join('')}
             ${enemiesHTML}
-            ${this.reinforced ? '<div class="ui-card-sub">More enemies arrive during this fight.</div>' : ''}
           </div>
         </div>
         <div class="ui-pb-foot">
@@ -157,7 +186,7 @@ export class PreBattleScene extends Phaser.Scene {
     onClick('[data-nav="party"]', () => this.scene.start('PartyScene', {
       returnTo: {
         scene: 'PreBattleScene', label: 'Pre-Battle',
-        data: { battleData: this.battleData, reinforced: this.reinforced, selectedIds: this.selectedIds },
+        data: { battleData: this.battleData, rules: this.rules, selectedIds: this.selectedIds },
       },
     }));
 

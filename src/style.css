@@ -1009,6 +1009,8 @@ button.ui-quest-card { color: inherit; font: inherit; text-align: left; cursor: 
 .ui-pb-stats { display: flex; flex-wrap: wrap; gap: 2px 14px; margin-top: 4px; }
 .ui-pb-stat { font-size: 14px; color: var(--ui-text-muted); }
 .ui-pb-stat b { color: var(--ui-text); }
+.ui-pb-rule { font-size: 14px; font-weight: 600; color: #ffdd66; padding: 0 4px; }
+.ui-pb-warn { font-size: 13px; color: #ffb066; margin-top: 2px; }
 .ui-pb-tip { font-size: 14px; color: #ffdd66; padding: 0 4px 2px; }
 .ui-pb-matchup { display: flex; flex-wrap: wrap; gap: 2px 12px; margin-top: 3px; font-size: 14px; font-weight: 600; color: var(--ui-text-muted); }
 .ui-pb-matchup .good, .ui-pb-good { color: #6fdc8c; font-weight: 600; }
@@ -1022,5 +1024,5 @@ button.ui-quest-card { color: inherit; font: inherit; text-align: left; cursor: 
   .ui-prebattle .ui-pb-head { font-size: 13px; }
   .ui-prebattle .ui-pb-stat { font-size: 12px; }
   .ui-prebattle .ui-pb-foot { padding: 4px; }
-  .ui-prebattle .ui-pb-tip, .ui-prebattle .ui-pb-matchup { font-size: 12px; }
+  .ui-prebattle .ui-pb-tip, .ui-prebattle .ui-pb-matchup, .ui-prebattle .ui-pb-rule, .ui-prebattle .ui-pb-warn { font-size: 12px; }
 }

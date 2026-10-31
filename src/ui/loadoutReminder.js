@@ -16,7 +16,7 @@ function firstName(unit) {
   return unit.name.split(' ')[0];
 }
 
-function remindersFor(unit) {
+export function remindersFor(unit) {
   const list = [];
   const promo = pendingPromotion(unit);
   if (promo) list.push({ key: `promo:${promo}`, tab: 'stats', text: `${firstName(unit)} can be promoted!` });

@@ -1301,7 +1301,7 @@ export class BattleScene extends Phaser.Scene {
       this.ensureGolemTexture();
       this.scene.start('PreBattleScene', {
         battleData: { ...this._initData, enemyUnits },
-        reinforced: !!missionCfg.reinforce,
+        rules: this.missionRules(missionCfg, enemyUnits),
       });
       return;
     }
@@ -1625,6 +1625,19 @@ export class BattleScene extends Phaser.Scene {
       this.showPhaseBanner('PLAYER TURN');
       this.redraw();
     }
+  }
+
+  // Plain-language notes on how this fight differs from "defeat everyone".
+  missionRules(cfg, enemies) {
+    const rules = [];
+    if (cfg.winCondition?.type === 'bossName') rules.push(`Defeat ${cfg.winCondition.name} to win`);
+    if (cfg.turnLimitVictory) rules.push(`Defeat as many as you can in ${cfg.turnLimit} turns`);
+    else if (cfg.turnLimit) rules.push(`Win within ${cfg.turnLimit} turns`);
+    if (cfg.reinforce) rules.push(`More enemies arrive every ${cfg.reinforce.every} turns`);
+    if (cfg.enemyFirst) rules.push('Enemies move first');
+    if (enemies.some(e => e.corrupted)) rules.push('Corrupted enemies all target one hero');
+    if (enemies.some(e => e.isCorruptedOneBoss)) rules.push('The Corrupted One grows stronger with each ally beside him');
+    return rules;
   }
 
   stripEnemySprites(missionCfg) {
