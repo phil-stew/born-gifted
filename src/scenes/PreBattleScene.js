@@ -4,6 +4,7 @@ import { loadHeroSprites, stripHeroBackground, heroKey, firstFrame, spriteKeyFor
 import { mount, unmount, onClick, spriteFrameDataURL, esc } from '../ui/domUI.js';
 import { BACKDROPS } from '../data/storyBackdrops.js';
 import { NODES } from './WorldMapScene.js';
+import { battleHintsOn } from '../data/battleHints.js';
 
 // This screen can come up before ANY mission in any of the 3 kingdoms (it's
 // a roster-cap gate, not a story beat — see the class comment below), so
@@ -27,6 +28,7 @@ export class PreBattleScene extends Phaser.Scene {
     this.battleData = data?.battleData ?? {};
     this.reinforced = data?.reinforced ?? false;
     this.cap = maxBattlePartySize(state);
+    this.showHints = battleHintsOn();
     // Default to whoever's first in roster order, so confirming immediately
     // reproduces the old no-picker behavior.
     this.selectedIds = (data?.selectedIds ?? state.party.slice(0, this.cap).map(u => u.id))
@@ -63,8 +65,8 @@ export class PreBattleScene extends Phaser.Scene {
     return `
       <div class="ui-pb-matchup">
         <span>${elementIcon(unit.element)} ${esc(unit.element ?? '')}</span>
-        ${strong ? `<span class="good">▲ Strong vs ${strong}</span>` : ''}
-        ${weak ? `<span class="bad">▼ Weak vs ${weak}</span>` : ''}
+        ${strong && this.showHints ? `<span class="good">▲ Strong vs ${strong}</span>` : ''}
+        ${weak && this.showHints ? `<span class="bad">▼ Weak vs ${weak}</span>` : ''}
       </div>`;
   }
 
@@ -98,7 +100,7 @@ export class PreBattleScene extends Phaser.Scene {
         ${url ? `<img class="ui-portrait-thumb" src="${url}" alt="">` : '<div class="ui-portrait-thumb"></div>'}
         <div class="ui-card-body">
           <div class="ui-card-name">${esc(enemy.name)}</div>
-          <div class="ui-card-sub">Lv.${unknown ? '???' : enemy.level}${enemy.element ? ` &middot; ${elementIcon(enemy.element)} ${esc(enemy.element)}` : ''}${enemy.alwaysWeak ? ' &middot; <span class="ui-pb-good">Weak to all</span>' : weakTo ? ` &middot; <span class="ui-pb-good">Weak to ${elementIcon(weakTo)} ${esc(weakTo)}</span>` : ''}</div>
+          <div class="ui-card-sub">Lv.${unknown ? '???' : enemy.level}${enemy.element ? ` &middot; ${elementIcon(enemy.element)} ${esc(enemy.element)}` : ''}${!this.showHints ? '' : enemy.alwaysWeak ? ' &middot; <span class="ui-pb-good">Weak to all</span>' : weakTo ? ` &middot; <span class="ui-pb-good">Weak to ${elementIcon(weakTo)} ${esc(weakTo)}</span>` : ''}</div>
           <div class="ui-pb-stats">
             ${stat('HP', enemy.maxHp)}${stat('STR', enemy.strength)}${stat('SPD', enemy.speed)}${stat('END', enemy.endurance)}${gear ? `<span class="ui-pb-stat">${RARITY_LABEL[gear] ?? esc(gear)} gear</span>` : ''}
           </div>
@@ -127,7 +129,7 @@ export class PreBattleScene extends Phaser.Scene {
         <div class="ui-body ui-pb-body">
           <div class="ui-panel ui-list-panel">
             <div class="ui-pb-head">Your team &middot; ${this.selectedIds.length} / ${this.cap}${full ? ' (max)' : ''}</div>
-            <div class="ui-pb-tip">▲ heroes deal 50% more to those enemies</div>
+            ${this.showHints ? '<div class="ui-pb-tip">▲ heroes deal 50% more to those enemies</div>' : ''}
             ${listHTML}
           </div>
           <div class="ui-panel ui-list-panel">

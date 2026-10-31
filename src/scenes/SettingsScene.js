@@ -5,6 +5,7 @@ import { playSfx, SFX } from '../audio/sound.js';
 import { getSfxVolume, setSfxVolume, getMusicVolume } from '../audio/settings.js';
 import { setMusicVolume } from '../audio/music.js';
 import { DIFFICULTIES, getDifficultyKey, setDifficultyKey } from '../data/difficulty.js';
+import { HINT_MODES, getHintMode, setHintMode } from '../data/battleHints.js';
 
 // Reachable from the title screen only (for now) — see GameScene's
 // SETTINGS button. Both sliders write straight through to
@@ -31,11 +32,12 @@ export class SettingsScene extends Phaser.Scene {
       fontSize: '26px', fontFamily: 'Georgia, serif', fontStyle: 'bold', color: '#ffffff',
     }).setOrigin(0.5);
 
-    this.buildVolumeRow('MUSIC VOLUME', height / 2 - 130, getMusicVolume(), (v) => setMusicVolume(v));
-    this.buildVolumeRow('SOUND EFFECTS VOLUME', height / 2 - 30, getSfxVolume(), (v) => setSfxVolume(v), {
+    this.buildVolumeRow('MUSIC VOLUME', height / 2 - 170, getMusicVolume(), (v) => setMusicVolume(v));
+    this.buildVolumeRow('SOUND EFFECTS VOLUME', height / 2 - 80, getSfxVolume(), (v) => setSfxVolume(v), {
       onRelease: () => playSfx(this, SFX.click),
     });
-    this.buildDifficultyRow(height / 2 + 110);
+    this.buildDifficultyRow(height / 2 + 40);
+    this.buildHintRow(height / 2 + 160);
 
     this.cameras.main.fadeIn(250, 0, 0, 0);
   }
@@ -69,6 +71,28 @@ export class SettingsScene extends Phaser.Scene {
         onClick: () => {
           setDifficultyKey(d.key);
           buttons.forEach((b, bi) => b.setActive(DIFFICULTIES[bi].key === d.key));
+        },
+      });
+      buttons.push(btn);
+    });
+  }
+
+  buildHintRow(y) {
+    const cx = this.scale.width / 2;
+    this.add.text(cx, y - 44, 'BATTLE HINTS', {
+      fontSize: '21px', fontFamily: 'monospace', fontStyle: 'bold', color: '#ccccee',
+    }).setOrigin(0.5);
+
+    const bw = 150, bh = 56, gap = 14;
+    const startX = cx - (HINT_MODES.length * (bw + gap) - gap) / 2 + bw / 2;
+    const buttons = [];
+    HINT_MODES.forEach((mode, i) => {
+      const btn = drawButton(this, {
+        x: startX + i * (bw + gap), y, w: bw, h: bh, label: mode.label, fontSize: '21px',
+        active: mode.key === getHintMode(),
+        onClick: () => {
+          setHintMode(mode.key);
+          buttons.forEach((b, bi) => b.setActive(HINT_MODES[bi].key === mode.key));
         },
       });
       buttons.push(btn);
