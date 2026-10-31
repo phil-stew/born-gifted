@@ -615,32 +615,32 @@ function pickRandomHeroClasses(n) {
   return picks;
 }
 
-// Real Epic-rarity gear across all 5 slots (2026-07-11, "all units will
+// Real gear of one rarity across all 5 slots (2026-07-11, "all units will
 // have epic gears") — reuses rollGearItem(), the same roller player loot
 // uses, with no talents/class-grouping resolution (tournament enemies
 // aren't full player-shaped units) — flat DEFAULT_GEAR_LAYOUT treatment for
 // all of them regardless of class. Consumed by buildEnemyUnit via
 // effectiveStats(), same generic stat/bonusHp/bonusSp aggregation player
 // gear already goes through.
-function rollEpicEquip() {
+function rollEnemyEquip(rarity) {
   const equip = {};
   for (const slot of ['weapon', 'headwear', 'footwear', 'chest', 'handwear']) {
-    equip[slot] = rollGearItem({ slot, rarity: 'epic', talents: [] });
+    equip[slot] = rollGearItem({ slot, rarity, talents: [] });
   }
   return equip;
 }
 
 // Builds one raw tournament enemy def (M4 Instructor's shape: heroClass +
-// explicit stat block, not buildMonster) — `epic` attaches rollEpicEquip().
-// AT1 uses it (real tournament team, 2026-07-11 third follow-up); AT2
-// fights the same random classes without it.
-function tournamentEnemyDef(col, row, className, level, stats, epic = false) {
+// explicit stat block, not buildMonster). Human enemies always wear gear,
+// and `gear` climbs with the story: common at the first Trial, then
+// uncommon, then epic at the Gale Tournament.
+function tournamentEnemyDef(col, row, className, level, stats, gear) {
   return {
     col, row, name: className, heroClass: className,
     spriteKey: heroKey(className), animKey: `${heroKey(className)}-idle`,
     spriteScale: 0.38, moveSpeed: 3, level,
     ...stats,
-    ...(epic ? { equip: rollEpicEquip() } : {}),
+    equip: rollEnemyEquip(gear),
   };
 }
 
@@ -846,12 +846,9 @@ const MISSION_CONFIGS = {
     region: 'Altroes',
     playerPos: { reno:[1,3], drace:[1,4], sela:[1,2], kael:[1,5], trice:[1,1] },
     enemyHeroClasses: ['Hockey Player'],
-    enemies: [
-      { col:5, row:5, name:'Instructor', heroClass:'Hockey Player',
-        spriteKey: heroKey('Hockey Player'), animKey: `${heroKey('Hockey Player')}-idle`,
-        spriteScale: 0.38, moveSpeed:3, level:10,
-        speed:12, strength:15, stamina:44, endurance:40 },
-    ],
+    enemies: () => [
+      tournamentEnemyDef(5, 5, 'Hockey Player', 10, { speed:12, strength:15, stamina:44, endurance:40 }, 'common'),
+    ].map(e => ({ ...e, name: 'Instructor' })),
   },
 
   // ── Region cave/unique-area missions (July 2026) ──────────────────────────
@@ -884,7 +881,7 @@ const MISSION_CONFIGS = {
       const classes = pickRandomHeroClasses(4);
       const pos = [[7,2],[8,4],[7,6],[8,8]];
       const stats = { speed:13, strength:21, stamina:15, endurance:14 };
-      return classes.map((c, i) => tournamentEnemyDef(pos[i][0], pos[i][1], c, 13, stats, true));
+      return classes.map((c, i) => tournamentEnemyDef(pos[i][0], pos[i][1], c, 13, stats, 'common'));
     },
   },
   'AT2': {
@@ -895,7 +892,7 @@ const MISSION_CONFIGS = {
       const classes = pickRandomHeroClasses(4);
       const pos = [[7,2],[8,4],[7,6],[8,8]];
       const stats = { speed:35, strength:64, stamina:46, endurance:42 };
-      return classes.map((c, i) => tournamentEnemyDef(pos[i][0], pos[i][1], c, 30, stats));
+      return classes.map((c, i) => tournamentEnemyDef(pos[i][0], pos[i][1], c, 30, stats, 'uncommon'));
     },
   },
   // M5b removed (2026-07-11 fourth follow-up, "need to remove m5b") — Gale
@@ -962,7 +959,7 @@ const MISSION_CONFIGS = {
       const classes = pickRandomHeroClasses(4);
       const pos = [[7,2],[8,4],[7,6],[8,8]];
       const stats = { speed:15, strength:24, stamina:17, endurance:16 };
-      return classes.map((c, i) => tournamentEnemyDef(pos[i][0], pos[i][1], c, 17, stats, true));
+      return classes.map((c, i) => tournamentEnemyDef(pos[i][0], pos[i][1], c, 17, stats, 'epic'));
     },
   },
 
@@ -1721,7 +1718,7 @@ export class BattleScene extends Phaser.Scene {
     };
     scaled[primaryStat] = Math.round(scaled[primaryStat] * PRIMARY_STAT_BOOST);
     // equip (the next school's tournament, 2026-07-11, "all units will have
-    // epic gear") — real Item objects rolled via rollEpicEquip(), applied
+    // epic gear") — real Item objects rolled via rollEnemyEquip(), applied
     // through the SAME effectiveStats() aggregation player gear already
     // uses (it only needs unit.speed/strength/stamina/endurance/equip, no
     // player-only fields, so it works unmodified on a raw enemy def).
