@@ -8,10 +8,13 @@ import { playSfx, playStinger, SFX } from '../audio/sound.js';
 // existing automatic talent-scaled growth (BASE_GROWTH/levelUpGains in
 // gameState.js), which stays completely untouched: this doesn't replace
 // that system, it adds a second, player-driven growth pool alongside it.
-// 3 points per level actually gained (a `lu` entry can span multiple
+// 1 point per level actually gained (a `lu` entry can span multiple
 // levels in one XP grant — see addXP's per-level loop — so the pool scales
 // with lu.gains.newLevel - lu.gains.oldLevel, not a flat per-screen amount).
-const BONUS_POINTS_PER_LEVEL = 3;
+// Was 3 until the talent multiplier applied to points (2026-10-31): 3 points
+// at ×4 added 12 strength a level and heroes one-shot everything at 600.
+const BONUS_POINTS_PER_LEVEL = 1;
+const pointsLabel = n => `${n} BONUS POINT${n === 1 ? '' : 'S'}`;
 const STAT_ROWS = [
   { key: 'speed',     label: 'Speed',     color: '#4488ff' },
   { key: 'strength',  label: 'Strength',  color: '#ff6644' },
@@ -155,7 +158,7 @@ export class LevelUpScene extends Phaser.Scene {
 
     const bonusPool = (lu.gains.newLevel - lu.gains.oldLevel) * BONUS_POINTS_PER_LEVEL;
     if (bonusPool > 0 && !this.bonusAllocated) {
-      this.add.text(width / 2, sy, `+ ${bonusPool} bonus points to allocate yourself`, {
+      this.add.text(width / 2, sy, `+ ${pointsLabel(bonusPool).toLowerCase()} to allocate yourself`, {
         fontSize: '17px', fontFamily: 'monospace', fontStyle: 'bold', color: '#ffee88',
       }).setOrigin(0.5);
       sy += 25;
@@ -170,7 +173,7 @@ export class LevelUpScene extends Phaser.Scene {
 
     if (bonusPool > 0 && !this.bonusAllocated) {
       drawButton(this, {
-        x: width / 2, y: height - 34, w: 560, h: 56, label: `ALLOCATE ${bonusPool} BONUS POINTS  ▶`,
+        x: width / 2, y: height - 34, w: 560, h: 56, label: `ALLOCATE ${pointsLabel(bonusPool)}  ▶`,
         fontSize: '24px', bg: 0x3a3312, bgHover: 0x4e4420, border: 0x887722, accent: 0xffee88,
         textColor: '#ffffff', textHoverColor: '#ffee88',
         onClick: () => {
@@ -225,11 +228,11 @@ export class LevelUpScene extends Phaser.Scene {
     const spent = Object.values(this.allocated).reduce((a, b) => a + b, 0);
     const remaining = totalPool - spent;
 
-    this.add.text(width / 2, 136, 'BONUS POINTS', {
+    this.add.text(width / 2, 136, remaining === 1 && totalPool === 1 ? 'BONUS POINT' : 'BONUS POINTS', {
       fontSize: '30px', fontFamily: 'Georgia, serif', fontStyle: 'bold',
       color: '#ffee88', stroke: '#000000', strokeThickness: 4,
     }).setOrigin(0.5);
-    this.add.text(width / 2, 176, `${remaining} remaining — tap + to choose where they go`, {
+    this.add.text(width / 2, 176, `${remaining} remaining — tap + to choose where ${totalPool === 1 ? 'it goes' : 'they go'}`, {
       fontSize: '17px', fontFamily: 'monospace', color: '#ccccdd',
     }).setOrigin(0.5);
 

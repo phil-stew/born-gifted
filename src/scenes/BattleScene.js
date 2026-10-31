@@ -94,10 +94,10 @@ const BOSS_LEVEL_BONUS = 2;
 // monster don't get increased stats via leveling") — level previously only
 // fed HP/XP/kit-size (see buildEnemyUnit), leaving raw speed/strength/
 // stamina/endurance untouched by level itself, only by tier/difficulty/
-// repeat multipliers. Matches gameState.js's BASE_GROWTH (players gain +1
-// per stat per level, doubled/quadrupled per talent pick) — added flat,
-// after the existing multipliers, so it doesn't compound with difficulty.
-const MONSTER_LEVEL_GROWTH = 1;
+// repeat multipliers. Twice gameState.js's BASE_GROWTH, since players also
+// gain talent doubling and a bonus point per level — added flat, after the
+// existing multipliers, so it doesn't compound with difficulty.
+const MONSTER_LEVEL_GROWTH = 2;
 function rollRegionArchetype(region) {
   const cfg = REGION_ARCHETYPES[region] ?? REGION_ARCHETYPES.Altroes;
   const primaryStat = Math.random() < 0.9
