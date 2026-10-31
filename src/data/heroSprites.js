@@ -2,14 +2,17 @@
 // Standard sprites: 1536×1024, 6 columns
 // frameHeight = floor(1024 / rowCount) — rows fit cleanly within image height
 
+// bgTol:14 — sheets with dark clothing, which the default tolerance eats holes
+// through. Measured per sheet: it can leave dark specks around attack effects,
+// so sheets with bright effects and light clothing keep the default.
 export const HERO_SPRITES = {
   // ── T1 ────────────────────────────────────────────────────────────────────
   // New art as of 2026-07-02 — grids measured by eye per file, not uniform.
-  'Runner':             { file:'heroes/t1/runnerboy.webp',         cols:6, rows:6, fw:249, fh:175 },
+  'Runner':             { file:'heroes/t1/runnerboy.webp',         cols:6, rows:6, fw:249, fh:175, bgTol:14 },
   'Ice Skater':         { file:'heroes/t1/iceskatergirl.webp',      cols:6, rows:6, fw:249, fh:175 },
-  'Boxer':              { file:'heroes/t1/boxerlightweight.webp',  cols:6, rows:6, fw:249, fh:175 },
+  'Boxer':              { file:'heroes/t1/boxerlightweight.webp',  cols:6, rows:6, fw:249, fh:175, bgTol:14 },
   'Boxer Heavyweight':  { file:'heroes/t1/boxerheavyweight.webp',  cols:6, rows:6, fw:249, fh:175 },
-  'Dart Player':        { file:'heroes/t1/Dartarrowchucker.webp',  cols:6, rows:6, fw:249, fh:175 },
+  'Dart Player':        { file:'heroes/t1/Dartarrowchucker.webp',  cols:6, rows:6, fw:249, fh:175, bgTol:14 },
   // Re-supplied 2026-07-08 — a full replacement sheet, 7 cols x 6 rows
   // (1416x1111, ~202x185/cell; the old 8-col Dancerdance.png this was tuned
   // against — overflowing run poses, runEnd:4, noMoveAnim — no longer
@@ -18,9 +21,9 @@ export const HERO_SPRITES = {
   // fully contained in their cell with no overflow, so none of the old
   // workarounds apply here. skip:0 — column 0 is a real pose every row
   // (confirmed by eye), not a blank label column.
-  'Dancer':             { file:'heroes/t1/Dancerdance.webp',       cols:7, rows:6, fw:202, fh:185, skip:0 },
+  'Dancer':             { file:'heroes/t1/Dancerdance.webp',       cols:7, rows:6, fw:202, fh:185, skip:0, bgTol:14 },
   'Netballer':          { file:'heroes/t1/netGoalattack.webp',     cols:6, rows:6, fw:249, fh:175 },
-  'Netballer Defence':  { file:'heroes/t1/netGaoldefence.webp',    cols:6, rows:6, fw:249, fh:175 },
+  'Netballer Defence':  { file:'heroes/t1/netGaoldefence.webp',    cols:6, rows:6, fw:249, fh:175, bgTol:14 },
   'Lacrosse Player':    { file:'heroes/t1/lacrosseAceattacker.webp', cols:6, rows:6, fw:249, fh:175 },
   'Lacrosse Goalkeeper':{ file:'heroes/t1/LacrosseGoalkeeper.webp', cols:6, rows:6, fw:249, fh:175 },
   'Softball Batter':    { file:'heroes/t1/softbatter.webp',        cols:6, rows:6, fw:249, fh:175 },
@@ -29,11 +32,11 @@ export const HERO_SPRITES = {
   // ── T2 ────────────────────────────────────────────────────────────────────
   // New art as of 2026-07-03 — same 6x6-grid pipeline as T1, grids measured
   // per file (canvas dims aren't perfectly uniform, ~1491-1496 x 1050-1055).
-  'Striker':          { file:'heroes/t2/footballsoccerstrikerboy.webp', cols:6, rows:6, fw:249, fh:175 },
-  'Soccer Goalkeeper':{ file:'heroes/t2/footballsoccergaolkeepboy.webp',cols:6, rows:6, fw:249, fh:175 },
+  'Striker':          { file:'heroes/t2/footballsoccerstrikerboy.webp', cols:6, rows:6, fw:249, fh:175, bgTol:14 },
+  'Soccer Goalkeeper':{ file:'heroes/t2/footballsoccergaolkeepboy.webp',cols:6, rows:6, fw:249, fh:175, bgTol:14 },
   'Long Jumper':      { file:'heroes/t2/AltheticsJumper.webp',   cols:6, rows:6, fw:248, fh:175 },
-  'High Jumper':      { file:'heroes/t2/athlticJumperhigh.webp', cols:6, rows:6, fw:249, fh:175 },
-  'Speed Skater':     { file:'heroes/t2/skaterspeed.webp',       cols:6, rows:6, fw:248, fh:175 },
+  'High Jumper':      { file:'heroes/t2/athlticJumperhigh.webp', cols:6, rows:6, fw:249, fh:175, bgTol:14 },
+  'Speed Skater':     { file:'heroes/t2/skaterspeed.webp',       cols:6, rows:6, fw:248, fh:175, bgTol:14 },
   'Black Belt':       { file:'heroes/t2/karatewado.webp',        cols:6, rows:6, fw:249, fh:175, bgErase: [{ x:114, y:458, w:62, h:63 }, { x:279, y:458, w:67, h:63 }, { x:263, y:461, w:61, h:44 }, { x:322, y:381, w:48, h:25 }, { x:502, y:456, w:111, h:68 }, { x:503, y:471, w:35, h:26 }, { x:500, y:456, w:23, h:31 }, { x:821, y:374, w:119, h:147 }, { x:970, y:420, w:25, h:42 }, { x:971, y:464, w:24, h:48 }, { x:1207, y:420, w:37, h:91 }, { x:1038, y:383, w:47, h:23 }, { x:1228, y:389, w:16, h:32 }, { x:1301, y:460, w:68, h:61 }, { x:1290, y:384, w:47, h:28 }, { x:500, y:354, w:225, h:100, onlyColor:[0,0,0] }, { x:620, y:435, w:100, h:90, onlyColor:[0,0,0] }, { x:540, y:480, w:75, h:45, onlyColor:[0,0,0] }, { x:598, y:440, w:70, h:35, onlyColor:[0,0,0] }, { x:478, y:350, w:24, h:180 }, { x:938, y:350, w:24, h:180 }, { x:748, y:182, w:210, h:170, onlyColor:[0,0,0] }, { x:997, y:182, w:250, h:170, onlyColor:[0,0,0] }] },
   'Kyokushin':        { file:'heroes/t2/karatekyokushin.webp',   cols:6, rows:6, fw:249, fh:175, bgErase: [{ x:45, y:366, w:90, h:84 }, { x:284, y:365, w:88, h:84 }, { x:521, y:381, w:86, h:68 }, { x:529, y:365, w:45, h:27 }, { x:749, y:381, w:73, h:69 }, { x:974, y:394, w:21, h:56 }, { x:749, y:365, w:40, h:27 }, { x:1201, y:451, w:43, h:50 }, { x:1411, y:425, w:73, h:86 }, { x:914, y:378, w:41, h:52, onlyColor:[0,0,0] }, { x:993, y:354, w:201, h:82, onlyColor:[0,0,0] }, { x:993, y:444, w:35, h:74, onlyColor:[0,0,0] }, { x:748, y:182, w:250, h:170, onlyColor:[0,0,0] }, { x:1180, y:182, w:70, h:170, onlyColor:[0,0,0] }, { x:1245, y:230, w:55, h:80, onlyColor:[0,0,0] }] },
   // bgTol: 8 — both paintball sheets use very dark tactical/camo colors
@@ -49,36 +52,36 @@ export const HERO_SPRITES = {
   // fixes it without exceeding the corner-seed inset (see stripBackgroundByKey).
   'Paintballer':      { file:'heroes/t2/paintballsinper.webp',   cols:6, rows:6, fw:248, fh:175, bgTol:8, bgBand:4 },
   'Frontman':         { file:'heroes/t2/paintballfrontman.webp', cols:6, rows:6, fw:248, fh:175, bgTol:8, bgBand:4 },
-  'Gymnast':          { file:'heroes/t2/Gymnatsic.webp',         cols:6, rows:6, fw:248, fh:175 },
-  'Spiker':           { file:'heroes/t2/volleyballspiker.webp',  cols:6, rows:6, fw:248, fh:175 },
-  'Setter':           { file:'heroes/t2/volleyballsetter.webp',  cols:6, rows:6, fw:248, fh:175 },
+  'Gymnast':          { file:'heroes/t2/Gymnatsic.webp',         cols:6, rows:6, fw:248, fh:175, bgTol:14 },
+  'Spiker':           { file:'heroes/t2/volleyballspiker.webp',  cols:6, rows:6, fw:248, fh:175, bgTol:14 },
+  'Setter':           { file:'heroes/t2/volleyballsetter.webp',  cols:6, rows:6, fw:248, fh:175, bgTol:14 },
   // 'Skate Boarder' dropped — no role ever mapped to it and the old art file is gone.
-  'Cricket Player':   { file:'heroes/t2/cricketbatter.webp',     cols:6, rows:6, fw:249, fh:175 },
-  'Cricket Pitcher':  { file:'heroes/t2/criketpitcher.webp',     cols:6, rows:6, fw:249, fh:175 },
+  'Cricket Player':   { file:'heroes/t2/cricketbatter.webp',     cols:6, rows:6, fw:249, fh:175, bgTol:14 },
+  'Cricket Pitcher':  { file:'heroes/t2/criketpitcher.webp',     cols:6, rows:6, fw:249, fh:175, bgTol:14 },
   'Tennis Player':    { file:'heroes/t2/tennissigles.webp',      cols:6, rows:6, fw:248, fh:175 },
   'Tennis Doubles':   { file:'heroes/t2/tennisdoubles.webp',     cols:6, rows:6, fw:248, fh:175 },
   'Cheerleader':      { file:'heroes/t2/cheerleader.webp',       cols:6, rows:6, fw:248, fh:175 },
 
   // ── T3 ────────────────────────────────────────────────────────────────────
-  'Rugger':             { file:'heroes/t3/rugbyaceforward.webp',    cols:6, rows:6, fw:248, fh:175 },
-  'Rugby Defender':     { file:'heroes/t3/rugbyacedefender.webp',   cols:6, rows:6, fw:249, fh:175 },
+  'Rugger':             { file:'heroes/t3/rugbyaceforward.webp',    cols:6, rows:6, fw:248, fh:175, bgTol:14 },
+  'Rugby Defender':     { file:'heroes/t3/rugbyacedefender.webp',   cols:6, rows:6, fw:249, fh:175, bgTol:14 },
   'Quarterback':        { file:'heroes/t3/amfootballqb.webp',       cols:6, rows:6, fw:249, fh:175 },
-  'Am Football Defender':{ file:'heroes/t3/amfootballdefender.webp',cols:6, rows:6, fw:249, fh:175 },
-  'Sprinter':           { file:'heroes/t3/sprinter starter.webp',   cols:6, rows:6, fw:249, fh:175 },
+  'Am Football Defender':{ file:'heroes/t3/amfootballdefender.webp',cols:6, rows:6, fw:249, fh:175, bgTol:8, bgBand:4 },
+  'Sprinter':           { file:'heroes/t3/sprinter starter.webp',   cols:6, rows:6, fw:249, fh:175, bgTol:14 },
   'Sprinter Anchor':    { file:'heroes/t3/sprinterachor.webp',      cols:6, rows:6, fw:249, fh:175 },
-  'Hockey Player':      { file:'heroes/t3/hockeyaceforward.webp',   cols:6, rows:6, fw:249, fh:175 },
-  'Hockey Goalie':      { file:'heroes/t3/hockegoalie.webp',        cols:6, rows:6, fw:249, fh:175 },
-  'MMA':                { file:'heroes/t3/mmaheavyweight.webp',     cols:6, rows:6, fw:249, fh:175 },
+  'Hockey Player':      { file:'heroes/t3/hockeyaceforward.webp',   cols:6, rows:6, fw:249, fh:175, bgTol:14 },
+  'Hockey Goalie':      { file:'heroes/t3/hockegoalie.webp',        cols:6, rows:6, fw:249, fh:175, bgTol:14 },
+  'MMA':                { file:'heroes/t3/mmaheavyweight.webp',     cols:6, rows:6, fw:249, fh:175, bgTol:14 },
   'MMA Lightweight':    { file:'heroes/t3/mmalightweight.webp',     cols:6, rows:6, fw:249, fh:175 },
-  'Kendo':              { file:'heroes/t3/masterkendo.webp',        cols:6, rows:6, fw:249, fh:175 },
-  'Archer':             { file:'heroes/t3/archer.webp',             cols:6, rows:6, fw:249, fh:175, bgErase: [{ x:69, y:462, w:29, h:31 }, { x:295, y:474, w:25, h:19 }, { x:894, y:362, w:101, h:44 }, { x:1156, y:364, w:88, h:39 }, { x:1018, y:462, w:30, h:31 }, { x:1247, y:369, w:19, h:31 }, { x:1361, y:494, w:27, h:30 }, { x:115, y:352, w:90, h:38, onlyColor:[0,0,0] }, { x:344, y:352, w:88, h:38, onlyColor:[0,0,0] }, { x:806, y:352, w:85, h:34, onlyColor:[0,0,0] }, { x:1066, y:352, w:84, h:37, onlyColor:[0,0,0] }, { x:838, y:876, w:38, h:30, onlyColor:[0,0,0] }] },
-  'Aerial Fitness':     { file:'heroes/t3/airfitness.webp',         cols:6, rows:6, fw:248, fh:175 },
+  'Kendo':              { file:'heroes/t3/masterkendo.webp',        cols:6, rows:6, fw:249, fh:175, bgTol:14 },
+  'Archer':             { file:'heroes/t3/archer.webp',             cols:6, rows:6, fw:249, fh:175, bgErase: [{ x:69, y:462, w:29, h:31 }, { x:295, y:474, w:25, h:19 }, { x:894, y:362, w:101, h:44 }, { x:1156, y:364, w:88, h:39 }, { x:1018, y:462, w:30, h:31 }, { x:1247, y:369, w:19, h:31 }, { x:1361, y:494, w:27, h:30 }, { x:115, y:352, w:90, h:38, onlyColor:[0,0,0] }, { x:344, y:352, w:88, h:38, onlyColor:[0,0,0] }, { x:806, y:352, w:85, h:34, onlyColor:[0,0,0] }, { x:1066, y:352, w:84, h:37, onlyColor:[0,0,0] }, { x:838, y:876, w:38, h:30, onlyColor:[0,0,0] }], bgTol:14 },
+  'Aerial Fitness':     { file:'heroes/t3/airfitness.webp',         cols:6, rows:6, fw:248, fh:175, bgTol:14 },
   'Baller':             { file:'heroes/t3/basketballaceforward.webp',cols:6, rows:6, fw:249, fh:175, bgErase: [{ x:124, y:334, w:30, h:15 }, { x:330, y:317, w:49, h:32 }, { x:629, y:325, w:39, h:24 }, { x:553, y:329, w:80, h:20 }, { x:864, y:325, w:53, h:24 }, { x:780, y:325, w:41, h:24 }, { x:776, y:279, w:30, h:26 }, { x:1036, y:325, w:132, h:24 }, { x:1020, y:325, w:21, h:24 }, { x:1392, y:325, w:32, h:24 }, { x:1420, y:325, w:20, h:24 }, { x:1359, y:325, w:21, h:24 }, { x:1294, y:335, w:36, h:14 }] },
   // 'Parkour' dropped — no role ever mapped to it and the old art file is gone.
   'Baseball Player':    { file:'heroes/t3/baseballbatter.webp',     cols:6, rows:6, fw:256, fh:170 },
   'Baseball Pitcher':   { file:'heroes/t3/baseballpitcher.webp',    cols:6, rows:6, fw:248, fh:175 },
   'Golfer':             { file:'heroes/t3/gulfer.webp',             cols:6, rows:6, fw:249, fh:175, bgErase: [{ x:971, y:396, w:24, h:24 }, { x:1052, y:354, w:147, h:57 }, { x:998, y:373, w:35, h:120, onlyColor:[0,0,0] }, { x:95, y:60, w:90, h:120, onlyColor:[0,0,0] }, { x:338, y:110, w:30, h:70, onlyColor:[0,0,0] }, { x:570, y:65, w:65, h:115, onlyColor:[0,0,0] }, { x:808, y:70, w:65, h:110, onlyColor:[0,0,0] }, { x:1050, y:65, w:70, h:115, onlyColor:[0,0,0] }, { x:1285, y:60, w:70, h:120, onlyColor:[0,0,0] }, { x:818, y:875, w:70, h:22, onlyColor:[0,0,0] }, { x:1060, y:875, w:65, h:22, onlyColor:[0,0,0] }, { x:1297, y:875, w:70, h:22, onlyColor:[0,0,0] }] },
-  'Figure Skater':      { file:'heroes/t3/figureskater.webp',       cols:6, rows:6, fw:247, fh:176, bgErase: [{ x:112, y:448, w:39, h:38 }, { x:135, y:485, w:31, h:29 }, { x:594, y:451, w:31, h:39 }, { x:603, y:483, w:37, h:31 }, { x:618, y:456, w:19, h:33 }, { x:836, y:444, w:57, h:34 }, { x:892, y:436, w:33, h:30 }, { x:1148, y:444, w:32, h:32 }, { x:1294, y:484, w:29, h:30 }, { x:1356, y:354, w:84, h:32, onlyColor:[0,0,0] }] },
+  'Figure Skater':      { file:'heroes/t3/figureskater.webp',       cols:6, rows:6, fw:247, fh:176, bgErase: [{ x:112, y:448, w:39, h:38 }, { x:135, y:485, w:31, h:29 }, { x:594, y:451, w:31, h:39 }, { x:603, y:483, w:37, h:31 }, { x:618, y:456, w:19, h:33 }, { x:836, y:444, w:57, h:34 }, { x:892, y:436, w:33, h:30 }, { x:1148, y:444, w:32, h:32 }, { x:1294, y:484, w:29, h:30 }, { x:1356, y:354, w:84, h:32, onlyColor:[0,0,0] }], bgTol:14 },
 };
 
 // Role id → existing HERO_SPRITES key (unchanged old class-name strings —
@@ -216,6 +219,36 @@ function clearGridBoundaries(d, W, H, cols, rows, bandPx = 3) {
   }
 }
 
+// Some sheets have a faint box drawn just inside each cell, past the reach of
+// clearGridBoundaries. A row or column near the cell edge that is mostly solid
+// is that box, since a sprite's outline never fills most of a cell's width.
+const CELL_LINE_REACH = 24;
+const CELL_LINE_FILL = 0.75;
+const CELL_LINE_SIDE_FILL = 0.3; // side lines can be dashed; a staff or bat is thicker
+function clearStrayCellLines(d, W, x0, y0, x1, y1) {
+  const isOpaque = (x, y) => d[(y * W + x) * 4 + 3] > 0;
+  const clear = (x, y) => { d[(y * W + x) * 4 + 3] = 0; };
+  const cellW = x1 - x0 + 1, cellH = y1 - y0 + 1;
+  const columnSolid = (x) => {
+    let solid = 0;
+    for (let y = y0; y <= y1; y++) if (isOpaque(x, y)) solid++;
+    return solid;
+  };
+  for (let i = 0; i < CELL_LINE_REACH; i++) {
+    for (const y of [y0 + i, y1 - i]) {
+      let solid = 0;
+      for (let x = x0; x <= x1; x++) if (isOpaque(x, y)) solid++;
+      if (solid > cellW * CELL_LINE_FILL) for (let x = x0; x <= x1; x++) clear(x, y);
+    }
+    for (const x of [x0 + i, x1 - i]) {
+      const left = columnSolid(Math.max(x0, x - 4)), right = columnSolid(Math.min(x1, x + 4));
+      if (columnSolid(x) > cellH * CELL_LINE_SIDE_FILL && Math.min(left, right) < cellH * 0.05) {
+        for (let y = y0; y <= y1; y++) clear(x, y);
+      }
+    }
+  }
+}
+
 // Same flood-fill strip, keyed directly by an already-loaded texture key
 // rather than a HERO_SPRITES class name — used for non-hero sheets (e.g.
 // monster spritesheets) that share this baked-solid-background convention.
@@ -334,6 +367,23 @@ export function stripBackgroundByKey(scene, key, { cols, rows, tol, band, erase 
         floodFill(Math.max(0, x1 - inset),     Math.min(H - 1, y0 + inset));
         floodFill(Math.min(W - 1, x0 + inset), Math.max(0, y1 - inset));
         floodFill(Math.max(0, x1 - inset),     Math.max(0, y1 - inset));
+
+        // Background walled in by art, like the gap between planted feet,
+        // still touches the cell edge somewhere, so seed along all four sides.
+        const seedIfBlack = (x, y) => {
+          const pi = (y * W + x) * 4;
+          if (Math.max(d[pi], d[pi + 1], d[pi + 2]) < TOL) floodFill(x, y);
+        };
+        for (let x = x0 + inset; x <= x1 - inset; x += 3) {
+          seedIfBlack(x, y0 + inset);
+          seedIfBlack(x, y1 - inset);
+        }
+        for (let y = y0 + inset; y <= y1 - inset; y += 3) {
+          seedIfBlack(x0 + inset, y);
+          seedIfBlack(x1 - inset, y);
+        }
+
+        clearStrayCellLines(d, W, x0, y0, x1, y1);
       }
     }
   }

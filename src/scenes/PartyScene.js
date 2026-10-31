@@ -4,7 +4,7 @@ import {
   roleDisplayLabel, currentRoleId, roleById, pendingPromotion, chainById,
   sportById, t3SportOptions, promoteUnit, gearLayoutForUnit, equipItem, dismissUnit,
 } from '../data/gameState.js';
-import { rarityColor, gearItemFrame, registerGearFrames, GEAR_SHEET } from '../data/items.js';
+import { rarityColor, gearItemFrame, registerGearFrames, ICON_SHEET_STRIP } from '../data/items.js';
 import { loadHeroSprites, stripHeroBackground, heroKey, firstFrame, spriteKeyForRole, stripBackgroundByKey } from '../data/heroSprites.js';
 import { mount, unmount, onClick, spriteFrameDataURL, iconDataURL, esc } from '../ui/domUI.js';
 import { loadoutSectionsHTML, loadoutPickerHTML, wireLoadoutEvents } from '../ui/loadoutPanel.js';
@@ -62,7 +62,7 @@ export class PartyScene extends Phaser.Scene {
 
     // Icon sheet is baked with a solid black background (no alpha channel),
     // same as EquipmentScene's copy of this sheet.
-    stripBackgroundByKey(this, 'gears', { cols: GEAR_SHEET.cols, rows: GEAR_SHEET.rows });
+    stripBackgroundByKey(this, 'gears', ICON_SHEET_STRIP);
     registerGearFrames(this);
 
     this.render();

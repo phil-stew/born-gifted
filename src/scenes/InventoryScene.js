@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { state, roleDisplayLabel } from '../data/gameState.js';
-import { rarityColor, gearItemFrame, materialFrameName, GEAR_SHEET, registerGearFrames, MATERIAL_ICON_FRAME } from '../data/items.js';
+import { rarityColor, gearItemFrame, materialFrameName, ICON_SHEET_STRIP, registerGearFrames, MATERIAL_ICON_FRAME } from '../data/items.js';
 import { stripBackgroundByKey } from '../data/heroSprites.js';
 import { drawButton, drawBackButton, drawCurrency, currencyLabel } from '../ui/canvasButton.js';
 import { playSfx, SFX } from '../audio/sound.js';
@@ -25,8 +25,8 @@ export class InventoryScene extends Phaser.Scene {
   }
 
   _registerFrames() {
-    stripBackgroundByKey(this, 'gears',     { cols: GEAR_SHEET.cols, rows: GEAR_SHEET.rows });
-    stripBackgroundByKey(this, 'materials', { cols: 5, rows: 3 }); // irregular sheet; approximate for seeding
+    stripBackgroundByKey(this, 'gears',     ICON_SHEET_STRIP);
+    stripBackgroundByKey(this, 'materials', ICON_SHEET_STRIP);
     registerGearFrames(this);
     if (this.textures.exists('materials')) {
       const tex = this.textures.get('materials');
@@ -49,7 +49,8 @@ export class InventoryScene extends Phaser.Scene {
       return null;
     }
     if (!frame || !this.textures.exists(texKey) || !this.textures.get(texKey).has(frame)) return null;
-    return this.add.image(x, y, texKey, frame).setDisplaySize(w, h).setOrigin(0.5);
+    const img = this.add.image(x, y, texKey, frame).setOrigin(0.5);
+    return img.setScale(Math.min(w / img.width, h / img.height));
   }
 
   create() {
@@ -283,7 +284,7 @@ export class InventoryScene extends Phaser.Scene {
     const { item, count } = entry;
     let y = startY + 18;
 
-    const bigIcon = this._itemIcon(cx, y + 20, item, 64, 64);
+    const bigIcon = this._itemIcon(cx, y + 18, item, 52, 52);
     if (bigIcon) { this.detCon.add(bigIcon); y += 54; }
 
     const rlvl = item.reinforceLevel ?? 0;

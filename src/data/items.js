@@ -1,6 +1,6 @@
 // Item database — slots: weapon | footwear | handwear | chest | headwear
 // `sport` drives icon lookup via gearItemFrame (see ITEM_SPORT_TO_CLASS /
-// GEAR_CLASS_COL / GEAR_SLOT_ROW below) — rarity is shown separately via
+// GEAR_ICON_FRAME / GEAR_SLOT_ROW below) — rarity is shown separately via
 // rarityColor(), not baked into the icon art.
 
 import { TALENT_STAT_KEY, roleDisplayLabel, SPORTS } from './gameState.js';
@@ -206,14 +206,16 @@ export const MATERIAL_STACK_CAP = 25;
 // adjacency (see SPORTS[*].class in gameState.js): Bat & Ball, Racquet,
 // Target, Athletics, Martial Arts, Ball, Performance.
 // Rows are slots: weapon(class item), headwear, footwear, chest, handwear.
-export const GEAR_SHEET = {
-  cols: 7, rows: 5,
-  cellW: 1536 / 7,
-  cellH: 1024 / 5,
-};
-export const GEAR_CLASS_COL = {
-  'Bat & Ball': 0, 'Racquet': 1, 'Target': 2, 'Athletics': 3,
-  'Martial Arts': 4, 'Ball': 5, 'Performance': 6,
+// The art doesn't sit on an even grid and drifts past any uniform cell, so each
+// icon is an [x, y, w, h] crop measured off the sheet, listed in GEAR_SLOT_ROW order.
+export const GEAR_ICON_FRAME = {
+  'Bat & Ball': [[18, 48, 207, 205], [30, 276, 179, 172], [12, 462, 219, 161], [36, 636, 166, 174], [20, 823, 207, 166]],
+  'Racquet': [[250, 46, 216, 208], [241, 293, 211, 127], [253, 462, 197, 153], [243, 633, 186, 169], [263, 826, 127, 160]],
+  'Target': [[484, 54, 213, 200], [494, 282, 161, 160], [473, 460, 179, 165], [462, 635, 198, 174], [445, 828, 195, 158]],
+  'Athletics': [[709, 62, 190, 196], [710, 303, 177, 108], [677, 468, 223, 147], [689, 640, 174, 164], [658, 828, 188, 157]],
+  'Martial Arts': [[920, 46, 206, 210], [912, 276, 195, 166], [909, 466, 176, 160], [898, 637, 179, 172], [881, 826, 200, 170]],
+  'Ball': [[1122, 64, 191, 178], [1117, 268, 169, 171], [1103, 459, 210, 166], [1094, 647, 219, 153], [1097, 818, 196, 176]],
+  'Performance': [[1336, 48, 187, 209], [1335, 275, 183, 173], [1327, 462, 188, 164], [1323, 645, 191, 162], [1316, 814, 200, 178]],
 };
 export const GEAR_SLOT_ROW = { weapon: 0, headwear: 1, footwear: 2, chest: 3, handwear: 4 };
 
@@ -243,23 +245,20 @@ export function gearItemFrame(item, slot = item?.slot) {
   return `gear_${cls}_${slot}`;
 }
 
-// Slices the 'gears' spritesheet into one named frame per {class, slot} cell
-// (see GEAR_SHEET above). Shared by every scene that shows gear icons so the
-// frame layout only has to be described once.
+// Both icon sheets sit on solid black and their art has near-black outlines and
+// shading, so they strip with a low tolerance and no grid: a grid would carve
+// divider lines through icons that cross a cell edge.
+export const ICON_SHEET_STRIP = { tol: 14 };
+
+// Names one frame per {class, slot} icon on the 'gears' sheet. Shared by every
+// scene that shows gear icons.
 export function registerGearFrames(scene) {
   if (!scene.textures.exists('gears')) return;
   const tex = scene.textures.get('gears');
-  const { cellW, cellH } = GEAR_SHEET;
-  // Sheet is 1536x1024 over 7 cols / 5 rows, neither of which divides evenly
-  // (cellW/cellH are fractional) — round each cell's edges independently
-  // rather than using a fixed fractional width/height, so neighboring frames
-  // always meet exactly at an integer pixel with no overlap or gap.
-  for (const [cls, col] of Object.entries(GEAR_CLASS_COL)) {
-    const x0 = Math.round(col * cellW), x1 = Math.round((col + 1) * cellW);
+  for (const [cls, frames] of Object.entries(GEAR_ICON_FRAME)) {
     for (const [slot, row] of Object.entries(GEAR_SLOT_ROW)) {
-      const y0 = Math.round(row * cellH), y1 = Math.round((row + 1) * cellH);
       const name = `gear_${cls}_${slot}`;
-      if (!tex.has(name)) tex.add(name, 0, x0, y0, x1 - x0, y1 - y0);
+      if (!tex.has(name)) tex.add(name, 0, ...frames[row]);
     }
   }
 }

@@ -215,7 +215,7 @@ export const NODES = [
   { id:'M7a', x:474, y:575, short:'God Trials', noLine:true, gold:true, arc:'Trial', name:"The Noble Deity",     connectsFrom:'M7' },
   // The 7 Trials (2026-07-17, "7 trail... 1 trial for each weapon class")
   // — one per CLASS_GEAR_LAYOUT/classGrouping key (gameState.js), the same
-  // 7 groupings GEAR_CLASS_COL/items.js already treats as authoritative.
+  // 7 groupings GEAR_ICON_FRAME/items.js already treats as authoritative.
   // Laid out in a row along the bottom of the map (empty space, per
   // drawScenery's own margin comment) — side:true (diamond marker) since
   // clearing all 7 isn't gated behind each other or required to keep

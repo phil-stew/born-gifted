@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { state, gearLayoutForUnit, roleDisplayLabel } from '../data/gameState.js';
-import { getItem, gearItemFrame, materialFrameName, rollGearItem, GEAR_SHEET, GEAR_CLASS_COL, GEAR_SLOT_ROW, MATERIAL_ICON_FRAME } from '../data/items.js';
+import { getItem, gearItemFrame, materialFrameName, rollGearItem, ICON_SHEET_STRIP, registerGearFrames, MATERIAL_ICON_FRAME } from '../data/items.js';
 import { stripBackgroundByKey } from '../data/heroSprites.js';
 import { playSfx, SFX } from '../audio/sound.js';
 import { playMusic } from '../audio/music.js';
@@ -126,8 +126,8 @@ export class ShopScene extends Phaser.Scene {
   create() {
     playMusic(this, 'hub');
 
-    stripBackgroundByKey(this, 'gears',     { cols: GEAR_SHEET.cols,     rows: GEAR_SHEET.rows });
-    stripBackgroundByKey(this, 'materials', { cols: 5, rows: 3 }); // irregular sheet; approximate for seeding
+    stripBackgroundByKey(this, 'gears',     ICON_SHEET_STRIP);
+    stripBackgroundByKey(this, 'materials', ICON_SHEET_STRIP);
     this._registerFrames();
     this._drawBackdrop();
 
@@ -145,16 +145,7 @@ export class ShopScene extends Phaser.Scene {
   }
 
   _registerFrames() {
-    if (this.textures.exists('gears')) {
-      const tex = this.textures.get('gears');
-      const { cellW, cellH } = GEAR_SHEET;
-      for (const [cls, col] of Object.entries(GEAR_CLASS_COL)) {
-        for (const [slot, row] of Object.entries(GEAR_SLOT_ROW)) {
-          const name = `gear_${cls}_${slot}`;
-          if (!tex.has(name)) tex.add(name, 0, col * cellW, row * cellH, cellW, cellH);
-        }
-      }
-    }
+    registerGearFrames(this);
     if (this.textures.exists('materials')) {
       const tex = this.textures.get('materials');
       for (const [id, [x, y, w, h]] of Object.entries(MATERIAL_ICON_FRAME)) {
