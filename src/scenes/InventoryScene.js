@@ -238,15 +238,6 @@ export class InventoryScene extends Phaser.Scene {
         fontSize: big ? '15px' : '9px', fontFamily: 'monospace', color: item.type === 'material' ? '#88bb55' : '#7799bb',
       }));
 
-      // Stat mini-summary
-      const stats = Object.entries(item.stats ?? {});
-      if (stats.length) {
-        const statStr = stats.map(([k, v]) => `+${v}${k[0].toUpperCase()}`).join(' ');
-        this.listCon.add(this.add.text(rx + rowW - 10, big ? iy + 33 : iy + 5, statStr, {
-          fontSize: big ? '15px' : '10px', fontFamily: 'monospace', color: '#66bbdd',
-        }).setOrigin(1, 0));
-      }
-
       const z = this.add.zone(rx + rowW / 2, iy + boxH / 2, rowW, boxH).setInteractive({ useHandCursor: true });
       z.on('pointerover',  () => { if (!isSelectedIdx) draw(true); });
       z.on('pointerout',   () => { if (!isSelectedIdx) draw(false); });
