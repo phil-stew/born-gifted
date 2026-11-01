@@ -42,15 +42,16 @@ const WEATHER_FX = {
   sun:    { w: 2, h: 2, color: 0xffe68a, speedX: { min: -10, max: 10 }, speedY: { min: 20, max: 50 }, lifespan: 9000, alpha: { start: 0.7, end: 0 }, frequency: 80, tint: 0xffc23c, tintAlpha: 0.1 },
 };
 const DANCE_WEATHER = {
-  rain: { name: 'Rain', icon: '🌧', banner: 'RAIN', desc: 'Soaks everyone each round  ·  3 rounds' },
-  wind: { name: 'Wind', icon: '🌬', banner: 'WIND', desc: 'Fire attacks +50%  ·  3 rounds' },
-  snow: { name: 'Snow', icon: '❄', banner: 'SNOW', desc: 'Ranged attacks miss 20%  ·  3 rounds' },
-  sun:  { name: 'Sun',  icon: '☀', banner: 'SUN',  desc: 'Wet and Frozen -2 turns each round  ·  3 rounds' },
+  rain: { name: 'Rain', icon: '🌧', banner: 'RAIN', desc: 'Soaks everyone each round  ·  3 rounds', effect: 'soaks everyone' },
+  wind: { name: 'Wind', icon: '🌬', banner: 'WIND', desc: 'Fire attacks +50%  ·  3 rounds', effect: 'Fire +50%' },
+  snow: { name: 'Snow', icon: '❄', banner: 'SNOW', desc: 'Ranged attacks miss 20%  ·  3 rounds', effect: 'ranged 20% miss' },
+  sun:  { name: 'Sun',  icon: '☀', banner: 'SUN',  desc: 'Wet and Frozen -2 turns each round  ·  3 rounds', effect: 'dries Wet, thaws Frozen' },
 };
 const DANCE_ROUNDS = 3, WIND_FIRE_BONUS = 1.5, SNOW_MISS_CHANCE = 0.2, SUN_DRY_TURNS = 2;
 const HAZARD_COUNT = { newbie: [1, 2], veteran: [2, 5], perilous: [6, 10] };
 const HAZARD_COUNT_REPLAY = { 1: [1, 2], 1.2: [2, 5], 1.5: [6, 10] }; // keyed by replay stat multiplier
-const MAX_STATUS_ICONS = 3;
+const MAX_STATUS_ICONS = 3, BATTLE_LOG_LINES = 4;
+const SKY_HIT_NAME = { cometLightning: 'Lightning', cometEarth: 'A falling rock', orbWater: 'An ice ball' };
 const FREEZE_TURNS = 2, FREEZE_MOVE_LOSS = 2, WET_FREEZE_EXTRA = 1;
 const BURN_TURNS = 3, BURN_DAMAGE = 0.05, FIRE_BURN_CHANCE = 0.25;
 // Bigger isometric tiles (2026-07-07 feedback) — was 64×32 at .setScale(2)
@@ -1101,6 +1102,7 @@ export class BattleScene extends Phaser.Scene {
     this.missionCfg = missionCfg;
     activeWeather = null;
     this.weather = null;
+    this.battleLog = null;
     this.startWeather(missionCfg);
     this.eruptionTiles = [];
     this.missionId = missionId;
@@ -1354,6 +1356,15 @@ export class BattleScene extends Phaser.Scene {
     this.turnText = this.add.text(width - 10, 5, 'Turn 1', {
       fontSize: '20px', color: '#ccd6ff', fontFamily: 'monospace',
     }).setOrigin(1, 0).setDepth(1001);
+    // Same count again above the battle log, with the mission's limit if it has one.
+    this.infoPanel = this.add.text(width - 10, height - 30, '', {
+      fontSize: '14px', fontFamily: 'monospace', color: '#dfe8ff', stroke: '#000000', strokeThickness: 3,
+      align: 'right', lineSpacing: 4,
+    }).setOrigin(1, 1).setDepth(2600);
+    this.logTurnText = this.add.text(10, height - 46 - BATTLE_LOG_LINES * 19 - 3, '', {
+      fontSize: '15px', fontFamily: 'monospace', fontStyle: 'bold', color: '#ffee88', stroke: '#000000', strokeThickness: 3,
+    }).setDepth(2600);
+    this.updateTurnText();
 
     if (diff > 1.0) {
       // Legacy replay-picker banner (Hard/Elite) — untouched.
@@ -2383,6 +2394,7 @@ export class BattleScene extends Phaser.Scene {
     dmg = Math.round(dmg * this.passiveDefenseMultiplier(target) * this.difficultyDamageMult(partner));
     dmg = this.absorbShield(target, dmg);
     this.elementReaction(partner, target, followUp);
+    this.logHit(partner, target, followUp, dmg);
     target.hp = Math.max(0, target.hp - dmg);
 
     const { x, y } = this.gridToScreen(target.col, target.row);
@@ -2420,6 +2432,7 @@ export class BattleScene extends Phaser.Scene {
     // math (the advisor's flag on NOT literally computing a "10000x"
     // damage number). Only ever set on MISSION_CONFIGS.M7's enemies.
     if (attacker.oneShotKill) dmg = defender.hp;
+    this.logHit(attacker, defender, ATTACK, dmg);
 
     const { x, y } = this.gridToScreen(defender.col, defender.row);
     const color = attacker.team === 'player' ? '#ffee44' : '#ff5555';
@@ -2499,6 +2512,7 @@ export class BattleScene extends Phaser.Scene {
     defender.dodgeReady = false;
     const { x, y } = this.gridToScreen(defender.col, defender.row);
     this.showEffect(x, y + TH2, 'BLOCKED', '#66ddff');
+    this.logEvent(`${this.logName(defender)} blocks ${this.logName(attacker)}`, '#66ddff');
     this.redraw();
     if (defender.fakeCounterReady) {
       defender.fakeCounterReady = false;
@@ -2522,6 +2536,7 @@ export class BattleScene extends Phaser.Scene {
 
   killUnit(unit) {
     playSfx(this, SFX.death);
+    this.logEvent(`${this.logName(unit)} is defeated`, '#ffdd66');
     unit.isDead = true;
     if (unit.team === 'enemy') {
       this.killedEnemies++;
@@ -3680,6 +3695,7 @@ export class BattleScene extends Phaser.Scene {
       dmg = Math.round(dmg * this.passiveDefenseMultiplier(target) * this.difficultyDamageMult(unit));
       dmg = this.absorbShield(target, dmg);
       this.elementReaction(unit, target, ability);
+      this.logHit(unit, target, ability, dmg);
       target.hp = Math.max(0, target.hp - dmg);
       const { x, y } = this.gridToScreen(target.col, target.row);
       this.showDamage(x, y + TH2, dmg, '#ffaa22', this.countDamageBonuses(unit, target, ability));
@@ -3896,6 +3912,7 @@ export class BattleScene extends Phaser.Scene {
       dmg = Math.round(dmg * this.passiveDefenseMultiplier(target) * this.difficultyDamageMult(unit));
       dmg = this.absorbShield(target, dmg);
       this.elementReaction(unit, target, ability);
+      this.logHit(unit, target, ability, dmg);
       target.hp = Math.max(0, target.hp - dmg);
 
       const { x, y } = this.gridToScreen(target.col, target.row);
@@ -3961,6 +3978,48 @@ export class BattleScene extends Phaser.Scene {
     unit.sprite.play(key);
     const idle = unit.fixedIdleFrames ? `${unit.spriteKey}-fixedidle` : unit.animKey;
     unit.sprite.once('animationcomplete', () => { if (idle) unit.sprite?.play(idle); });
+  }
+
+  // Bottom right: the weather now, and what each status on the board does.
+  updateInfoPanel() {
+    const cfg = this.missionCfg, w = this.weather;
+    const weather = w ? `${DANCE_WEATHER[w.type].icon} ${DANCE_WEATHER[w.type].name} (${w.rounds}): ${DANCE_WEATHER[w.type].effect}`
+      : cfg.thunderStorm ? '⛈ Storm: lightning 1-10% HP'
+      : cfg.eruption ? '🌋 Eruption: rocks 1-10% HP + Burn'
+      : cfg.blizzard ? '🌨 Blizzard: ice 1-10% HP + Freeze'
+      : '🌤 Clear skies';
+    const units = [...this.playerUnits, ...this.enemyUnits].filter(u => !u.isDead);
+    const debuffed = (type) => units.some(u => u.debuffs?.some(d => d.type === type));
+    const lines = [
+      weather,
+      units.some(u => u.wetTurns > 0) && '💧 Wet: Lightning ×2, Fire ×½',
+      units.some(u => u.burnTurns > 0) && '🔥 Burning: 5% max HP a turn',
+      units.some(u => u.frozenTurns > 0) && '🥶 Frozen: -2 move, no reactions',
+      debuffed('stun') && '💫 Stunned: skips its turn',
+      debuffed('slow') && '🐌 Slowed: less move',
+    ].filter(Boolean);
+    this.infoPanel.setText(lines.join('\n'));
+  }
+
+  // The last few actions, bottom left. Display only, so it never takes a tap.
+  logEvent(text, color = '#ffffff') {
+    const { height } = this.scale;
+    this.battleLog ??= Array.from({ length: BATTLE_LOG_LINES }, (_, i) => this.add.text(10, height - 46 - (BATTLE_LOG_LINES - 1 - i) * 19, '', {
+      fontSize: '14px', fontFamily: 'monospace', stroke: '#000000', strokeThickness: 3,
+    }).setDepth(2600));
+    for (let i = 0; i < BATTLE_LOG_LINES - 1; i++) {
+      const next = this.battleLog[i + 1];
+      this.battleLog[i].setText(next.text).setColor(next.style.color).setAlpha(0.7 + i * 0.1);
+    }
+    this.battleLog[BATTLE_LOG_LINES - 1].setText(text).setColor(color).setAlpha(1);
+  }
+  logName(unit) {
+    return unit.team === 'player' ? unit.name.split(' ')[0] : unit.name;
+  }
+  logHit(attacker, target, ability, dmg) {
+    const move = ability === ATTACK || ability === THROW ? '' : `'s ${ability.name}`;
+    const color = attacker.team === 'player' ? '#9fd4ff' : '#ffb0a0';
+    this.logEvent(`${this.logName(attacker)}${move} hits ${this.logName(target)} for ${dmg}`, color);
   }
 
   // Every status on a unit as [icon, label], each with its own icon. Drives
@@ -4081,6 +4140,7 @@ export class BattleScene extends Phaser.Scene {
     unit.hp = Math.max(0, unit.hp - dmg);
     const { x, y } = this.gridToScreen(unit.col, unit.row);
     this.showDamage(x, y + TH2 - 16, dmg, '#ff8844');
+    this.logEvent(`${this.logName(unit)} burns for ${dmg}`, '#ff8844');
   }
   tickBurn(unit) {
     if (unit.isDead || !(unit.burnTurns > 0)) return;
@@ -4105,8 +4165,6 @@ export class BattleScene extends Phaser.Scene {
     else if (element === 'Wind' && target.burnTurns > 0) this.burnDamage(target);
   }
 
-  // Ice maps: each new round ice balls hit hazardTiles() for 1-10% of max HP
-  // and Freeze whoever they hit.
   blizzardRound() {
     for (const { col, row } of this.hazardTiles()) {
       const unit = this.unitMap.get(`${col},${row}`);
@@ -4208,6 +4266,8 @@ export class BattleScene extends Phaser.Scene {
   updateTurnText() {
     const w = this.weather;
     this.turnText.setText(`Turn ${this.turnCount}${w ? `  ${DANCE_WEATHER[w.type].icon} ${w.rounds}` : ''}`);
+    const limit = this.missionCfg.turnLimit;
+    this.logTurnText.setText(`Turn ${this.turnCount}${limit ? ` of ${limit}` : ''}`);
   }
   // The pick shown by Weather Dance. Each option is the same ability, so they
   // share one cooldown.
@@ -4260,31 +4320,11 @@ export class BattleScene extends Phaser.Scene {
   }
 
   // Falling rain, embers or snow over the map's hazards. Kept light for phones.
-  startWeather(cfg) {
-    const style = cfg.thunderStorm ? WEATHER.rain : cfg.eruption ? WEATHER.embers : cfg.blizzard ? WEATHER.snow : null;
-    if (!style) return;
-    const key = `weather-${style.w}-${style.h}-${style.color}`;
-    if (!this.textures.exists(key)) {
-      const g = this.add.graphics();
-      g.fillStyle(style.color, 1);
-      g.fillRect(0, 0, style.w, style.h);
-      g.generateTexture(key, style.w, style.h);
-      g.destroy();
-    }
-    const { width, height } = this.scale;
-    if (style.tint) this.add.rectangle(width / 2, height / 2, width, height, style.tint, 0.22).setDepth(2400);
-    this.add.particles(0, style.fromBottom ? height + 8 : -8, key, {
-      x: { min: -40, max: width + 40 },
-      speedX: style.speedX, speedY: style.speedY,
-      lifespan: style.lifespan, alpha: style.alpha, angle: 0,
-      frequency: style.frequency, quantity: 1,
-    }).setDepth(2500);
-  }
-
   healUnit(unit, amount) {
     unit.hp = Math.min(unit.maxHp, unit.hp + amount);
     const { x, y } = this.gridToScreen(unit.col, unit.row);
     this.showEffect(x, y + TH2, `+${amount} HP`, '#44ffaa');
+    this.logEvent(`${this.logName(unit)} heals ${amount}`, '#44ffaa');
   }
   tickRegen(unit) {
     if (!unit.regen) return;
@@ -4329,6 +4369,7 @@ export class BattleScene extends Phaser.Scene {
     this.skyImpact(pos, frame);
     playSfx(this, SFX.hit);
     this.showDamage(pos.x, pos.y + TH2, hit, color);
+    this.logEvent(`${SKY_HIT_NAME[frame]} hits ${this.logName(unit)} for ${hit}`, color);
     this.playEnemyAnim(unit, 'hurt');
     if (unit.team === 'player') {
       unit.hitFlash = true;
@@ -4358,6 +4399,7 @@ export class BattleScene extends Phaser.Scene {
     if (Math.random() < hitChance) return false;
     const { x, y } = this.gridToScreen(target.col, target.row);
     this.showEffect(x, y + TH2 - 22, 'MISS', '#cccccc');
+    this.logEvent(`${this.logName(attacker)} misses ${this.logName(target)}`, '#cccccc');
     return true;
   }
 
@@ -4611,6 +4653,7 @@ export class BattleScene extends Phaser.Scene {
       dmg = Math.round(dmg * this.passiveDefenseMultiplier(target) * this.difficultyDamageMult(attacker));
       dmg = this.absorbShield(target, dmg);
       this.elementReaction(attacker, target, ability);
+      this.logHit(attacker, target, ability, dmg);
       target.hp  = Math.max(0, target.hp - dmg);
 
       const { x, y } = this.gridToScreen(target.col, target.row);
@@ -4954,6 +4997,7 @@ export class BattleScene extends Phaser.Scene {
     dmg = this.absorbShield(target, dmg);
     this.elementReaction(attacker, target, ability);
     if (attacker.oneShotKill) dmg = target.hp; // see doAttack's oneShotKill comment
+    this.logHit(attacker, target, ability, dmg);
     target.hp = Math.max(0, target.hp - dmg);
 
     const { x, y } = this.gridToScreen(target.col, target.row);
@@ -5601,6 +5645,8 @@ export class BattleScene extends Phaser.Scene {
       : this.phase === 'enemy_turn' ? 'Enemy turn...'
       :                               ''
     );
+
+    this.updateInfoPanel();
 
     // Action hint
     const hints = {
