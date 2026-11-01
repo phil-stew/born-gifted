@@ -775,7 +775,7 @@ export const DESIGNATION_SPECIALS = {
   Rg: [ { id: 'tri_throw',  minLevel: 1 }, { id: 'sharp_throw', minLevel: CLASS_TIER_LEVELS.t2 } ],
 };
 export const DESIGNATION_SKILL_POOL = {
-  S: [ { id: 'heal_dance', minLevel: 1 }, { id: 'regen_dance', minLevel: 9 }, { id: 'weather_dance', minLevel: 1 } ],
+  S: [ { id: 'regen_dance', minLevel: 9 }, { id: 'heal_dance', minLevel: 15 }, { id: 'weather_dance', minLevel: 1 } ],
   D: [ { id: 'shield', minLevel: 1 } ],
 };
 export const DESIGNATION_PASSIVE_POOL = {
