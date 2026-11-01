@@ -209,7 +209,7 @@ export class ShopScene extends Phaser.Scene {
     ].filter(Boolean).map(esc).join(' &middot; ');
     const stats = Object.entries(item.stats ?? {}).map(([stat, val]) =>
       `<div class="ui-item-stat">+${val} ${esc(stat[0].toUpperCase() + stat.slice(1))}</div>`).join('')
-      + (item.baseValues ? '<div class="ui-item-desc">Base stats. The hero\'s class multiplies them: ×1 to ×3.</div>' : '');
+      + (item.baseValues ? '<div class="ui-item-desc">Base stats. The hero\'s class multiplies them: ×1 to ×4.</div>' : '');
     return `
       <div class="ui-item-head">
         ${this.iconHTML(item, 64)}

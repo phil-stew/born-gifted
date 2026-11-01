@@ -226,18 +226,22 @@ export function sportById(sportId) {
 // (ITEM_FRAMES in items.js is keyed by these exact slot names); 'weapon' is
 // simply the slot the redesign calls the "Class Item" — that's a rename at
 // the display/label level for a later UI pass, not a stored-data rename.
-// classItemMultiplier is the stat multiplier applied to a Class Item's own
-// rolled lines (see rollGearItem in items.js) — classes with fewer slots
-// get a stronger Class Item to compensate.
+// classItemMultiplier is what the hero's class multiplies a Class Item by: +1
+// for every slot short of a full 5 (set below from `slots`), so classes with
+// fewer slots get a stronger Class Item to compensate.
 export const CLASS_GEAR_LAYOUT = {
-  'Bat & Ball':   { slots: ['weapon', 'headwear', 'footwear', 'chest', 'handwear'], classItemMultiplier: 1 },
-  'Ball':         { slots: ['weapon', 'headwear', 'footwear', 'chest', 'handwear'], classItemMultiplier: 1 },
-  'Racquet':      { slots: ['weapon', 'headwear', 'footwear', 'chest', 'handwear'], classItemMultiplier: 1 },
-  'Target':       { slots: ['weapon', 'headwear', 'footwear', 'chest', 'handwear'], classItemMultiplier: 1 },
-  'Athletics':    { slots: ['weapon', 'headwear', 'chest', 'handwear'], classItemMultiplier: 2 },
-  'Martial Arts': { slots: ['weapon', 'chest', 'footwear', 'headwear'], classItemMultiplier: 2 },
-  'Performance':  { slots: ['weapon', 'chest'], classItemMultiplier: 3, weaponItemMultiplier:3},
+  'Bat & Ball':   { slots: ['weapon', 'headwear', 'footwear', 'chest', 'handwear'] },
+  'Ball':         { slots: ['weapon', 'headwear', 'footwear', 'chest', 'handwear'] },
+  'Racquet':      { slots: ['weapon', 'headwear', 'footwear', 'chest', 'handwear'] },
+  'Target':       { slots: ['weapon', 'headwear', 'footwear', 'chest', 'handwear'] },
+  'Athletics':    { slots: ['weapon', 'headwear', 'chest', 'handwear'] },
+  'Martial Arts': { slots: ['weapon', 'chest', 'footwear', 'headwear'] },
+  'Performance':  { slots: ['weapon', 'chest'] },
 };
+const FULL_GEAR_SLOTS = 5;
+for (const layout of Object.values(CLASS_GEAR_LAYOUT)) {
+  layout.classItemMultiplier = 1 + FULL_GEAR_SLOTS - layout.slots.length;
+}
 // Fallback for any class grouping that somehow doesn't match above — full
 // 5-slot layout, no bonus. Shouldn't be hit in practice (every SPORTS class
 // grouping is covered above).
@@ -820,13 +824,16 @@ export function classItemScale(unit, item) {
   return gearLayoutForUnit(unit).classItemMultiplier;
 }
 
+// What each class's Class Items were multiplied by back when that was baked in.
+const OLD_ROLLED_MULT = { Athletics: 2, 'Martial Arts': 2, Performance: 3 };
+
 // Older saves stored a Class Item's values already multiplied, by item.classMult
 // or by the class named in forClass. Turns those back into base values, once.
 function toBaseClassItem(item) {
   if (item?.slot !== 'weapon' || item.rarity === 'god' || item.baseValues) return item;
   const entry = Object.entries(SPORTS).find(([, s]) => s.roles?.some(r => r.name === item.forClass));
   const layoutKey = entry && (GEAR_LAYOUT_SPORT_OVERRIDE[entry[0]] ?? entry[1].class);
-  const rolled = item.classMult ?? CLASS_GEAR_LAYOUT[layoutKey]?.classItemMultiplier ?? 1;
+  const rolled = item.classMult ?? OLD_ROLLED_MULT[layoutKey] ?? 1;
   for (const k of Object.keys(item.stats ?? {})) item.stats[k] = Math.round(item.stats[k] / rolled);
   for (const k of Object.keys(item.multipliers ?? {})) item.multipliers[k] /= rolled;
   delete item.classMult;
