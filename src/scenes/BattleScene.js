@@ -2536,6 +2536,7 @@ export class BattleScene extends Phaser.Scene {
   }
 
   killUnit(unit) {
+    if (unit.isDead) return; // an AoE can land on a target it just killed
     playSfx(this, SFX.death);
     this.logEvent(`${this.logName(unit)} is defeated`, '#ffdd66');
     unit.isDead = true;
@@ -3658,8 +3659,10 @@ export class BattleScene extends Phaser.Scene {
       const c = unit.col + dcol * step, r = unit.row + drow * step;
       if (c < 0 || c >= COLS || r < 0 || r >= ROWS) break;
       const occ = this.unitMap.get(`${c},${r}`);
-      if (occ?.team === 'enemy' && !occ.isDead) targets.push({ unit: occ, dist: step });
-      else if (occ) break;
+      if (occ?.team === 'enemy' && !occ.isDead) {
+        // A big monster fills two tiles of the line but is still one target.
+        if (!targets.some(t => t.unit === occ)) targets.push({ unit: occ, dist: step });
+      } else if (occ) break;
     }
 
     // Collect AoE adjacent targets (Tackle Kick phase 1)
@@ -3692,6 +3695,7 @@ export class BattleScene extends Phaser.Scene {
 
     const partnerAtkMult = this.partnerAttackMultiplier(unit);
     const applyHit = (target, mult) => {
+      if (target.isDead) return;
       let dmg = Math.round(calcAtk(unit) * mult * designationMultiplier(unit, target, ability) * elementMultiplier(unit, target, ability) * partnerAtkMult);
       dmg = Math.round(dmg * this.passiveDefenseMultiplier(target) * this.difficultyDamageMult(unit));
       dmg = this.absorbShield(target, dmg);
@@ -4575,7 +4579,7 @@ export class BattleScene extends Phaser.Scene {
       const amount = ability.amount * this.gracefulnessMultiplier(attacker);
       const radius = ability.aoeRadius ?? 1;
       const affected = this.playerUnits.filter(o =>
-        !o.isDead && Math.abs(o.col - target.col) + Math.abs(o.row - target.row) <= radius
+        !o.isDead && Math.abs(o.col - target.col) <= radius && Math.abs(o.row - target.row) <= radius
       );
       for (const ally of affected) {
         const hpDelta = Math.round(ally.maxHp * amount);

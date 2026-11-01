@@ -524,7 +524,7 @@ export const ABILITIES = {
     selfActivate: true,
     excludeSportIds: ['hockey'], requiresNoPartner: true,
     cost: 'ALL', range: 3, targetType: 'all', multiplier: 2.0, hits: 2, hitsAllUnitsOnField: true,
-    desc: '2× dmg × 2 hits, EVERY unit on field (incl. enemies)  ·  range 3  ·  ALL SP  ·  Non-Hockey, only without a sports partner',
+    desc: '2× dmg × 2 hits, all enemies and Ball allies in range 3  ·  ALL SP  ·  Non-Hockey, only without a sports partner',
   },
 
   // Performance (dance/cheerleading/gymnastics/figure skating/aerial fitness)
