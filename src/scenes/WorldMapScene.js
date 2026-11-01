@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { towerUnlocked, isTowerFloor } from '../data/tower.js';
 import { state, saveGame, allAcademyQuestsDone, allGaleQuestsDone, resolvePartyLines, TOTAL_MISSIONS } from '../data/gameState.js';
 import { stripBackgroundByKey } from '../data/heroSprites.js';
 import { BACKDROPS } from '../data/storyBackdrops.js';
@@ -212,6 +213,7 @@ export const NODES = [
   // click-time or live-check logic here. Now the golden God Trials node in
   // the desert: it opens HubBattlesScene's list of T1-T7. Its HUB_CONFIGS
   // entry has no services, so it isn't a real hub and needs no forge.
+  { id:'TT', x:640, y:600, short:'Tower', noLine:true, gold:true, arc:'Trial', name:'Tower of Trials' },
   { id:'M7a', x:474, y:575, short:'God Trials', noLine:true, gold:true, arc:'Trial', name:"The Noble Deity",     connectsFrom:'M7' },
   // The 7 Trials (2026-07-17, "7 trail... 1 trial for each weapon class")
   // — one per CLASS_GEAR_LAYOUT/classGrouping key (gameState.js), the same
@@ -530,6 +532,7 @@ export class WorldMapScene extends Phaser.Scene {
     // only makes the node/quest-menu entry visible; actually entering the
     // battle still requires accepting it at the Hidden Village's Quest Menu
     // (see onMissionClick's M0a/M0b gating on state.questAccepted).
+    if (towerUnlocked(state) && !state.unlockedMissions.includes('TT')) state.unlockedMissions.push('TT');
     if (!state.unlockedMissions.includes('M0b') && state.party.some(u => u.level >= 8)) {
       state.unlockedMissions.push('M0b');
     }
@@ -864,7 +867,7 @@ export class WorldMapScene extends Phaser.Scene {
     drawCurrency(this, state.tytrate, width - 14, height - 24);
 
     // Mission count
-    const done = state.completedMissions.length;
+    const done = state.completedMissions.filter(id => !isTowerFloor(id)).length;
     this.add.text(width - 230, height - 24, `${done} / ${TOTAL_MISSIONS}`, {
       fontSize: '15px', fontFamily: 'monospace', color: '#9999aa',
     }).setOrigin(1, 0.5);
@@ -904,6 +907,8 @@ export class WorldMapScene extends Phaser.Scene {
   onMissionClick(node) {
     this.hideTooltip();
     const isCompleted = state.completedMissions.includes(node.id);
+
+    if (node.id === 'TT') { this.scene.start('TowerScene'); return; }
 
     // ── M0: Hidden Village (home hub) ────────────────────────────────────
     // First visit plays the father's-request intro and unlocks M1. Once M1

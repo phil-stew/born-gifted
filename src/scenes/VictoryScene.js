@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { isTowerFloor, towerFloorOf, towerReward } from '../data/tower.js';
 import { state, addXP, xpToNext, completeMission, roleDisplayLabel, TRIAL_CLASS, sportById, currentSport, resolvePartyLines } from '../data/gameState.js';
 import { getMissionMaterials, getKillDrops, rollHealHerbDrop, rollBracketedDrop, rollGodTierClassItem } from '../data/items.js';
 import { BACKDROPS } from '../data/storyBackdrops.js';
@@ -233,7 +234,8 @@ export class VictoryScene extends Phaser.Scene {
     for (const item of killDrops) state.inventory.push(item);
     const materials = getMissionMaterials(this.missionId);
     for (const mat of materials) state.inventory.push(mat);
-    const tytrateReward = MISSION_TYTRATE[this.missionId] ?? 0;
+    const towerFirstClear = isTowerFloor(this.missionId) && this.isFirstClear;
+    const tytrateReward = towerFirstClear ? towerReward(towerFloorOf(this.missionId)) : (MISSION_TYTRATE[this.missionId] ?? 0);
     if (tytrateReward) state.tytrate += tytrateReward;
     // Heal Herb: 25% chance per battle, independent of the guaranteed
     // MISSION_MATERIALS table above (which still separately guarantees one on M1).

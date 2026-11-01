@@ -5,6 +5,7 @@ import {
   DESIGNATION_BEATS, designationIcon, DESIGNATION_CYCLE, ELEMENT_CYCLE, ELEMENT_BEATS,
 } from '../data/gameState.js';
 import { buildTerrain } from '../data/terrain.js';
+import { TOWER_FLOORS, towerFloorId, towerFloorLevel, towerFloorPlace, towerStage, towerEnemies, isTowerFloor } from '../data/tower.js';
 import { PROJECTILE_SHEET, registerProjectileFrames, projectileFor, projectileDisplaySize, projectileHeading } from '../data/projectiles.js';
 import { ATTACK, THROW, ABILITIES, getEquippedSpecialAbilities, getEquippedSkillAbilities, getEquippedPassives } from '../data/abilities.js';
 import { loadHeroSprites, createHeroAnims, stripHeroBackground, stripBackgroundByKey, trimmedSheetConfig, heroKey, getSpriteInfo, firstFrame, spriteKeyForRole, HERO_SPRITES } from '../data/heroSprites.js';
@@ -348,6 +349,11 @@ const STAGE_THEME = {
   M4: 'arena', A1b: 'arena', AT1: 'arena', AT2: 'arena', GT: 'arena', M7: 'arena', FT: 'arena',
   T1: 'field', T2: 'field', T3: 'field', T4: 'field', T5: 'field', T6: 'field', T7: 'field',
 };
+for (let floor = 1; floor <= TOWER_FLOORS; floor++) {
+  const id = towerFloorId(floor);
+  STAGE_CONFIGS[id] = towerStage(floor);
+  STAGE_THEME[id] = towerFloorPlace(floor).theme;
+}
 for (const [id, cfg] of Object.entries(STAGE_CONFIGS)) {
   Object.assign(cfg, buildTerrain(id, STAGE_THEME[id] ?? 'plains', COLS));
 }
@@ -872,6 +878,19 @@ const MISSION_CONFIGS = {
   // nothing left here either. (M6 itself was reused for a brand-new mission
   // above, 2026-07-17 — unrelated to the one removed here.)
 };
+
+for (let floor = 1; floor <= TOWER_FLOORS; floor++) {
+  const id = towerFloorId(floor);
+  const place = towerFloorPlace(floor);
+  MISSION_ENEMY_LEVEL[id] = towerFloorLevel(floor);
+  MISSION_CONFIGS[id] = {
+    region: place.region,
+    ...(place.hazard ? { [place.hazard]: true } : {}),
+    weather: place.weather,
+    playerPos: { reno:[1,3], drace:[1,4], sela:[1,2], kael:[1,5], trice:[1,1], zora:[1,0] },
+    enemies: () => towerEnemies(floor),
+  };
+}
 
 const enemyMaxHp = u => (u.endurance + u.stamina) * (2 + (u.level ?? 1));
 const calcAtk    = u => Math.round((u.strength + Math.round(u.speed * 0.5) + rand(0, 3)) * (u.atkBuff ?? 1.0));
@@ -1423,6 +1442,7 @@ export class BattleScene extends Phaser.Scene {
     // body — the only visible side effect is Turn 1's player phase reads as
     // "Turn 2" once the ambush round finishes (startPlayerTurn always
     // increments turnCount), which is fine here since Turn 1 IS the ambush.
+    if (missionCfg.weather) this.setWeather(missionCfg.weather, Infinity);
     if (missionCfg.enemyFirst) {
       this.startEnemyTurn();
     } else {
@@ -1548,7 +1568,8 @@ export class BattleScene extends Phaser.Scene {
     const missionLevel = MISSION_ENEMY_LEVEL[this._enemyCtx.missionId];
     const baseLevel = missionLevel == null ? d.level
       : missionLevel + (d.kind === 'boss' || d.kind === 'unique' ? BOSS_LEVEL_BONUS : 0);
-    const lv = Math.min(REPEAT_LEVEL_CAP, scaledLevel(baseLevel) + repeatLevelBonus);
+    const levelCap = isTowerFloor(this._enemyCtx.missionId) ? Infinity : REPEAT_LEVEL_CAP;
+    const lv = Math.min(levelCap, scaledLevel(baseLevel) + repeatLevelBonus);
     const { primaryStat, element } = rollRegionArchetype(region);
     const levelGrowth = MONSTER_LEVEL_GROWTH * (lv - 1);
     const scaled = {
@@ -3988,7 +4009,7 @@ export class BattleScene extends Phaser.Scene {
   // Bottom right: the weather now, and what each status on the board does.
   updateInfoPanel() {
     const cfg = this.missionCfg, w = this.weather;
-    const weather = w ? `${DANCE_WEATHER[w.type].icon} ${DANCE_WEATHER[w.type].name} (${w.rounds}): ${DANCE_WEATHER[w.type].effect}`
+    const weather = w ? `${DANCE_WEATHER[w.type].icon} ${DANCE_WEATHER[w.type].name}${w.rounds === Infinity ? '' : ` (${w.rounds})`}: ${DANCE_WEATHER[w.type].effect}`
       : cfg.thunderStorm ? '⛈ Storm: lightning 1-10% HP'
       : cfg.eruption ? '🌋 Eruption: rocks 1-10% HP + Burn'
       : cfg.blizzard ? '🌨 Blizzard: ice 1-10% HP + Freeze'
@@ -4244,11 +4265,11 @@ export class BattleScene extends Phaser.Scene {
   // Weather Dance: lasts DANCE_ROUNDS rounds, for both sides. Rain soaks everyone
   // and Sun dries everyone at the start of each round; Wind and Snow apply in
   // elementMultiplier and coverBlocks.
-  setWeather(type) {
+  setWeather(type, rounds = DANCE_ROUNDS) {
     activeWeather = type;
-    this.weather = { type, rounds: DANCE_ROUNDS };
+    this.weather = { type, rounds };
     this.showWeather(WEATHER_FX[type]);
-    this.showPhaseBanner(DANCE_WEATHER[type].banner);
+    if (rounds !== Infinity) this.showPhaseBanner(DANCE_WEATHER[type].banner);
     this.applyWeather();
     this.updateTurnText();
   }
@@ -4269,10 +4290,13 @@ export class BattleScene extends Phaser.Scene {
     this.weather = null;
     activeWeather = null;
     this.showWeather(this.mapWeather);
+    if (this.missionCfg.weather) this.setWeather(this.missionCfg.weather, Infinity); // the map's own weather returns
+    this.updateTurnText();
   }
   updateTurnText() {
     const w = this.weather;
-    this.turnText.setText(`Turn ${this.turnCount}${w ? `  ${DANCE_WEATHER[w.type].icon} ${w.rounds}` : ''}`);
+    const roundsLeft = w?.rounds === Infinity ? '' : ` ${w?.rounds}`;
+    this.turnText.setText(`Turn ${this.turnCount}${w ? `  ${DANCE_WEATHER[w.type].icon}${roundsLeft}` : ''}`);
     const limit = this.missionCfg.turnLimit;
     this.logTurnText.setText(`Turn ${this.turnCount}${limit ? ` of ${limit}` : ''}`);
   }
@@ -5041,7 +5065,7 @@ export class BattleScene extends Phaser.Scene {
         return;
       }
       const ab = ABILITIES[id];
-      const range = this.effectiveRange(attacker, ab);
+      const range = this.effectiveRange(boss, ab);
       const dist = this.distanceToUnit(boss.col, boss.row, target);
       const reach = ab.atMaxRangeOnly ? dist === range : dist <= range;
       if (reach) { this.enemySkillAttack(boss, ab, target); return; }
