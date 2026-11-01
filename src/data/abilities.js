@@ -264,10 +264,10 @@ export const ABILITIES = {
     desc: 'Restore SP to target ally  ·  range 3, 15%  ·  CD 2',
   },
 
-  // Pure Support only. Using it opens a pick of the four weathers below.
+  // Pure Support only, with 300 Endurance. Using it opens a pick of the weathers.
   weather_dance: {
     id: 'weather_dance', name: 'Weather Dance', icon: '🌦', category: 'skill',
-    cooldown: 5, targetType: 'self', selfActivate: true, effect: 'weatherDance', pureSupportOnly: true,
+    cooldown: 5, targetType: 'self', selfActivate: true, effect: 'weatherDance', pureSupportOnly: true, minEndurance: 300,
     desc: 'Pick the weather for 3 rounds: Rain, Wind, Snow or Sun  ·  CD 5',
   },
 
@@ -970,7 +970,16 @@ export function skillUnlockEntries() {
   for (const pool of [DESIGNATION_SPECIALS, DESIGNATION_SKILL_POOL, DESIGNATION_PASSIVE_POOL]) {
     for (const [designation, list] of Object.entries(pool)) {
       const name = DESIGNATION_NAMES[designation];
-      for (const e of list) add(e.id, name, e.minLevel, levelTag(e.minLevel), atLevel(`${ABILITIES[e.id]?.pureSupportOnly ? 'Pure ' : ''}${name} heroes`, e.minLevel));
+      for (const e of list) {
+        const need = ABILITIES[e.id]?.minEndurance;
+        if (need) {
+          const text = `Pure ${name} heroes with Endurance ${need} (gear counts)`;
+          add(e.id, name, need, `End ${need}`, text);
+          add(e.id, 'Endurance', need, `${need}`, text);
+        } else {
+          add(e.id, name, e.minLevel, levelTag(e.minLevel), atLevel(`${name} heroes`, e.minLevel));
+        }
+      }
     }
   }
   for (const pool of [CLASS_GROUPING_SPECIALS, CLASS_GROUPING_SKILL_POOL, CLASS_GROUPING_PASSIVE_POOL]) {
@@ -1083,7 +1092,8 @@ export function getUnitSkills(unit) {
     .flatMap(d => DESIGNATION_SKILL_POOL[d] ?? [])
     .filter(e => level >= e.minLevel)
     .map(e => ABILITIES[e.id])
-    .filter(ab => !ab.pureSupportOnly || currentDesignations(unit).length === 1);
+    .filter(ab => !ab.pureSupportOnly
+      || (currentDesignations(unit).length === 1 && talentStat(unit, 'endurance') >= ab.minEndurance));
 
   const classPool = unlockedClassNames(unit)
     .flatMap(c => CLASS_GROUPING_SKILL_POOL[c] ?? [])
