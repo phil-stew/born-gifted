@@ -1112,6 +1112,7 @@ const hasActiveBuff = u =>
   !!u.dodgeReady ||
   !!u.endureReady ||
   !!u.counterReady ||
+  !!u.shieldHp ||
   (u.overdriveTurns ?? 0) > 0 ||
   !!u.damageReduction;
 
@@ -1824,8 +1825,10 @@ export class BattleScene extends Phaser.Scene {
     // exclusive (see init()'s comment), so only one of these two ever
     // actually applies on a given battle.
     const maxSp = Math.round(spForLevel(lv) * diff) + (this.difficultyCfg?.enemySpBonus ?? 0);
+    const ace = passives.some(p => p.id === 'ace');
     return {
-      ...scaled, abilities: skills, passives,
+      ...scaled, abilities: skills, passives, equippedPassives: passives.map(p => p.ability),
+      speed: Math.round(scaled.speed * (ace ? 1.1 : 1)), strength: Math.round(scaled.strength * (ace ? 1.1 : 1)),
       hp: maxHp, maxHp, isDead: false, debuffs: [], baseMoveSpeed: d.moveSpeed,
       sp: maxSp + bonusSp, maxSp, skillCooldowns: {}, skillUses: {},
     };
@@ -2462,10 +2465,10 @@ export class BattleScene extends Phaser.Scene {
     return block;
   }
   // Stopper: the first hit each round on an ally within 2 tiles lands on the
-  // Stopper hero instead. Returns who actually takes the hit.
+  // Stopper unit instead, for heroes and monsters alike. Returns who actually takes the hit.
   stopperIntercept(defender) {
-    if (defender.team !== 'player') return defender;
-    const stopper = this.playerUnits.find(o => o !== defender && !o.isDead && !o.stopperUsedThisTurn
+    const team = defender.team === 'player' ? this.playerUnits : this.enemyUnits;
+    const stopper = team.find(o => o !== defender && !o.isDead && !o.stopperUsedThisTurn
       && this.hasPassive(o, 'stopper')
       && Math.abs(o.col - defender.col) + Math.abs(o.row - defender.row) <= 2);
     if (!stopper) return defender;
@@ -2487,7 +2490,9 @@ export class BattleScene extends Phaser.Scene {
   rangeBonus(unit, ability) {
     const lockOn = (this.sportsPartnerAdjacent(unit) && this.hasPassive(unit, 'lock_on')) ? 3 : 0;
     const focus = (this.hasPassive(unit, 'focus') && (ability.exactRange ?? ability.range ?? 1) > 1) ? 1 : 0;
-    const plusRange = (this.hasPassive(unit, 'ranged_plus_range') && ability === THROW) ? 5 : 0;
+    // Monsters have no Throw, so their normal attack carries it.
+    const normalRanged = unit.team === 'enemy' ? ATTACK : THROW;
+    const plusRange = (this.hasPassive(unit, 'ranged_plus_range') && ability === normalRanged) ? 5 : 0;
     return lockOn + focus + plusRange;
   }
   effectiveRange(unit, ability) {
@@ -2627,6 +2632,7 @@ export class BattleScene extends Phaser.Scene {
     let dmg = 0;
     for (let h = 0; h < hits; h++) dmg += Math.round(calcAtk(partner) * followUpMult * desigMult * elemMult);
     dmg = Math.round(dmg * this.passiveDefenseMultiplier(target) * this.difficultyDamageMult(partner));
+    dmg = this.absorbShield(target, dmg);
     target.hp = Math.max(0, target.hp - dmg);
 
     const { x, y } = this.gridToScreen(target.col, target.row);
@@ -2646,26 +2652,13 @@ export class BattleScene extends Phaser.Scene {
   // ── Combat ────────────────────────────────────────────────────────────────
 
   doAttack(attacker, defender) {
-    // Guard: redirect the attack to the guardian protecting this ally, if any
-    if (defender.guardedBy && !defender.guardedBy.isDead) {
-      const guardian = defender.guardedBy;
-      defender.guardedBy = null;
-      defender = guardian;
-    } else {
-      defender = this.stopperIntercept(defender);
-    }
-
-    if (defender.dodgeReady) {
-      defender.dodgeReady = false;
-      const { x, y } = this.gridToScreen(defender.col, defender.row);
-      this.showEffect(x, y + TH2, 'BLOCKED', '#66ddff');
-      this.redraw();
-      return;
-    }
+    defender = this.redirectHit(defender);
+    if (this.tryDodge(defender, attacker)) return;
 
     let dmg = Math.round(calcAtk(attacker) * designationMultiplier(attacker, defender, ATTACK) * elementMultiplier(attacker, defender, ATTACK)
       * this.partnerAttackMultiplier(attacker));
     dmg = Math.round(dmg * this.passiveDefenseMultiplier(defender) * this.difficultyDamageMult(attacker));
+    dmg = this.absorbShield(defender, dmg);
     if (defender.damageReduction) {
       dmg = Math.max(0, dmg - defender.damageReduction.amount);
     }
@@ -2708,15 +2701,51 @@ export class BattleScene extends Phaser.Scene {
     this.tryCounter(defender, attacker);
   }
 
-  // Counter Hit: an armed hero who survives an attack hits back once with a
-  // normal attack, if the attacker is inside their Throw range.
+  // Counter Hit: an armed unit that survives an attack hits back once with a
+  // normal attack, if the attacker is inside normal attack range. Stays armed
+  // if not.
   tryCounter(defender, attacker) {
-    if (!defender.counterReady || defender.hp <= 0 || attacker.isDead) return;
-    if (this.distanceToUnit(defender.col, defender.row, attacker) > this.effectiveRange(defender, THROW)) return;
-    defender.counterReady = false;
+    if (defender.counterReady && this.counterBack(defender, attacker)) defender.counterReady = false;
+  }
+  counterBack(defender, attacker) {
+    if (defender.hp <= 0 || defender.isDead || attacker.isDead) return false;
+    if (this.distanceToUnit(defender.col, defender.row, attacker) > this.effectiveRange(defender, ATTACK)) return false;
     const { x, y } = this.gridToScreen(defender.col, defender.row);
     this.showEffect(x, y + TH2 - 22, 'COUNTER!', '#ffcc44');
     this.doAttack(defender, attacker);
+    return true;
+  }
+
+  // Who actually takes a hit aimed at defender: a Guard first, then a Stopper.
+  redirectHit(defender) {
+    if (defender.guardedBy && !defender.guardedBy.isDead) {
+      const guardian = defender.guardedBy;
+      defender.guardedBy = null;
+      return guardian;
+    }
+    return this.stopperIntercept(defender);
+  }
+
+  // Dodge blocks the whole hit, attack or skill. Fake Counter also hits back.
+  tryDodge(defender, attacker) {
+    if (!defender.dodgeReady) return false;
+    defender.dodgeReady = false;
+    const { x, y } = this.gridToScreen(defender.col, defender.row);
+    this.showEffect(x, y + TH2, 'BLOCKED', '#66ddff');
+    this.redraw();
+    if (defender.fakeCounterReady) {
+      defender.fakeCounterReady = false;
+      this.counterBack(defender, attacker);
+    }
+    return true;
+  }
+
+  // A Shield soaks damage until it runs out.
+  absorbShield(unit, dmg) {
+    if (!unit.shieldHp) return dmg;
+    const soaked = Math.min(unit.shieldHp, dmg);
+    unit.shieldHp -= soaked;
+    return dmg - soaked;
   }
 
   killUnit(unit) {
@@ -3854,6 +3883,7 @@ export class BattleScene extends Phaser.Scene {
     const applyHit = (target, mult) => {
       let dmg = Math.round(calcAtk(unit) * mult * designationMultiplier(unit, target, ability) * elementMultiplier(unit, target, ability) * partnerAtkMult);
       dmg = Math.round(dmg * this.passiveDefenseMultiplier(target) * this.difficultyDamageMult(unit));
+      dmg = this.absorbShield(target, dmg);
       target.hp = Math.max(0, target.hp - dmg);
       const { x, y } = this.gridToScreen(target.col, target.row);
       this.showDamage(x, y + TH2, dmg, '#ffaa22', this.countDamageBonuses(unit, target, ability));
@@ -3912,6 +3942,13 @@ export class BattleScene extends Phaser.Scene {
     this.finishAbilityTurn(unit);
   }
 
+  applyShield(target, ability) {
+    target.shieldHp = Math.max(target.shieldHp ?? 0, Math.round(target.maxHp * ability.amount));
+    const { x, y } = this.gridToScreen(target.col, target.row);
+    this.showEffect(x, y + TH2, 'SHIELD', '#66ddff');
+    this.redraw();
+  }
+
   executeSelfAbility(ability) {
     const unit = this.selectedUnit;
     this.consumeAbilityResource(unit, ability);
@@ -3931,6 +3968,7 @@ export class BattleScene extends Phaser.Scene {
       this.showEffect(x, y + TH2, 'COUNTER READY', '#ffcc44');
     } else if (ability.effect === 'dodge') {
       unit.dodgeReady = true;
+      unit.fakeCounterReady = !!ability.countersBack;
       const { x, y } = this.gridToScreen(unit.col, unit.row);
       this.showEffect(x, y + TH2, 'READY', '#66ddff');
     } else if (ability.effect === 'overdrive') {
@@ -4031,6 +4069,7 @@ export class BattleScene extends Phaser.Scene {
       let dmg = 0;
       for (let h = 0; h < hits; h++) dmg += Math.round(calcAtk(unit) * ability.multiplier * desigMult * elemMult);
       dmg = Math.round(dmg * this.passiveDefenseMultiplier(target) * this.difficultyDamageMult(unit));
+      dmg = this.absorbShield(target, dmg);
       target.hp = Math.max(0, target.hp - dmg);
 
       const { x, y } = this.gridToScreen(target.col, target.row);
@@ -4181,8 +4220,14 @@ export class BattleScene extends Phaser.Scene {
     this.playAttackAnim(attacker, ability.id);
 
     this.consumeAbilityResource(attacker, ability);
+    if (target.team !== attacker.team) target = this.redirectHit(target);
 
     // Ally-support effects deal no damage — handle and return early.
+    if (ability.effect === 'shieldPct') {
+      this.applyShield(target, ability);
+      this.finishAbilityTurn(attacker);
+      return;
+    }
     if (ability.effect === 'guard') {
       target.guardedBy = attacker;
       const { x, y } = this.gridToScreen(target.col, target.row);
@@ -4257,6 +4302,7 @@ export class BattleScene extends Phaser.Scene {
       let dmg = 0;
       for (let h = 0; h < hits; h++) dmg += Math.round(calcAtk(attacker) * mult * desigMult * elemMult * partnerAtkMult);
       dmg = Math.round(dmg * this.passiveDefenseMultiplier(target) * this.difficultyDamageMult(attacker));
+      dmg = this.absorbShield(target, dmg);
       target.hp  = Math.max(0, target.hp - dmg);
 
       const { x, y } = this.gridToScreen(target.col, target.row);
@@ -4292,6 +4338,8 @@ export class BattleScene extends Phaser.Scene {
       if (target.hp > 0) this.triggerSetUpFollowUp(attacker, ability, target);
       if (target.hp <= 0) this.killUnit(target);
       else this.redraw();
+      this.tryCounter(target, attacker);
+      if (attacker.isDead) { this.endUnitTurn(attacker); return; }
       this.finishAbilityTurn(attacker);
     };
 
@@ -4320,6 +4368,7 @@ export class BattleScene extends Phaser.Scene {
       // something he otherwise couldn't.
       if (e.isCorruptedOneBoss) e.sp = e.maxSp;
       else if (e.maxSp != null) e.sp = Math.min(e.maxSp, (e.sp ?? 0) + 1);
+      e.stopperUsedThisTurn = false;
       for (const id of Object.keys(e.skillCooldowns ?? {})) {
         e.skillCooldowns[id] = Math.max(0, e.skillCooldowns[id] - 1);
       }
@@ -4484,6 +4533,14 @@ export class BattleScene extends Phaser.Scene {
     // usable/in-range this turn.
     if (this.tryEnemySkill(wolf)) return;
 
+    // A +5 RNG monster's normal attack reaches past its neighbours.
+    const reach = this.effectiveRange(wolf, ATTACK);
+    if (reach > 1) {
+      const far = [target, ...this.playerUnits].find(p => !p.isDead
+        && this.distanceToUnit(wolf.col, wolf.row, p) <= reach);
+      if (far) { this.doAttack(wolf, far); return; }
+    }
+
     // Attack any adjacent player
     const targets = this.getAttackTargets(wolf);
     if (targets.length > 0) {
@@ -4505,11 +4562,29 @@ export class BattleScene extends Phaser.Scene {
     const kit = attacker.abilities;
     if (!kit || !kit.length) return false;
     const hostiles = attacker.team === 'enemy' ? this.playerUnits : this.enemyUnits;
+    // Arming Counter is free; it costs SP but not the monster's action.
+    const counter = kit.find(e => e.ability?.effect === 'counter')?.ability;
+    if (counter && !attacker.counterReady && this.abilityUsable(attacker, counter)) {
+      this.consumeAbilityResource(attacker, counter);
+      attacker.counterReady = true;
+    }
+    const shield = kit.find(e => e.ability?.effect === 'shieldPct')?.ability;
+    if (shield && this.abilityUsable(attacker, shield)) {
+      const hurt = this.enemyUnits
+        .filter(u => !u.isDead && !u.shieldHp && u.hp < u.maxHp
+          && this.distanceToUnit(attacker.col, attacker.row, u) <= this.effectiveRange(attacker, shield))
+        .sort((a, b) => a.hp / a.maxHp - b.hp / b.maxHp)[0];
+      if (hurt) {
+        this.consumeAbilityResource(attacker, shield);
+        this.applyShield(hurt, shield);
+        return true;
+      }
+    }
     for (const entry of kit) {
       const ab = entry.ability;
       if (!ab || ab.targetType !== 'enemy' || typeof ab.multiplier !== 'number') continue;
       if (!this.abilityUsable(attacker, ab)) continue;
-      const range = ab.range ?? 1;
+      const range = this.effectiveRange(attacker, ab);
       let candidates = hostiles.filter(u => !u.isDead && this.distanceToUnit(attacker.col, attacker.row, u) <= range);
       if (ab.atMaxRangeOnly) candidates = candidates.filter(u => this.distanceToUnit(attacker.col, attacker.row, u) === range);
       if (!candidates.length) continue;
@@ -4526,7 +4601,8 @@ export class BattleScene extends Phaser.Scene {
   // none of which apply to an AI-controlled unit.
   enemySkillAttack(attacker, ability, target) {
     this.consumeAbilityResource(attacker, ability);
-    target = this.stopperIntercept(target);
+    target = this.redirectHit(target);
+    if (this.tryDodge(target, attacker)) return;
 
     const dist = this.distanceToUnit(attacker.col, attacker.row, target);
     const hits = ability.hits ?? 1;
@@ -4537,6 +4613,7 @@ export class BattleScene extends Phaser.Scene {
     let dmg = 0;
     for (let h = 0; h < hits; h++) dmg += Math.round(calcAtk(attacker) * mult * desigMult * elemMult * partnerAtkMult);
     dmg = Math.round(dmg * this.passiveDefenseMultiplier(target) * this.difficultyDamageMult(attacker));
+    dmg = this.absorbShield(target, dmg);
     if (attacker.oneShotKill) dmg = target.hp; // see doAttack's oneShotKill comment
     target.hp = Math.max(0, target.hp - dmg);
 
@@ -4621,7 +4698,7 @@ export class BattleScene extends Phaser.Scene {
         return;
       }
       const ab = ABILITIES[id];
-      const range = ab.range ?? 1;
+      const range = this.effectiveRange(attacker, ab);
       const dist = this.distanceToUnit(boss.col, boss.row, target);
       const reach = ab.atMaxRangeOnly ? dist === range : dist <= range;
       if (reach) { this.enemySkillAttack(boss, ab, target); return; }

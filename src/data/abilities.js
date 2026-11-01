@@ -241,7 +241,7 @@ export const ABILITIES = {
   counter_hit: {
     id: 'counter_hit', name: 'Counter Hit', icon: '👊', category: 'special',
     cost: 3, targetType: 'self', selfActivate: true, effect: 'counter',
-    desc: 'When next attacked, hit back with a normal attack  ·  3 SP',
+    desc: 'When next attacked in normal attack range, hit back with a normal attack  ·  3 SP',
   },
   performance: {
     id: 'performance', name: 'Performance', icon: '🎤', category: 'special',
@@ -527,8 +527,8 @@ export const ABILITIES = {
   },
   fake_counter: {
     id: 'fake_counter', name: 'Fake Counter', icon: '🙅', category: 'skill',
-    cooldown: 2, targetType: 'self', selfActivate: true, effect: 'dodge',
-    desc: 'Take no damage from the next attack  ·  CD 2',
+    cooldown: 2, targetType: 'self', selfActivate: true, effect: 'dodge', countersBack: true,
+    desc: 'Take no damage from the next attack and hit back with a normal attack  ·  CD 2',
   },
   // Wado-ryu/Heavyweight-exclusive bracket — ASSUMPTION (item j, open):
   // gated to those two specific roles by literal name, not to every
