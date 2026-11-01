@@ -1,4 +1,4 @@
-import { unlockedRoleIds, classSkillSlotCount, TALENT_STAT_KEY, CLASS_TIER_LEVELS, roleById, sportById, currentDesignations, DESIGNATION_NAMES, MAX_EQUIPPED_SPECIALS, MAX_EQUIPPED_SKILLS } from './gameState.js';
+import { unlockedRoleIds, classSkillSlotCount, effectiveStats, TALENT_STAT_KEY, CLASS_TIER_LEVELS, roleById, sportById, currentDesignations, DESIGNATION_NAMES, MAX_EQUIPPED_SPECIALS, MAX_EQUIPPED_SKILLS } from './gameState.js';
 
 // ── Universal baseline moves ─────────────────────────────────────────────────
 // Every unit starts with these, regardless of class — no cost, no cooldown.
@@ -835,7 +835,7 @@ export function skillUnlockRoutes() {
   }
   for (const pool of [TALENT_SPECIALS, TALENT_SKILL_POOL, TALENT_PASSIVE_POOL]) {
     for (const [talent, entries] of Object.entries(pool)) {
-      for (const e of entries) add(e.id, `${talent} talent with ${talent} ${e.minStat}`);
+      for (const e of entries) add(e.id, `${talent} talent with ${talent} ${e.minStat} (gear counts)`);
     }
   }
   for (const pool of [DESIGNATION_SPECIALS, DESIGNATION_SKILL_POOL, DESIGNATION_PASSIVE_POOL]) {
@@ -852,6 +852,12 @@ export function skillUnlockRoutes() {
 }
 
 // ── Lookup helpers ────────────────────────────────────────────────────────────
+
+// A stat for talent unlocks, gear included. Battle's unit copies have no equip
+// because their stats already include it.
+function talentStat(unit, statKey) {
+  return (unit.equip ? effectiveStats(unit)[statKey] : unit[statKey]) ?? 0;
+}
 
 // Sport ids for every role a unit has ever unlocked (T1, plus T2/T3 once
 // reached) — feeds class-grouping lookups below, same accumulation-across-
@@ -893,7 +899,7 @@ export function getUnitSpecials(unit) {
   const talents = [...new Set(unit.talents ?? [])];
   const talentSpecials = talents
     .flatMap(t => (TALENT_SPECIALS[t] ?? []).map(e => ({ ...e, statKey: TALENT_STAT_KEY[t] })))
-    .filter(e => (unit[e.statKey] ?? 0) >= e.minStat)
+    .filter(e => talentStat(unit, e.statKey) >= e.minStat)
     .map(e => ABILITIES[e.id]);
 
   // currentDesignations(unit) — NOT unit.designations, which is never
@@ -938,7 +944,7 @@ export function getUnitSkills(unit) {
   const talents = [...new Set(unit.talents ?? [])];
   const talentPool = talents
     .flatMap(t => (TALENT_SKILL_POOL[t] ?? []).map(e => ({ ...e, statKey: TALENT_STAT_KEY[t] })))
-    .filter(e => (unit[e.statKey] ?? 0) >= e.minStat)
+    .filter(e => talentStat(unit, e.statKey) >= e.minStat)
     .map(e => ABILITIES[e.id]);
 
   // See the identical note in getUnitSpecials above — currentDesignations(),
@@ -1019,7 +1025,7 @@ export function getUnitPassivePool(unit) {
   const talents = [...new Set(unit.talents ?? [])];
   const talentPassives = talents
     .flatMap(t => (TALENT_PASSIVE_POOL[t] ?? []).map(e => ({ ...e, statKey: TALENT_STAT_KEY[t] })))
-    .filter(e => (unit[e.statKey] ?? 0) >= e.minStat)
+    .filter(e => talentStat(unit, e.statKey) >= e.minStat)
     .map(e => ABILITIES[e.id]);
 
   // See the identical note in getUnitSpecials above — currentDesignations(),
