@@ -886,6 +886,7 @@ const hasActiveBuff = u =>
   !!u.endureReady ||
   !!u.counterReady ||
   !!u.shieldHp ||
+  !!u.regen ||
   u.nextHitMult != null ||
   !!u.tankReady ||
   (u.calmTurns ?? 0) > 0 ||
@@ -3812,6 +3813,17 @@ export class BattleScene extends Phaser.Scene {
       unit.calmTurns = ability.duration;
       const { x, y } = this.gridToScreen(unit.col, unit.row);
       this.showEffect(x, y + TH2, 'CALM', '#88aaff');
+    } else if (ability.effect === 'regenTeam') {
+      const amount = ability.amount * this.gracefulnessMultiplier(unit);
+      for (const ally of this.playerUnits) {
+        if (ally.isDead) continue;
+        ally.regen = { amount, turnsLeft: ability.duration };
+        const { x, y } = this.gridToScreen(ally.col, ally.row);
+        this.showEffect(x, y + TH2, 'REGEN', '#44ffaa');
+      }
+    } else if (ability.effect === 'healTeam') {
+      const heal = Math.round(unit.maxHp * rand(1, 5) / 100 * this.gracefulnessMultiplier(unit));
+      for (const ally of this.playerUnits) if (!ally.isDead) this.healUnit(ally, heal);
     } else if (ability.effect === 'setWeather') {
       this.setWeather(ability.weather);
     } else if (ability.effect === 'tankForAdjacent') {
@@ -4208,6 +4220,17 @@ export class BattleScene extends Phaser.Scene {
       lifespan: style.lifespan, alpha: style.alpha, angle: 0,
       frequency: style.frequency, quantity: 1,
     }).setDepth(2500);
+  }
+
+  healUnit(unit, amount) {
+    unit.hp = Math.min(unit.maxHp, unit.hp + amount);
+    const { x, y } = this.gridToScreen(unit.col, unit.row);
+    this.showEffect(x, y + TH2, `+${amount} HP`, '#44ffaa');
+  }
+  tickRegen(unit) {
+    if (!unit.regen) return;
+    this.healUnit(unit, Math.round(unit.maxHp * unit.regen.amount));
+    if (--unit.regen.turnsLeft <= 0) unit.regen = null;
   }
 
   // Thunder Plains: each new round bolts hit hazardTiles() for 1-10% of max HP.
@@ -4679,6 +4702,7 @@ export class BattleScene extends Phaser.Scene {
         u.tankReady = false;
         this.tickWet(u);
         this.tickBurn(u);
+        if (!u.isDead) this.tickRegen(u);
         if (u.calmTurns > 0) u.calmTurns--;
         u.stopperUsedThisTurn = false;
         u.setUpUsedThisTurn = false;  // Set Up's "-50% dmg taken, 1×/turn" cap

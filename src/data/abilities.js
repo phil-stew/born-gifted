@@ -264,6 +264,16 @@ export const ABILITIES = {
     desc: 'Restore SP to target ally  ·  range 3, 15%  ·  CD 2',
   },
 
+  regen_dance: {
+    id: 'regen_dance', name: 'Regen Dance', icon: '🌿', category: 'skill',
+    cooldown: 5, targetType: 'self', selfActivate: true, effect: 'regenTeam', amount: 0.03, duration: 3, pureSupportOnly: true,
+    desc: 'All allies heal 3% of max HP per turn for 3 turns  ·  CD 5',
+  },
+  heal_dance: {
+    id: 'heal_dance', name: 'Heal Dance', icon: '💞', category: 'skill',
+    cooldown: 4, targetType: 'self', selfActivate: true, effect: 'healTeam', pureSupportOnly: true,
+    desc: "All allies heal 1-5% of THIS unit's max HP  ·  CD 4",
+  },
   // Pure Support only, with 300 Endurance. Using it opens a pick of the weathers.
   weather_dance: {
     id: 'weather_dance', name: 'Weather Dance', icon: '🌦', category: 'skill',
@@ -765,7 +775,7 @@ export const DESIGNATION_SPECIALS = {
   Rg: [ { id: 'tri_throw',  minLevel: 1 }, { id: 'sharp_throw', minLevel: CLASS_TIER_LEVELS.t2 } ],
 };
 export const DESIGNATION_SKILL_POOL = {
-  S: [ { id: 'weather_dance', minLevel: 1 } ],
+  S: [ { id: 'heal_dance', minLevel: 1 }, { id: 'regen_dance', minLevel: 9 }, { id: 'weather_dance', minLevel: 1 } ],
   D: [ { id: 'shield', minLevel: 1 } ],
 };
 export const DESIGNATION_PASSIVE_POOL = {
@@ -977,7 +987,7 @@ export function skillUnlockEntries() {
           add(e.id, name, need, `End ${need}`, text);
           add(e.id, 'Endurance', need, `${need}`, text);
         } else {
-          add(e.id, name, e.minLevel, levelTag(e.minLevel), atLevel(`${name} heroes`, e.minLevel));
+          add(e.id, name, e.minLevel, levelTag(e.minLevel), atLevel(`${ABILITIES[e.id]?.pureSupportOnly ? 'Pure ' : ''}${name} heroes`, e.minLevel));
         }
       }
     }
@@ -1093,7 +1103,7 @@ export function getUnitSkills(unit) {
     .filter(e => level >= e.minLevel)
     .map(e => ABILITIES[e.id])
     .filter(ab => !ab.pureSupportOnly
-      || (currentDesignations(unit).length === 1 && talentStat(unit, 'endurance') >= ab.minEndurance));
+      || (currentDesignations(unit).length === 1 && talentStat(unit, 'endurance') >= (ab.minEndurance ?? 0)));
 
   const classPool = unlockedClassNames(unit)
     .flatMap(c => CLASS_GROUPING_SKILL_POOL[c] ?? [])
