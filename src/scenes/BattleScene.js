@@ -4085,16 +4085,18 @@ export class BattleScene extends Phaser.Scene {
     unit.moveSpeed = Math.max(1, unit.baseMoveSpeed - slowTotal);
   }
   // Shoves a unit straight away from the attacker, stopping at the board edge or
-  // another unit. Big monsters don't budge. Landing in water soaks them.
+  // another unit. Big monsters don't budge. Going through water soaks them.
   pushUnit(attacker, target, tiles) {
     if ((target.size ?? 1) > 1) return;
     const dc = Math.sign(target.col - attacker.col), dr = Math.sign(target.row - attacker.row);
     const step = Math.abs(target.col - attacker.col) >= Math.abs(target.row - attacker.row) ? [dc, 0] : [0, dr];
     let { col, row } = target;
+    let crossedWater = false;
     for (let i = 0; i < tiles; i++) {
       const next = { col: col + step[0], row: row + step[1] };
       if (!this.inBounds(next) || this.unitMap.has(`${next.col},${next.row}`)) break;
       ({ col, row } = next);
+      crossedWater ||= this.stageCfg.water(col, row);
     }
     if (col === target.col && row === target.row) return;
     this.unregisterUnit(target);
@@ -4104,7 +4106,7 @@ export class BattleScene extends Phaser.Scene {
     const { x, y } = this.gridToScreen(col, row);
     target.sprite?.setPosition(x, y + TH2).setDepth((col + row) * 10 + 5);
     target.portrait?.setPosition(x, y + TH2 + 10).setDepth((col + row) * 10 + 6);
-    if (this.inWater(target)) this.soak(target);
+    if (crossedWater) this.soak(target);
     this.showDamage(x, y + TH2 - 22, 'PUSHED', '#ffffff');
     this.redraw();
   }
