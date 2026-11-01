@@ -545,6 +545,7 @@ const MISSION_CONFIGS = {
   // kill_king_wolf (dropped from A1's quest list, same treatment kill_king_
   // wolf got when Hilbert's own 3 quests replaced it there).
   'A1a': {
+    eruption: true,
     // Defeat 1 dragon and two wyverns — Dragon at boss tier (Alpha Ace
     // Dragon, matching the existing Alpha Ace convention rather than
     // inventing a fixed name), 2 regular-tier Wyverns as escorts — same
@@ -804,6 +805,7 @@ const MISSION_CONFIGS = {
   // villain-tier 20, since the story frames it as the last thing standing
   // between the party and the Final Tournament.
   'TG': {
+    eruption: true,
     region: 'Lametus',
     playerPos: { reno:[1,3], drace:[1,4], sela:[1,2], kael:[1,5], trice:[1,1], zora:[1,0] },
     enemies: [
@@ -1097,6 +1099,7 @@ export class BattleScene extends Phaser.Scene {
     // threading it through every call — 2026-07-11 ("Goblin King"/"Cave
     // Depths" quests, see spawnReinforcements/isVictory below).
     this.missionCfg = missionCfg;
+    this.eruptionTiles = [];
     this.missionId = missionId;
 
     // See the M1_TUTORIAL_KEY comment up top. 'select' -> 'move' -> 'attack' -> null (done).
@@ -1443,6 +1446,7 @@ export class BattleScene extends Phaser.Scene {
     else if (cfg.turnLimit) rules.push(`Win within ${cfg.turnLimit} turns`);
     if (cfg.reinforce) rules.push(`More enemies arrive every ${cfg.reinforce.every} turns`);
     if (cfg.enemyFirst) rules.push('Enemies move first');
+    if (cfg.eruption) rules.push('Eruption: glowing tiles take a falling rock next round, 1-10% of max HP. Wet units take half');
     if (cfg.thunderStorm) rules.push('Lightning strikes random units on both sides each round for 1-10% of max HP');
     if (STAGE_CONFIGS[state.currentMission]?.hasObstacles) rules.push('Rocks, logs and tall grass cost 2 extra move, and ranged attacks at a unit on one miss 20% of the time');
     if (STAGE_CONFIGS[state.currentMission]?.hasWater) rules.push('Crossing water makes units Wet: Lightning deals double damage to them, Fire deals half');
@@ -3960,16 +3964,40 @@ export class BattleScene extends Phaser.Scene {
     }
   }
   lightningStrike(unit) {
-    const dmg = Math.max(1, Math.round(unit.maxHp * rand(1, 10) / 100 * (unit.wetTurns > 0 ? 2 : 1)));
+    this.skyHit(unit, unit.wetTurns > 0 ? 2 : 1, 'cometLightning', '#ffee66');
+    this.cameras.main.flash(140, 255, 255, 220);
+  }
+
+  // Volcano maps: each round rocks land on the tiles marked last round, then
+  // new tiles are marked under 1 to 2 random units, so either side can step
+  // away. Fire, so Wet units take half.
+  eruptionRound() {
+    for (const { col, row } of this.eruptionTiles) {
+      const unit = this.unitMap.get(`${col},${row}`);
+      if (unit) this.skyHit(unit, unit.wetTurns > 0 ? 0.5 : 1, 'cometEarth', '#ff8844');
+      else this.skyImpact(this.gridToScreen(col, row), 'cometEarth');
+    }
+    if (this.eruptionTiles.length) this.cameras.main.shake(160, 0.006);
+    this.eruptionTiles = [];
+    const marks = rand(1, 2);
+    for (let i = 0; i < marks; i++) {
+      const alive = [...this.playerUnits, ...this.enemyUnits].filter(u => !u.isDead);
+      if (!alive.length) break;
+      const { col, row } = alive[rand(0, alive.length - 1)];
+      if (!this.eruptionTiles.some(t => t.col === col && t.row === row)) this.eruptionTiles.push({ col, row });
+    }
+    this.redraw();
+  }
+
+  // 1-10% of max HP from the sky, times `mult`, shown landing on the unit.
+  skyHit(unit, mult, frame, color) {
+    const dmg = Math.max(1, Math.round(unit.maxHp * rand(1, 10) / 100 * mult));
     const hit = this.absorbShield(unit, dmg);
     unit.hp = Math.max(0, unit.hp - hit);
-    const { x, y } = this.footprintScreenPos(unit);
-    const bolt = this.add.image(x, y + TH2 - 34, PROJECTILE_SHEET.key, 'cometLightning').setDepth(3000);
-    bolt.setScale(70 / bolt.width).setRotation(Phaser.Math.DegToRad(-60));
-    this.time.delayedCall(240, () => bolt.destroy());
-    this.cameras.main.flash(140, 255, 255, 220);
+    const pos = this.footprintScreenPos(unit);
+    this.skyImpact(pos, frame);
     playSfx(this, SFX.hit);
-    this.showDamage(x, y + TH2, hit, '#ffee66');
+    this.showDamage(pos.x, pos.y + TH2, hit, color);
     this.playEnemyAnim(unit, 'hurt');
     if (unit.team === 'player') {
       unit.hitFlash = true;
@@ -3977,6 +4005,11 @@ export class BattleScene extends Phaser.Scene {
     }
     if (unit.hp <= 0) this.killUnit(unit);
     else this.redraw();
+  }
+  skyImpact({ x, y }, frame) {
+    const img = this.add.image(x, y + TH2 - 34, PROJECTILE_SHEET.key, frame).setDepth(3000);
+    img.setScale(70 / img.width).setRotation(Phaser.Math.DegToRad(-60));
+    this.time.delayedCall(240, () => img.destroy());
   }
 
   // Rocks, logs and tall grass cost 2 extra move to step onto.
@@ -4430,6 +4463,7 @@ export class BattleScene extends Phaser.Scene {
     this.showPhaseBanner('PLAYER TURN');
     this.redraw();
     if (this.missionCfg.thunderStorm) this.stormStrikes();
+    if (this.missionCfg.eruption) this.eruptionRound();
   }
 
   enemyAct(wolf) {
@@ -5133,6 +5167,9 @@ export class BattleScene extends Phaser.Scene {
         }
       }
     }
+
+    // Tiles a falling rock lands on next round.
+    for (const { col, row } of this.eruptionTiles ?? []) this.drawDiamond(col, row, 0xff5500, 0.7, 0xffcc33);
 
     // Selected tile — skip if the occupant has a portrait (the sprite IS the indicator)
     if (selectedKey) {
