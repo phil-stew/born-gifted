@@ -33,6 +33,7 @@ function markM1TutorialDone() {
 
 const COLS = 10, ROWS = 10;
 const LAUNCH_WINDUP_MS = 280, VOLLEY_GAP_MS = 90, WET_TURNS = 2;
+const OBSTACLE_MOVE_COST = 2, COVER_MISS_CHANCE = 0.2;
 // Bigger isometric tiles (2026-07-07 feedback) — was 64×32 at .setScale(2)
 // (native tile art is 32×32, so scale = TILE_W/32 keeps tiles seamless with
 // no gaps/overlap). 80×40 is a 1.25× bump: checked the grid's screen-space
@@ -1441,6 +1442,7 @@ export class BattleScene extends Phaser.Scene {
     else if (cfg.turnLimit) rules.push(`Win within ${cfg.turnLimit} turns`);
     if (cfg.reinforce) rules.push(`More enemies arrive every ${cfg.reinforce.every} turns`);
     if (cfg.enemyFirst) rules.push('Enemies move first');
+    if (STAGE_CONFIGS[state.currentMission]?.hasObstacles) rules.push('Rocks, logs and tall grass cost 2 extra move, and ranged attacks at a unit on one miss 20% of the time');
     if (STAGE_CONFIGS[state.currentMission]?.hasWater) rules.push('Crossing water makes units Wet: Lightning deals double damage to them, Fire deals half');
     if (enemies.some(e => e.corrupted)) rules.push('Corrupted enemies all target one hero');
     if (enemies.some(e => e.isCorruptedOneBoss)) rules.push('The Corrupted One grows stronger with each ally beside him');
@@ -3946,6 +3948,22 @@ export class BattleScene extends Phaser.Scene {
     unit.sprite.once('animationcomplete', () => { if (idle) unit.sprite?.play(idle); });
   }
 
+  // Rocks, logs and tall grass cost 2 extra move to step onto.
+  tileMoveCost(col, row) {
+    return this.stageCfg.obstacle(col, row) ? 1 + OBSTACLE_MOVE_COST : 1;
+  }
+
+  // They also give cover: ranged attacks at a unit on one miss 20% of the
+  // time. Shows MISS and returns true when it does.
+  coverBlocks(attacker, target) {
+    if (this.distanceToUnit(attacker.col, attacker.row, target) <= 1) return false;
+    if (!this.occupiedTiles(target).some(t => this.stageCfg.obstacle(t.col, t.row))) return false;
+    if (Math.random() >= COVER_MISS_CHANCE) return false;
+    const { x, y } = this.gridToScreen(target.col, target.row);
+    this.showEffect(x, y + TH2 - 22, 'MISS', '#cccccc');
+    return true;
+  }
+
   // Walking in or through water leaves a unit Wet: Lightning hits it for double.
   // Lasts WET_TURNS turns, topped up by still standing in it at turn start.
   soak(unit) {
@@ -4176,6 +4194,11 @@ export class BattleScene extends Phaser.Scene {
     // Ranged (dist > 1) hits fly there first — damage lands when the
     // projectile arrives, not before.
     const resolveHit = () => {
+      if (this.coverBlocks(attacker, target)) {
+        this.spendAssist(attacker);
+        this.finishAbilityTurn(attacker);
+        return;
+      }
       const hits = ability.hits ?? 1;
       const mult = distanceMultiplier(ability, dist);
       const desigMult = designationMultiplier(attacker, target, ability);
@@ -4396,8 +4419,11 @@ export class BattleScene extends Phaser.Scene {
     const size = wolf.size ?? 1;
     if (size <= 1) {
       // Move up to moveSpeed steps, never walking into target's tile
-      for (let i = 0; i < path.length - 1 && i < wolf.moveSpeed; i++) {
+      let moveLeft = wolf.moveSpeed;
+      for (let i = 0; i < path.length - 1; i++) {
         const { col, row } = path[i];
+        moveLeft -= this.tileMoveCost(col, row);
+        if (moveLeft < 0) break;
         const nk = `${col},${row}`;
         if (this.unitMap.has(nk)) break;
         this.unitMap.delete(`${wolf.col},${wolf.row}`);
@@ -4412,8 +4438,11 @@ export class BattleScene extends Phaser.Scene {
       // squeeze the blob somewhere too narrow just stops the walk early,
       // same "give up rather than corrupt state" fallback the size-1
       // branch already has for a single blocked tile.
-      for (let i = 0; i < path.length - 1 && i < wolf.moveSpeed; i++) {
+      let moveLeft = wolf.moveSpeed;
+      for (let i = 0; i < path.length - 1; i++) {
         const { col, row } = path[i];
+        moveLeft -= this.tileMoveCost(col, row);
+        if (moveLeft < 0) break;
         if (!this.blockFits(col, row, size, wolf)) break;
         this.unregisterUnit(wolf);
         wolf.col = col; wolf.row = row;
@@ -4440,7 +4469,7 @@ export class BattleScene extends Phaser.Scene {
       const far = [target, ...this.playerUnits].find(p => !p.isDead
         && this.distanceToUnit(wolf.col, wolf.row, p) <= reach);
       if (far) {
-        const hit = () => { if (!wolf.isDead && !far.isDead) this.doAttack(wolf, far); };
+        const hit = () => { if (!wolf.isDead && !far.isDead && !this.coverBlocks(wolf, far)) this.doAttack(wolf, far); };
         if (this.distanceToUnit(wolf.col, wolf.row, far) > 1) this.fireProjectile(wolf, far, projectileFor(wolf, ATTACK), hit);
         else hit();
         return;
@@ -4517,6 +4546,7 @@ export class BattleScene extends Phaser.Scene {
   landEnemySkill(attacker, ability, target, dist) {
     if (attacker.isDead || target.isDead) return;
     if (this.tryDodge(target, attacker)) return;
+    if (this.coverBlocks(attacker, target)) return;
     const hits = ability.hits ?? 1;
     const mult = distanceMultiplier(ability, dist);
     const desigMult = designationMultiplier(attacker, target, ability);
@@ -4583,8 +4613,11 @@ export class BattleScene extends Phaser.Scene {
 
     const path = this.bfsPath(boss.col, boss.row, target.col, target.row);
     if (path) {
-      for (let i = 0; i < path.length - 1 && i < boss.moveSpeed; i++) {
+      let moveLeft = boss.moveSpeed;
+      for (let i = 0; i < path.length - 1; i++) {
         const { col, row } = path[i];
+        moveLeft -= this.tileMoveCost(col, row);
+        if (moveLeft < 0) break;
         const nk = `${col},${row}`;
         if (this.unitMap.has(nk)) break;
         this.unitMap.delete(`${boss.col},${boss.row}`);
@@ -4705,17 +4738,20 @@ export class BattleScene extends Phaser.Scene {
     const reachable = new Set();
     const visited = new Map([[`${unit.col},${unit.row}`, 0]]);
     const queue = [{ col: unit.col, row: unit.row, dist: 0 }];
+    const budget = this.movePoints(unit);
 
     while (queue.length) {
       const { col, row, dist } = queue.shift();
+      if (dist > visited.get(`${col},${row}`)) continue; // a cheaper way here was found
       if (dist > 0) reachable.add(`${col},${row}`);
-      if (dist >= this.movePoints(unit)) continue;
       for (const [dc, dr] of [[-1,0],[1,0],[0,-1],[0,1]]) {
         const nc = col + dc, nr = row + dr;
         const nk = `${nc},${nr}`;
-        if (!this.inBounds({ col: nc, row: nr }) || visited.has(nk)) continue;
-        visited.set(nk, dist + 1);
-        queue.push({ col: nc, row: nr, dist: dist + 1 });
+        if (!this.inBounds({ col: nc, row: nr })) continue;
+        const cost = dist + this.tileMoveCost(nc, nr);
+        if (cost > budget || cost >= (visited.get(nk) ?? Infinity)) continue;
+        visited.set(nk, cost);
+        queue.push({ col: nc, row: nr, dist: cost });
       }
     }
     return reachable;

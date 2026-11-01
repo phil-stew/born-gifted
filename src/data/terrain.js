@@ -7,23 +7,27 @@ const range = (from, to) => Array.from({ length: to - from + 1 }, (_, i) => Stri
 const SAND = range(0, 10).filter(t => t !== '003'), CRACKED_SAND = range(11, 13), RIDGED_SAND = range(14, 16);
 const DIRT = ['017', '018', '021'], MOSS_DIRT = ['019', '020'];
 const GRASS = ['022', '023', '024', '037', '038', '039'], DARK_GRASS = ['040', '036', '027', '028'];
+const TALL_GRASS = '036';
 const STONE = ['061', '063'], WATER = ['088', '087', '086'], DARK_WATER = ['090', '091'];
 const ICE = range(104, 110), ICE_CRACKED = ['114'];
 const FLOWERS = ['041', '042', '044', '046'], TUFTS = ['043', '045'], LOGS = ['048', '049', '050'];
 const BROWN_ROCKS = ['053', '054', '058'], GREY_ROCKS = ['062', '067'];
+const SOLID = new Set([...LOGS, ...BROWN_ROCKS, ...GREY_ROCKS, ...TUFTS, TALL_GRASS]); // what counts as an obstacle
 
 // patch covers `patchAmount` of the board in blobs; `stones`, when set, adds a
 // second smaller set of blobs; `river` runs edge to edge with `bank` beside it.
+// `obstacles` scatters extra rocks or logs on any dry tile. Every rock, log and
+// clump of tall grass gives cover and slows movement; flowers and flat lawn don't.
 const THEMES = {
-  plains: { ground: GRASS, patch: SAND, patchAmount: 0.35, river: WATER, bank: SAND, decor: FLOWERS.concat(TUFTS), decorOn: 'ground', decorAmount: 0.1, border: STONE },
-  forest: { ground: DARK_GRASS, patch: DIRT, patchAmount: 0.25, river: WATER, bank: DIRT, decor: LOGS.concat(TUFTS), decorOn: 'ground', decorAmount: 0.1, border: DARK_GRASS },
-  field: { ground: GRASS, patch: SAND, patchAmount: 0.2, decor: TUFTS, decorOn: 'ground', decorAmount: 0.05, border: STONE },
-  cave: { ground: DIRT, patch: STONE, patchAmount: 0.3, decor: BROWN_ROCKS, decorOn: 'patch', decorAmount: 0.1, border: STONE },
-  deepCave: { ground: DIRT, patch: STONE, patchAmount: 0.3, river: DARK_WATER, bank: STONE, decor: BROWN_ROCKS, decorOn: 'patch', decorAmount: 0.1, border: STONE },
-  desert: { ground: SAND, patch: GRASS, patchAmount: 0.18, stones: RIDGED_SAND, decor: FLOWERS, decorOn: 'patch', decorAmount: 0.2, border: CRACKED_SAND },
-  volcanic: { ground: DIRT, patch: CRACKED_SAND, patchAmount: 0.35, decor: BROWN_ROCKS, decorOn: 'ground', decorAmount: 0.08, border: STONE },
-  snow: { ground: ICE, patch: STONE, patchAmount: 0.2, river: DARK_WATER, bank: ICE_CRACKED, decor: GREY_ROCKS, decorOn: 'patch', decorAmount: 0.15, border: STONE },
-  blight: { ground: DIRT, patch: MOSS_DIRT, patchAmount: 0.3, river: DARK_WATER, bank: DIRT, decor: LOGS, decorOn: 'ground', decorAmount: 0.06, border: DIRT },
+  plains: { ground: GRASS, patch: SAND, patchAmount: 0.35, river: WATER, bank: SAND, decor: FLOWERS.concat(TUFTS), decorOn: 'ground', decorAmount: 0.1, border: STONE, obstacles: BROWN_ROCKS, obstacleAmount: 0.05 },
+  forest: { ground: DARK_GRASS, patch: DIRT, patchAmount: 0.25, river: WATER, bank: DIRT, decor: TUFTS, decorOn: 'ground', decorAmount: 0.1, border: DARK_GRASS, obstacles: LOGS, obstacleAmount: 0.07 },
+  field: { ground: GRASS, patch: SAND, patchAmount: 0.2, decor: TUFTS, decorOn: 'ground', decorAmount: 0.05, border: STONE, obstacles: LOGS, obstacleAmount: 0.04 },
+  cave: { ground: DIRT, patch: STONE, patchAmount: 0.3, decor: BROWN_ROCKS, decorOn: 'patch', decorAmount: 0.1, border: STONE, obstacles: BROWN_ROCKS, obstacleAmount: 0.08 },
+  deepCave: { ground: DIRT, patch: STONE, patchAmount: 0.3, river: DARK_WATER, bank: STONE, decor: BROWN_ROCKS, decorOn: 'patch', decorAmount: 0.1, border: STONE, obstacles: BROWN_ROCKS, obstacleAmount: 0.08 },
+  desert: { ground: SAND, patch: GRASS, patchAmount: 0.18, stones: RIDGED_SAND, decor: FLOWERS, decorOn: 'patch', decorAmount: 0.2, border: CRACKED_SAND, obstacles: BROWN_ROCKS, obstacleAmount: 0.06 },
+  volcanic: { ground: DIRT, patch: CRACKED_SAND, patchAmount: 0.35, decor: BROWN_ROCKS, decorOn: 'ground', decorAmount: 0.08, border: STONE, obstacles: BROWN_ROCKS, obstacleAmount: 0.08 },
+  snow: { ground: ICE, patch: STONE, patchAmount: 0.2, river: DARK_WATER, bank: ICE_CRACKED, decor: GREY_ROCKS, decorOn: 'patch', decorAmount: 0.15, border: STONE, obstacles: GREY_ROCKS, obstacleAmount: 0.07 },
+  blight: { ground: DIRT, patch: MOSS_DIRT, patchAmount: 0.3, river: DARK_WATER, bank: DIRT, decor: LOGS, decorOn: 'ground', decorAmount: 0.06, border: DIRT, obstacles: LOGS, obstacleAmount: 0.06 },
 };
 
 function seededRandom(text) {
@@ -93,7 +97,7 @@ function arenaMap(size, rnd) {
       ground[`${col},${row}`] = pick(tile, rnd);
     }
   }
-  return { ground, decor: {}, water: new Set() };
+  return { ground, decor: {}, water: new Set(), obstacle: new Set() };
 }
 
 function themedMap(size, theme, rnd) {
@@ -114,7 +118,7 @@ function themedMap(size, theme, rnd) {
   const stones = theme.stones
     ? blobs(size, noiseField(size, rnd, 2.5), 0.1, new Set([...taken, ...patch])) : new Set();
 
-  const ground = {}, decor = {};
+  const ground = {}, decor = {}, obstacle = new Set();
   for (let col = 0; col < size; col++) {
     for (let row = 0; row < size; row++) {
       const k = key(col, row);
@@ -129,12 +133,17 @@ function themedMap(size, theme, rnd) {
 
       const onRightGround = theme.decorOn === 'patch' ? patch.has(k) : inGround;
       if (!edge && onRightGround && rnd() < theme.decorAmount) decor[k] = pick(theme.decor, rnd);
+      if (!edge && !river.has(k) && !bank.has(k) && rnd() < theme.obstacleAmount) {
+        decor[k] = pick(theme.obstacles, rnd);
+      }
+      if (SOLID.has(decor[k]) || SOLID.has(ground[k])) obstacle.add(k);
     }
   }
-  return { ground, decor, water: river };
+  return { ground, decor, water: river, obstacle };
 }
 
-// Returns { tiles, layout(col, row), decor(col, row), water(col, row) } for a stage.
+// Returns { tiles, layout(col, row), decor(col, row), water(col, row),
+// obstacle(col, row) } for a stage.
 export function buildTerrain(stageId, themeName, size) {
   const rnd = seededRandom(stageId);
   const map = themeName === 'arena' ? arenaMap(size, rnd) : themedMap(size, THEMES[themeName], rnd);
@@ -144,5 +153,7 @@ export function buildTerrain(stageId, themeName, size) {
     decor: (col, row) => map.decor[`${col},${row}`],
     water: (col, row) => map.water.has(`${col},${row}`),
     hasWater: map.water.size > 0,
+    obstacle: (col, row) => map.obstacle.has(`${col},${row}`),
+    hasObstacles: map.obstacle.size > 0,
   };
 }
