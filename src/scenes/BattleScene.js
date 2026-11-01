@@ -3919,7 +3919,7 @@ export class BattleScene extends Phaser.Scene {
 
     // A body charge needs no projectile; a line shot flies to its farthest target.
     const farthest = targets[targets.length - 1];
-    if (farthest?.dist > 1 && !ability.moveThrough) {
+    if (farthest?.dist > 1 && !ability.moveThrough && !ability.consumesMove) {
       this.fireProjectile(unit, farthest.unit, projectileFor(unit, ability), () => {});
     }
 
@@ -3979,6 +3979,9 @@ export class BattleScene extends Phaser.Scene {
       if (landCol !== unit.col || landRow !== unit.row) this.moveUnit(unit, landCol, landRow);
       else unit.hasMoved = true;
     } else if (ability.consumesMove) {
+      // Dash up to the first target, if it's not already adjacent.
+      const stop = (targets[0]?.dist ?? 1) - 1;
+      if (stop > 0) this.moveUnit(unit, unit.col + dcol * stop, unit.row + drow * stop);
       unit.hasMoved = true;
     }
 

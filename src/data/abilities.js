@@ -264,6 +264,90 @@ export const ABILITIES = {
     desc: 'Restore SP to target ally  ·  range 3, 15%  ·  CD 2',
   },
 
+  // ── Higher talent skills, unlocked between and above the tiers above ──────
+  dash_strike: {
+    id: 'dash_strike', name: 'Dash Strike', icon: '💨', category: 'special',
+    cost: 2, targetType: 'enemy',
+    directional: true, mustBeforeMove: true, consumesMove: true, maxRange: 2, multiplier: 1.2,
+    desc: '1.2× dmg  ·  dash 2 tiles then strike  ·  2 SP',
+  },
+  quick_step: {
+    id: 'quick_step', name: 'Quick Step', icon: '🌀', category: 'special',
+    cost: 2, targetType: 'self', selfActivate: true, effect: 'dodge',
+    desc: 'Blocks the next attack against you  ·  2 SP',
+  },
+  burst: {
+    id: 'burst', name: 'Burst', icon: '💥', category: 'special',
+    cost: 3, range: 2, targetType: 'enemy', multiplier: 1.3, hits: 2,
+    desc: '2× 1.3× dmg  ·  range 2  ·  3 SP',
+  },
+  sprint: {
+    id: 'sprint', name: 'Sprint', icon: '🏃', category: 'special',
+    cost: 1, targetType: 'self', selfActivate: true, effect: 'moveBuff', moveBonus: 1,
+    desc: '+1 move this turn  ·  1 SP',
+  },
+  speed_break: {
+    id: 'speed_break', name: 'Speed Break', icon: '⬇', category: 'special',
+    cost: 4, range: 3, targetType: 'enemy', multiplier: 1.0,
+    debuff: { type: 'statDown', stat: 'speed', amount: 4, duration: 3 },
+    desc: '1× dmg  ·  -4 enemy speed for 3 turns  ·  4 SP',
+  },
+  overdrive: {
+    id: 'overdrive', name: 'Overdrive', icon: '🔥', category: 'skill',
+    cooldown: 5, targetType: 'self', selfActivate: true, effect: 'overdrive', duration: 3, statBoost: 10,
+    desc: 'All stats +10 for 3 turns  ·  CD 5',
+  },
+  crush: {
+    id: 'crush', name: 'Crush', icon: '💢', category: 'special',
+    cost: 3, range: 3, targetType: 'enemy', multiplier: 1.8,
+    desc: '1.8× dmg  ·  range 3  ·  3 SP',
+  },
+  guard_break: {
+    id: 'guard_break', name: 'Guard Break', icon: '🔨', category: 'special',
+    cost: 4, range: 2, targetType: 'enemy', multiplier: 1.5,
+    desc: '1.5× dmg  ·  range 2  ·  4 SP',
+  },
+  iron_wall: {
+    id: 'iron_wall', name: 'Iron Wall', icon: '🛡', category: 'special',
+    cost: 2, targetType: 'self', selfActivate: true, effect: 'damageReduction', duration: 2, reduceAmount: 10,
+    desc: '-10 dmg taken/hit for 2 turns  ·  2 SP',
+  },
+  power_surge: {
+    id: 'power_surge', name: 'Power Surge', icon: '💪', category: 'skill',
+    cooldown: 5, targetType: 'self', selfActivate: true, effect: 'statBuffPermanent', stat: 'strength', amount: 30,
+    desc: 'Strength +30, rest of battle (once active)  ·  CD 5',
+  },
+  endure: {
+    id: 'endure', name: 'Endure', icon: '❤', category: 'skill',
+    cooldown: 5, targetType: 'self', selfActivate: true, effect: 'endure',
+    desc: 'Survive your next lethal hit at 1 HP  ·  CD 5',
+  },
+  the_show: {
+    id: 'the_show', name: 'The Show', icon: '🌟', category: 'skill',
+    cooldown: 5, targetType: 'self', selfActivate: true, effect: 'costReduction', reducePct: 0.2,
+    desc: 'Your SP costs -20%, rest of battle (once active)  ·  CD 5',
+  },
+  intercept: {
+    id: 'intercept', name: 'Intercept', icon: '🤝', category: 'skill',
+    cooldown: 1, range: 3, targetType: 'player', multiplier: 0, effect: 'guard',
+    desc: 'Next attack on target ally hits you instead  ·  CD 1',
+  },
+  hp_plus: {
+    id: 'hp_plus', name: 'Hp++', icon: '💖', category: 'skill',
+    cooldown: 5, targetType: 'self', selfActivate: true, effect: 'maxHpBuff', boostPct: 0.2,
+    desc: 'Max HP +20% (heals the difference), rest of battle (once active)  ·  CD 5',
+  },
+  formation: {
+    id: 'formation', name: 'Formation', icon: '🧭', category: 'special',
+    cost: 5, range: 18, targetType: 'player', multiplier: 0, effect: 'teleportToAlly',
+    desc: 'Teleport adjacent to any ally  ·  5 SP',
+  },
+  freestyle: {
+    id: 'freestyle', name: 'Freestyle', icon: '🕺', category: 'skill',
+    cooldown: 5, targetType: 'self', selfActivate: true, effect: 'extraTurn',
+    desc: 'Take a full extra turn (move + act again)  ·  CD 5',
+  },
+
   // ── Designation ability sets (Combat / Defender / Ranged) ─────────────────
   // Support (S) is untouched — no Support sheet exists yet, so the slot stays
   // empty rather than guessing (Ability Revised ruling c).
@@ -577,8 +661,15 @@ export const ROLE_SPECIALS = {
 // Speed/Strength (Ability Revised ruling b — retires the old combined
 // tech-sum dual tree entirely).
 export const TALENT_SPECIALS = {
-  Speed:     [ { id: 'speed_dash',      minStat: 5 }, { id: 'speed_blitz', minStat: 80 } ],
-  Strength:  [ { id: 'strength_tackle', minStat: 5 }, { id: 'slam',        minStat: 80 } ],
+  Speed: [
+    { id: 'speed_dash', minStat: 5 }, { id: 'dash_strike', minStat: 15 }, { id: 'quick_step', minStat: 25 },
+    { id: 'burst', minStat: 35 }, { id: 'sprint', minStat: 45 }, { id: 'speed_break', minStat: 60 },
+    { id: 'speed_blitz', minStat: 80 },
+  ],
+  Strength: [
+    { id: 'strength_tackle', minStat: 5 }, { id: 'crush', minStat: 15 }, { id: 'guard_break', minStat: 25 },
+    { id: 'iron_wall', minStat: 35 }, { id: 'slam', minStat: 80 },
+  ],
   Endurance: [ { id: 'assist',          minStat: 5 }, { id: 'counter_hit', minStat: 80 } ],
   Stamina:   [ { id: 'performance',     minStat: 5 } ],
 };
@@ -586,8 +677,24 @@ export const TALENT_SPECIALS = {
 // Skills (cooldown, slot-free) gated by talent + stat threshold instead of
 // class/level.
 export const TALENT_SKILL_POOL = {
-  Stamina: [ { id: 'cheer', minStat: 80 } ],
+  Speed:    [ { id: 'overdrive', minStat: 100 } ],
+  Strength: [ { id: 'power_surge', minStat: 45 }, { id: 'endure', minStat: 100 } ],
+  Stamina:  [ { id: 'cheer', minStat: 80 } ],
 };
+
+// Open to anyone with the Stamina or Endurance talent, gated on the two stats
+// added together. Gear counts, which is what puts 400 within reach.
+const TECH_TALENTS = ['Stamina', 'Endurance'];
+export const TECH_SPECIALS = [ { id: 'formation', minStat: 130 } ];
+export const TECH_SKILL_POOL = [
+  { id: 'the_show', minStat: 35 }, { id: 'intercept', minStat: 55 },
+  { id: 'hp_plus', minStat: 80 }, { id: 'freestyle', minStat: 400 },
+];
+function techAbilities(unit, pool) {
+  if (!TECH_TALENTS.some(t => unit.talents?.includes(t))) return [];
+  const tech = talentStat(unit, 'stamina') + talentStat(unit, 'endurance');
+  return pool.filter(e => tech >= e.minStat).map(e => ABILITIES[e.id]);
+}
 
 // Passives (slot-limited Class Skills) gated by talent + stat threshold —
 // the tier-2 (stat 30) ability in every talent tree on the Ability Revised
@@ -838,6 +945,9 @@ export function skillUnlockRoutes() {
       for (const e of entries) add(e.id, `${talent} talent with ${talent} ${e.minStat} (gear counts)`);
     }
   }
+  for (const e of [...TECH_SPECIALS, ...TECH_SKILL_POOL]) {
+    add(e.id, `Stamina or Endurance talent with Stamina + Endurance ${e.minStat} (gear counts)`);
+  }
   for (const pool of [DESIGNATION_SPECIALS, DESIGNATION_SKILL_POOL, DESIGNATION_PASSIVE_POOL]) {
     for (const [designation, entries] of Object.entries(pool)) {
       for (const e of entries) add(e.id, atLevel(`${DESIGNATION_NAMES[designation]} heroes`, e.minLevel));
@@ -929,7 +1039,7 @@ export function getUnitSpecials(unit) {
     .map(e => ABILITIES[e.id])
     .filter(ab => ab.category === 'special');
 
-  return [...rolePool, ...talentSpecials, ...designationSpecials, ...classSpecials, ...crossClassSpecials].filter(Boolean);
+  return [...rolePool, ...talentSpecials, ...techAbilities(unit, TECH_SPECIALS), ...designationSpecials, ...classSpecials, ...crossClassSpecials].filter(Boolean);
 }
 
 // Full pool of Skills (cooldown, slot-free) a unit currently knows —
@@ -966,7 +1076,7 @@ export function getUnitSkills(unit) {
     .map(e => ABILITIES[e.id])
     .filter(ab => ab.category === 'skill');
 
-  return [...rolePool, ...talentPool, ...designationPool, ...classPool, ...crossClassPool].filter(Boolean);
+  return [...rolePool, ...talentPool, ...techAbilities(unit, TECH_SKILL_POOL), ...designationPool, ...classPool, ...crossClassPool].filter(Boolean);
 }
 
 // ── Battle loadout (2026-07-07) ──────────────────────────────────────────────
