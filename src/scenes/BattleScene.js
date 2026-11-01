@@ -2720,6 +2720,7 @@ export class BattleScene extends Phaser.Scene {
     if (this.distanceToUnit(defender.col, defender.row, attacker) > this.effectiveRange(defender, ATTACK)) return false;
     const { x, y } = this.gridToScreen(defender.col, defender.row);
     this.showEffect(x, y + TH2 - 22, 'COUNTER!', '#ffcc44');
+    this.playAttackAnim(defender, ATTACK);
     this.doAttack(defender, attacker);
     return true;
   }
@@ -3900,7 +3901,7 @@ export class BattleScene extends Phaser.Scene {
     }
 
     if (unit.portrait && unit.team === 'player') unit.facing = dcol >= 0 ? 'right' : 'left';
-    this.playAttackAnim(unit, ability.id);
+    this.playAttackAnim(unit, ability);
     this.consumeAbilityResource(unit, ability);
 
     const partnerAtkMult = this.partnerAttackMultiplier(unit);
@@ -4143,10 +4144,13 @@ export class BattleScene extends Phaser.Scene {
     });
   }
 
-  playAttackAnim(attacker, abilityId) {
+  // Each hero sheet has 3 attack rows: the showiest for Specials, the next for
+  // Attack and Throw, the last for Skills.
+  playAttackAnim(attacker, ability) {
     if (!attacker.portrait || attacker.team !== 'player') return;
     const spriteKey = spriteKeyForRole(attacker.roleId);
-    const anim = `${heroKey(spriteKey)}-attack`;
+    const row = ability.category === 'special' ? 'attack' : ability.category === 'skill' ? 'attack3' : 'attack2';
+    const anim = `${heroKey(spriteKey)}-${row}`;
     if (!this.anims.exists(anim)) return;
     attacker.portrait.play(anim);
     attacker.portrait.once('animationcomplete', () => {
@@ -4251,7 +4255,7 @@ export class BattleScene extends Phaser.Scene {
       const { x: dstX } = this.gridToScreen(target.col, target.row);
       attacker.facing = dstX >= srcX ? 'right' : 'left';
     }
-    this.playAttackAnim(attacker, ability.id);
+    this.playAttackAnim(attacker, ability);
 
     this.consumeAbilityResource(attacker, ability);
     if (target.team !== attacker.team) target = this.redirectHit(target);

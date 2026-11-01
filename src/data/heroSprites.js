@@ -453,6 +453,8 @@ export function createHeroAnims(scene, className) {
     // stripping/crop-math bug); columns 0-4 are clean, hence runEnd:4 below.
     scene.anims.create({ key: `${key}-run`,       frames: scene.anims.generateFrameNumbers(key, { start: cols + skip,         end: cols + (runEnd ?? cols - 1) }), frameRate: 10, repeat: -1 });
     scene.anims.create({ key: `${key}-attack`,    frames: scene.anims.generateFrameNumbers(key, { start: cols * 2 + skip,     end: cols * 3 - 1     }), frameRate: 12, repeat: 0  });
+    scene.anims.create({ key: `${key}-attack2`,   frames: scene.anims.generateFrameNumbers(key, { start: cols * 3 + skip,     end: cols * 4 - 1     }), frameRate: 12, repeat: 0  });
+    scene.anims.create({ key: `${key}-attack3`,   frames: scene.anims.generateFrameNumbers(key, { start: cols * 4 + skip,     end: cols * 5 - 1     }), frameRate: 12, repeat: 0  });
     scene.anims.create({ key: `${key}-celebrate`, frames: scene.anims.generateFrameNumbers(key, { start: cols*(rows-1)+skip,  end: cols * rows - 1  }), frameRate: 8,  repeat: 0  });
   } catch (e) {
     console.warn(`Hero anims failed for ${className}:`, e);
