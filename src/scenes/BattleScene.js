@@ -4,6 +4,7 @@ import {
   currentSport, sportById, SPORTS, maxBattlePartySize, getBattleParty,
   DESIGNATION_BEATS, designationIcon, DESIGNATION_CYCLE, ELEMENT_CYCLE, ELEMENT_BEATS,
 } from '../data/gameState.js';
+import { buildTerrain } from '../data/terrain.js';
 import { PROJECTILE_SHEET, registerProjectileFrames, projectileFor, projectileDisplaySize, projectileHeading } from '../data/projectiles.js';
 import { ATTACK, THROW, ABILITIES, getEquippedSpecialAbilities, getEquippedSkillAbilities, getEquippedPassives } from '../data/abilities.js';
 import { loadHeroSprites, createHeroAnims, stripHeroBackground, stripBackgroundByKey, trimmedSheetConfig, heroKey, getSpriteInfo, firstFrame, spriteKeyForRole, HERO_SPRITES } from '../data/heroSprites.js';
@@ -97,185 +98,70 @@ function rollRegionArchetype(region) {
 // Deterministic hash: same col/row always → same tile, but looks natural
 const th = (col, row) => (((col * 374761393) ^ (row * 668265263)) >>> 0) % 100;
 
-// Shared sandy-arena layout (same shape as AT1/AT2/GT/M4's inline versions)
-// factored out for the Noble Deity's 7 Trials (2026-07-17) — 7 near-
-// identical STAGE_CONFIGS entries would otherwise repeat this verbatim.
-function trialLayout(col, row) {
-  const p = th(col, row);
-  const edge = col === 0 || row === 0 || col === 9 || row === 9;
-  if (edge) return p < 50 ? '061' : '062';
-  const ring = col === 1 || row === 1 || col === 8 || row === 8;
-  if (ring) return p < 40 ? '057' : (p < 70 ? '055' : '056');
-  const v = (col * 3 + row * 7) % 4;
-  return ['000','001','002','003'][v];
-}
-
-// Stage configs: list of tile image numbers to preload + layout function
+// Stage configs. Tiles and layout are added below from STAGE_THEME (see terrain.js).
 // Tile image key convention: 't022' → tiles/isometric tileset/separated images/tile_022.png
 // In screen space: col+row=const is a HORIZONTAL line, col-row=const is VERTICAL
 const STAGE_CONFIGS = {
   'M0a': {
     // Hidden Cave — ore mission (M0-M4 redesign, Phase 5). Same cave-stone
     // convention as M3a/the old M4, distinguished by a warmer, ore-vein tint.
-    tiles: ['000','001','002','003','055','056','057','061','062'],
     label: 'HIDDEN CAVE',
     bgColor: 0x100a04,
     backdrop: BACKDROPS.cave,
-    layout(col, row) {
-      const p = th(col, row);
-      const edge = col === 0 || row === 0 || col === 9 || row === 9;
-      if (edge) return p < 50 ? '061' : '062';
-      if (p < 18) return p < 9 ? '055' : '056';
-      if (p < 28) return '057';
-      const v = (col * 3 + row * 7) % 4;
-      return ['000','001','002','003'][v];
-    },
   },
   'M0b': {
     // Wolf's Den — dark, dense forest, more log/rock cover than Sirblanc
     // Outskirts and no open grass patches (M0-M4 redesign, Phase 4).
-    tiles: ['022','026','027','034','047','049','061','062'],
     label: "WOLF'S DEN",
     bgColor: 0x060a04,
     backdrop: BACKDROPS.wilds,
-    layout(col, row) {
-      const p = th(col, row);
-      const edge = col === 0 || row === 0 || col === 9 || row === 9;
-      if (edge) return p < 60 ? '061' : '062';
-      if (p < 10 && col > 1 && col < 8) return p < 5 ? '047' : '049'; // den logs
-      if (p < 18) return p < 9 ? '061' : '062'; // scattered den rocks
-      if (p < 55) return '027'; // bushy grass dominates — dense cover
-      if (p < 80) return '026';
-      return '034';
-    },
   },
   'M1': {
     // Forest clearing — grass floor, bushy edges, scattered flowers and logs
     // (was M1F's terrain; M1F is gone, folded straight into M1)
-    tiles: ['022','026','027','033','034','037','041','047','049'],
     label: 'SIRBLANC OUTSKIRTS',
     bgColor: 0x0a1408,
     backdrop: BACKDROPS.wilds,
-    layout(col, row) {
-      const p = th(col, row);
-      const edge = col === 0 || row === 0 || col === 9 || row === 9;
-      if (edge)        return p < 55 ? '033' : p < 80 ? '034' : '027';
-      if (p < 4)       return '041';   // flower
-      if (p < 7 && col > 1 && col < 8) return p < 5 ? '047' : '049'; // log
-      if (p < 45)      return '022';   // light grass
-      if (p < 70)      return '026';   // medium grass
-      if (p < 85)      return '037';   // flat open grass
-      return '027';                     // bushy grass
-    },
   },
   'M2': {
     // Outskirts road — dirt road cuts horizontally across screen (col+row band)
-    tiles: ['000','001','002','003','011','012','022','026','061','062'],
     label: 'THUNDER PLAINS',
     bgColor: 0x10100a,
     backdrop: BACKDROPS.wilds,
-    layout(col, row) {
-      const p  = th(col, row);
-      const band = col + row; // horizontal line in screen space
-      // Central dirt road (band 7–11 out of 0–18 range → screen center)
-      if (band >= 7 && band <= 11) {
-        const v = (col * 3 + row * 5) % 4;
-        return ['000','001','002','003'][v];
-      }
-      // Road shoulders
-      if (band === 6 || band === 12) return p < 55 ? '011' : '012';
-      // Rock accents near far edges
-      if ((col <= 1 || col >= 8) && p < 22) return p < 11 ? '061' : '062';
-      if ((row <= 1 || row >= 8) && p < 22) return p < 11 ? '062' : '061';
-      // Grass off road
-      return p < 65 ? '022' : '026';
-    },
   },
   // M3 below is the OLD Greenfield-Plains layout, now otherwise unused (M3
   // is a hub — The Capital — not a battle). Kept as the template source for
   // M3b just below rather than duplicating the layout code.
   'M3': {
     // Greenfield Plains — open grass with a natural pond in the center-right
-    tiles: ['022','026','027','033','034','037','041','088','089','090'],
     label: 'GREENFIELD PLAINS',
     bgColor: 0x081208,
     backdrop: BACKDROPS.wilds,
-    layout(col, row) {
-      const p = th(col, row);
-      // Diamond-shaped pond: Manhattan distance from center point (6,5)
-      const dist = Math.abs(col - 6) + Math.abs(row - 5);
-      if (dist <= 2) return p < 60 ? '088' : '089';     // deep water
-      if (dist === 3) return p < 50 ? '089' : '090';    // shallow water/bank
-      // Grassy edges around map perimeter
-      const edge = col === 0 || row === 0 || col === 9 || row === 9;
-      if (edge) return p < 50 ? '033' : '034';
-      // Open field
-      if (p < 5)  return '041';   // flowers
-      if (p < 40) return '022';   // light grass
-      if (p < 65) return '026';   // medium grass
-      if (p < 80) return '037';   // flat grass
-      return '027';               // bushy grass
-    },
   },
   'M4': {
     // Arena Atlros — sandy fighting pit ringed by stone tiers (M0-M4
     // redesign, Phase 4; replaces the old dead "Hollow Caves" layout, which
     // M3a already copied for its own use, so nothing else depended on this
     // key's old content).
-    tiles: ['000','001','002','003','055','056','057','061','062'],
     label: 'ARENA ATLROS',
     bgColor: 0x140e08,
     backdrop: BACKDROPS.altroesArena,
-    layout(col, row) {
-      const p = th(col, row);
-      const edge = col === 0 || row === 0 || col === 9 || row === 9;
-      if (edge) return p < 50 ? '061' : '062'; // outer stone tier
-      const ring = col === 1 || row === 1 || col === 8 || row === 8;
-      if (ring) return p < 40 ? '057' : (p < 70 ? '055' : '056'); // inner stone ring
-      // Sandy fighting pit floor
-      const v = (col * 3 + row * 7) % 4;
-      return ['000','001','002','003'][v];
-    },
   },
 
   // ── Capital test battles (M0-M4 redesign, Phase 3) ────────────────────────
   'M3a': {
     // Northern Cave — 3 Goblins, ore-run flavor. Same layout as old M4
     // Hollow Caves under a new label.
-    tiles: ['000','001','002','003','055','056','057','061','062'],
     label: 'NORTHERN CAVE',
     bgColor: 0x020406,
     backdrop: BACKDROPS.cave,
-    layout(col, row) {
-      const p = th(col, row);
-      const edge = col === 0 || row === 0 || col === 9 || row === 9;
-      if (edge) return p < 50 ? '061' : '062';
-      if (p < 18) return p < 9 ? '055' : '056';
-      if (p < 28) return '057';
-      const v = (col * 3 + row * 7) % 4;
-      return ['000','001','002','003'][v];
-    },
   },
   'M3b': {
     // Hilbert Low Lands — 2 Lions. Same layout as old M3 Greenfield Plains
     // under a new label.
-    tiles: ['022','026','027','033','034','037','041','088','089','090'],
     label: 'HILBERT LOW LANDS',
     bgColor: 0x081208,
     backdrop: BACKDROPS.wilds,
-    layout(col, row) {
-      const p = th(col, row);
-      const dist = Math.abs(col - 6) + Math.abs(row - 5);
-      if (dist <= 2) return p < 60 ? '088' : '089';
-      if (dist === 3) return p < 50 ? '089' : '090';
-      const edge = col === 0 || row === 0 || col === 9 || row === 9;
-      if (edge) return p < 50 ? '033' : '034';
-      if (p < 5)  return '041';
-      if (p < 40) return '022';
-      if (p < 65) return '026';
-      if (p < 80) return '037';
-      return '027';
-    },
   },
 
   // ── Hilbert Academy quest battles (2026-07-11) ────────────────────────────
@@ -286,59 +172,25 @@ const STAGE_CONFIGS = {
     // Lion's Pride — Defeat the King quest (King Lion + 2 Lions). Same
     // greenfield layout family as M3b (thematically "more of Hilbert Low
     // Lands"), new label/tint so it doesn't read as a duplicate of M3b.
-    tiles: ['022','026','027','033','034','037','041','088','089','090'],
     label: "LION'S PRIDE",
     bgColor: 0x0a1608,
     backdrop: BACKDROPS.wilds,
-    layout(col, row) {
-      const p = th(col, row);
-      const dist = Math.abs(col - 6) + Math.abs(row - 5);
-      if (dist <= 2) return p < 60 ? '088' : '089';
-      if (dist === 3) return p < 50 ? '089' : '090';
-      const edge = col === 0 || row === 0 || col === 9 || row === 9;
-      if (edge) return p < 50 ? '033' : '034';
-      if (p < 5)  return '041';
-      if (p < 40) return '022';
-      if (p < 65) return '026';
-      if (p < 80) return '037';
-      return '027';
-    },
   },
   'A2b': {
     // Goblin Warcamp — Goblin King quest (wave-spawning goblins). Same cave
     // layout family as M3a/M4, new label/tint.
-    tiles: ['000','001','002','003','055','056','057','061','062'],
     label: 'GOBLIN WARCAMP',
     bgColor: 0x140a02,
     backdrop: BACKDROPS.cave,
-    layout(col, row) {
-      const p = th(col, row);
-      const edge = col === 0 || row === 0 || col === 9 || row === 9;
-      if (edge) return p < 50 ? '061' : '062';
-      if (p < 18) return p < 9 ? '055' : '056';
-      if (p < 28) return '057';
-      const v = (col * 3 + row * 7) % 4;
-      return ['000','001','002','003'][v];
-    },
   },
   'A2c': {
     // Cave Depths — Clear the Northern Cave quest (3 random monsters,
     // waves every 3rd turn). Same cave layout family as M3a/A2b, distinct
     // label/tint so it reads as "deeper than" M3a's Northern Cave rather
     // than a duplicate of it.
-    tiles: ['000','001','002','003','055','056','057','061','062'],
     label: 'CAVE DEPTHS',
     bgColor: 0x05040a,
     backdrop: BACKDROPS.cave,
-    layout(col, row) {
-      const p = th(col, row);
-      const edge = col === 0 || row === 0 || col === 9 || row === 9;
-      if (edge) return p < 50 ? '061' : '062';
-      if (p < 18) return p < 9 ? '055' : '056';
-      if (p < 28) return '057';
-      const v = (col * 3 + row * 7) % 4;
-      return ['000','001','002','003'][v];
-    },
   },
 
   // ── Ester Academy quest battles (2026-07-11) ──────────────────────────────
@@ -348,35 +200,16 @@ const STAGE_CONFIGS = {
     // Dragon's Roost — Defeat 1 dragon and two wyverns quest. Rugged/rocky
     // family (same tiles as M12 Earthscar Basin) reads better for a
     // dragon's lair than a grass/cave layout.
-    tiles: ['004','010','015','020','033','034','061','062'],
     label: "DRAGON'S ROOST",
     bgColor: 0x1c1006,
     backdrop: BACKDROPS.altroesVolcano,
-    layout(col, row) {
-      const p = th(col, row);
-      const edge = col === 0 || row === 0 || col === 9 || row === 9;
-      if (edge) return p < 45 ? '033' : '034';
-      if (p < 12) return p < 6 ? '061' : '062';
-      const v = (col * 5 + row * 3) % 4;
-      return ['004','010','015','020'][v];
-    },
   },
   'A1b': {
     // The Great Boulder — damage-race quest against a stationary Rock. Same
     // sandy-arena family as M4 Arena Atlros, fitting a training-drill feel.
-    tiles: ['000','001','002','003','055','056','057','061','062'],
     label: 'THE GREAT BOULDER',
     bgColor: 0x140e08,
     backdrop: BACKDROPS.altroesArena,
-    layout(col, row) {
-      const p = th(col, row);
-      const edge = col === 0 || row === 0 || col === 9 || row === 9;
-      if (edge) return p < 50 ? '061' : '062';
-      const ring = col === 1 || row === 1 || col === 8 || row === 8;
-      if (ring) return p < 40 ? '057' : (p < 70 ? '055' : '056');
-      const v = (col * 3 + row * 7) % 4;
-      return ['000','001','002','003'][v];
-    },
   },
 
   // ── Region cave locations + signature elemental areas (July 2026) ────────
@@ -399,135 +232,68 @@ const STAGE_CONFIGS = {
   // Same sandy-arena family as M4 Arena Atlros — fitting for hero-vs-hero
   // competitive fights, distinct label/tint per stop.
   'AT1': {
-    tiles: ['000','001','002','003','055','056','057','061','062'],
     label: 'ALTROES TRIALS I',
     bgColor: 0x140e08,
     backdrop: BACKDROPS.altroesArena,
-    layout(col, row) {
-      const p = th(col, row);
-      const edge = col === 0 || row === 0 || col === 9 || row === 9;
-      if (edge) return p < 50 ? '061' : '062';
-      const ring = col === 1 || row === 1 || col === 8 || row === 8;
-      if (ring) return p < 40 ? '057' : (p < 70 ? '055' : '056');
-      const v = (col * 3 + row * 7) % 4;
-      return ['000','001','002','003'][v];
-    },
   },
   'AT2': {
-    tiles: ['000','001','002','003','055','056','057','061','062'],
     label: 'ALTROES TRIALS II',
     bgColor: 0x1c1206,
     backdrop: BACKDROPS.altroesArena,
-    layout(col, row) {
-      const p = th(col, row);
-      const edge = col === 0 || row === 0 || col === 9 || row === 9;
-      if (edge) return p < 50 ? '061' : '062';
-      const ring = col === 1 || row === 1 || col === 8 || row === 8;
-      if (ring) return p < 40 ? '057' : (p < 70 ? '055' : '056');
-      const v = (col * 3 + row * 7) % 4;
-      return ['000','001','002','003'][v];
-    },
   },
   // Alpha King Dragon (2026-07-11) — boss node NE of Artfall. No dedicated
   // snow/ice tileset exists anywhere in this project (confirmed when M5/
   // M5b were built the same day) — reuses the same rugged/rocky family as
   // M12/A1a's old "Dragon's Roost" layout, close enough for a mountain lair.
   'DK': {
-    tiles: ['004','010','015','020','033','034','061','062'],
     label: 'THE FROZEN PEAKS',
     bgColor: 0x0c1420,
     backdrop: BACKDROPS.galeWilds,
-    layout(col, row) {
-      const p = th(col, row);
-      const edge = col === 0 || row === 0 || col === 9 || row === 9;
-      if (edge) return p < 45 ? '033' : '034';
-      if (p < 12) return p < 6 ? '061' : '062';
-      const v = (col * 5 + row * 3) % 4;
-      return ['004','010','015','020'][v];
-    },
   },
   // Monster Hunt (2026-07-11) — Gale quest, NE of Zester. Same rocky/icy
   // family as DK for map consistency in this corner.
   'MH': {
-    tiles: ['004','010','015','020','033','034','061','062'],
     label: 'MONSTER HUNT',
     bgColor: 0x0c1420,
     backdrop: BACKDROPS.galeWilds,
-    layout(col, row) {
-      const p = th(col, row);
-      const edge = col === 0 || row === 0 || col === 9 || row === 9;
-      if (edge) return p < 45 ? '033' : '034';
-      if (p < 12) return p < 6 ? '061' : '062';
-      const v = (col * 5 + row * 3) % 4;
-      return ['004','010','015','020'][v];
-    },
   },
   // Gale Tournament (2026-07-12) — capstone quest-gated battle NW of
   // Artfall. Same sandy-arena family as AT1/AT2/M4, matching the "real
   // tournament" flavor rather than DK/MH's rocky-peaks family.
   'GT': {
-    tiles: ['000','001','002','003','055','056','057','061','062'],
     label: 'GALE TOURNAMENT',
     bgColor: 0x1c1608,
     backdrop: BACKDROPS.galeArena,
-    layout(col, row) {
-      const p = th(col, row);
-      const edge = col === 0 || row === 0 || col === 9 || row === 9;
-      if (edge) return p < 50 ? '061' : '062';
-      const ring = col === 1 || row === 1 || col === 8 || row === 8;
-      if (ring) return p < 40 ? '057' : (p < 70 ? '055' : '056');
-      const v = (col * 3 + row * 7) % 4;
-      return ['000','001','002','003'][v];
-    },
   },
   // M6 — Blightreach, The Corrupted One's monsters (2026-07-17). Same
   // rugged/rocky tile family as DK/MH (right next door, south-east of
   // Zester) but a sickly dark-purple bgColor instead of their icy-blue tint
   // — reads as the same terrain gone wrong, matching the enemies' aura.
   'M6': {
-    tiles: ['004','010','015','020','033','034','061','062'],
     label: 'BLIGHTREACH',
     bgColor: 0x140a1c,
     backdrop: BACKDROPS.galeWilds,
-    layout(col, row) {
-      const p = th(col, row);
-      const edge = col === 0 || row === 0 || col === 9 || row === 9;
-      if (edge) return p < 45 ? '033' : '034';
-      if (p < 12) return p < 6 ? '061' : '062';
-      const v = (col * 5 + row * 3) % 4;
-      return ['004','010','015','020'][v];
-    },
   },
   // M7 — The Grand Arena, south of Blightreach (2026-07-17). Same
   // sandy-arena family as AT1/AT2/GT/M4 (a real tournament venue, even
   // though the tournament itself never happens) — dark-purple bgColor tint
   // like M6, since it's still the Corrupted One's fight.
   'M7': {
-    tiles: ['000','001','002','003','055','056','057','061','062'],
     label: 'THE GRAND ARENA',
     bgColor: 0x1c0a1c,
     backdrop: BACKDROPS.galeArena,
-    layout(col, row) {
-      const p = th(col, row);
-      const edge = col === 0 || row === 0 || col === 9 || row === 9;
-      if (edge) return p < 50 ? '061' : '062';
-      const ring = col === 1 || row === 1 || col === 8 || row === 8;
-      if (ring) return p < 40 ? '057' : (p < 70 ? '055' : '056');
-      const v = (col * 3 + row * 7) % 4;
-      return ['000','001','002','003'][v];
-    },
   },
   // The Noble Deity's 7 Trials (2026-07-17) — all share one "training
   // grounds" tile family (same sandy-arena tiles as M7/GT, matching
   // lametusTrainingField's backdrop), distinguished only by a per-trial
   // bgColor tint so each still reads as its own place on replay.
-  'T1': { tiles: ['000','001','002','003','055','056','057','061','062'], label: 'TRIAL OF ATHLETICS',    bgColor: 0x141c0a, backdrop: BACKDROPS.lametusTrainingField, layout: trialLayout },
-  'T2': { tiles: ['000','001','002','003','055','056','057','061','062'], label: 'TRIAL OF MARTIAL ARTS', bgColor: 0x1c0a0a, backdrop: BACKDROPS.lametusTrainingField, layout: trialLayout },
-  'T3': { tiles: ['000','001','002','003','055','056','057','061','062'], label: 'TRIAL OF PERFORMANCE',  bgColor: 0x1c0a14, backdrop: BACKDROPS.lametusTrainingField, layout: trialLayout },
-  'T4': { tiles: ['000','001','002','003','055','056','057','061','062'], label: 'TRIAL OF TARGET',       bgColor: 0x0a1414, backdrop: BACKDROPS.lametusTrainingField, layout: trialLayout },
-  'T5': { tiles: ['000','001','002','003','055','056','057','061','062'], label: 'TRIAL OF BALL',         bgColor: 0x0a141c, backdrop: BACKDROPS.lametusTrainingField, layout: trialLayout },
-  'T6': { tiles: ['000','001','002','003','055','056','057','061','062'], label: 'TRIAL OF BAT & BALL',   bgColor: 0x14140a, backdrop: BACKDROPS.lametusTrainingField, layout: trialLayout },
-  'T7': { tiles: ['000','001','002','003','055','056','057','061','062'], label: 'TRIAL OF RACQUET',      bgColor: 0x1c1c0a, backdrop: BACKDROPS.lametusTrainingField, layout: trialLayout },
+  'T1': { label: 'TRIAL OF ATHLETICS',    bgColor: 0x141c0a, backdrop: BACKDROPS.lametusTrainingField },
+  'T2': { label: 'TRIAL OF MARTIAL ARTS', bgColor: 0x1c0a0a, backdrop: BACKDROPS.lametusTrainingField },
+  'T3': { label: 'TRIAL OF PERFORMANCE',  bgColor: 0x1c0a14, backdrop: BACKDROPS.lametusTrainingField },
+  'T4': { label: 'TRIAL OF TARGET',       bgColor: 0x0a1414, backdrop: BACKDROPS.lametusTrainingField },
+  'T5': { label: 'TRIAL OF BALL',         bgColor: 0x0a141c, backdrop: BACKDROPS.lametusTrainingField },
+  'T6': { label: 'TRIAL OF BAT & BALL',   bgColor: 0x14140a, backdrop: BACKDROPS.lametusTrainingField },
+  'T7': { label: 'TRIAL OF RACQUET',      bgColor: 0x1c1c0a, backdrop: BACKDROPS.lametusTrainingField },
   // The Golem Trial (2026-07-18, "North of A3 they will fight the Golems
   // as there last trial") — the entry-requirement fight for the Final
   // Tournament, separate from the 7 class trials above (it isn't tied to
@@ -536,18 +302,9 @@ const STAGE_CONFIGS = {
   // "boulder-strewn pass" reads better here than the sandy-arena tiles
   // the 7 class trials use.
   'TG': {
-    tiles: ['004','010','015','020','033','034','061','062'],
     label: 'STONEWAKE PASS',
     bgColor: 0x2c2822,
     backdrop: BACKDROPS.altroesVolcano,
-    layout(col, row) {
-      const p = th(col, row);
-      const edge = col === 0 || row === 0 || col === 9 || row === 9;
-      if (edge) return p < 45 ? '033' : '034';
-      if (p < 12) return p < 6 ? '061' : '062';
-      const v = (col * 5 + row * 3) % 4;
-      return ['004','010','015','020'][v];
-    },
   },
   // The Final Tournament (2026-08-03) — the story's climactic fight, same
   // sandy-arena tile family as AT1/AT2/GT/M7 (a real tournament crowd venue,
@@ -555,21 +312,23 @@ const STAGE_CONFIGS = {
   // tint as M6/M7 since it's still the Corrupted One's fight, just brought
   // into the open this time instead of an ambush/scripted loss.
   'FT': {
-    tiles: ['000','001','002','003','055','056','057','061','062'],
     label: 'THE FINAL TOURNAMENT',
     bgColor: 0x1c0a1c,
     backdrop: BACKDROPS.lametusArena,
-    layout(col, row) {
-      const p = th(col, row);
-      const edge = col === 0 || row === 0 || col === 9 || row === 9;
-      if (edge) return p < 50 ? '061' : '062';
-      const ring = col === 1 || row === 1 || col === 8 || row === 8;
-      if (ring) return p < 40 ? '057' : (p < 70 ? '055' : '056');
-      const v = (col * 3 + row * 7) % 4;
-      return ['000','001','002','003'][v];
-    },
   },
 };
+
+// Each stage's terrain, matched to its backdrop.
+const STAGE_THEME = {
+  M0a: 'cave', M3a: 'cave', A2b: 'cave', A2c: 'deepCave',
+  M0b: 'forest', M1: 'plains', M2: 'plains', M3: 'plains', M3b: 'plains', A2a: 'plains',
+  A1a: 'desert', TG: 'volcanic', DK: 'snow', MH: 'snow', M6: 'blight',
+  M4: 'arena', A1b: 'arena', AT1: 'arena', AT2: 'arena', GT: 'arena', M7: 'arena', FT: 'arena',
+  T1: 'field', T2: 'field', T3: 'field', T4: 'field', T5: 'field', T6: 'field', T7: 'field',
+};
+for (const [id, cfg] of Object.entries(STAGE_CONFIGS)) {
+  Object.assign(cfg, buildTerrain(id, STAGE_THEME[id] ?? 'plains', COLS));
+}
 
 // Per-mission configuration: player start positions + enemy definitions.
 // M1/M2 below are the wolf-battle/Thunder Plains tutorial missions from the
@@ -1405,6 +1164,11 @@ export class BattleScene extends Phaser.Scene {
           this.add.image(x, y + TILE_Y_OFFSET, tileKey)
             .setScale(TILE_SCALE).setOrigin(0.5, 0).setDepth((col + row) * 10)
         );
+        const decor = stageCfg.decor(col, row);
+        if (decor) {
+          this.add.image(x, y + TILE_Y_OFFSET, `t${decor}`)
+            .setScale(TILE_SCALE).setOrigin(0.5, 0).setDepth((col + row) * 10 + 1);
+        }
       }
     }
 
