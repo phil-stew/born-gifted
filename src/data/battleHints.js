@@ -33,3 +33,14 @@ export function battleHintsOn(replayDifficulty = 1) {
   // M0 is the home hub, which lands in this list without being a battle.
   return state.completedMissions.filter(id => id !== 'M0').length < HINT_MISSIONS;
 }
+
+// The battle log and info panels. On unless turned off in Settings.
+const INFO_KEY = 'born-gifted-battle-info';
+
+export function battleInfoOn() {
+  try { return localStorage.getItem(INFO_KEY) !== 'off'; } catch { return true; }
+}
+
+export function setBattleInfoOn(on) {
+  try { localStorage.setItem(INFO_KEY, on ? 'on' : 'off'); } catch { /* setting just won't persist */ }
+}

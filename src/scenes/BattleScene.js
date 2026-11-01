@@ -14,6 +14,7 @@ import { BACKDROPS } from '../data/storyBackdrops.js';
 import { preloadSfx, playSfx, playStinger, SFX } from '../audio/sound.js';
 import { preloadMusic, playMusic } from '../audio/music.js';
 import { getDifficultyConfig } from '../data/difficulty.js';
+import { battleInfoOn } from '../data/battleHints.js';
 
 // M1 first-time control tutorial (2026-08-06, "some people struggle to
 // know how to move and attack") — shown once ever (a plain localStorage
@@ -1360,10 +1361,10 @@ export class BattleScene extends Phaser.Scene {
     this.infoPanel = this.add.text(width - 10, height - 30, '', {
       fontSize: '14px', fontFamily: 'monospace', color: '#dfe8ff', stroke: '#000000', strokeThickness: 3,
       align: 'right', lineSpacing: 4,
-    }).setOrigin(1, 1).setDepth(2600);
+    }).setOrigin(1, 1).setDepth(2600).setVisible(battleInfoOn());
     this.logTurnText = this.add.text(10, height - 46 - BATTLE_LOG_LINES * 19 - 3, '', {
       fontSize: '15px', fontFamily: 'monospace', fontStyle: 'bold', color: '#ffee88', stroke: '#000000', strokeThickness: 3,
-    }).setDepth(2600);
+    }).setDepth(2600).setVisible(battleInfoOn());
     this.updateTurnText();
 
     if (diff > 1.0) {
@@ -4006,7 +4007,7 @@ export class BattleScene extends Phaser.Scene {
     const { height } = this.scale;
     this.battleLog ??= Array.from({ length: BATTLE_LOG_LINES }, (_, i) => this.add.text(10, height - 46 - (BATTLE_LOG_LINES - 1 - i) * 19, '', {
       fontSize: '14px', fontFamily: 'monospace', stroke: '#000000', strokeThickness: 3,
-    }).setDepth(2600));
+    }).setDepth(2600).setVisible(battleInfoOn()));
     for (let i = 0; i < BATTLE_LOG_LINES - 1; i++) {
       const next = this.battleLog[i + 1];
       this.battleLog[i].setText(next.text).setColor(next.style.color).setAlpha(0.7 + i * 0.1);

@@ -5,7 +5,7 @@ import { playSfx, SFX } from '../audio/sound.js';
 import { getSfxVolume, setSfxVolume, getMusicVolume } from '../audio/settings.js';
 import { setMusicVolume } from '../audio/music.js';
 import { DIFFICULTIES, getDifficultyKey, setDifficultyKey } from '../data/difficulty.js';
-import { HINT_MODES, getHintMode, setHintMode } from '../data/battleHints.js';
+import { HINT_MODES, getHintMode, setHintMode, battleInfoOn, setBattleInfoOn } from '../data/battleHints.js';
 import { TEXT_SIZES, getTextSizeKey, setTextSizeKey } from '../data/textSize.js';
 
 // Reachable from the title screen only (for now) — see GameScene's
@@ -40,6 +40,7 @@ export class SettingsScene extends Phaser.Scene {
     this.buildDifficultyRow(height / 2 - 25);
     this.buildHintRow(height / 2 + 90);
     this.buildTextSizeRow(height / 2 + 205);
+    this.buildBattleInfoRow(height / 2 + 205);
 
     this.cameras.main.fadeIn(250, 0, 0, 0);
   }
@@ -102,13 +103,32 @@ export class SettingsScene extends Phaser.Scene {
   }
 
   // Canvas text picks up its size when created, so restart to show the change.
+  // Shares its row with Text Size; there's no vertical room for another.
+  buildBattleInfoRow(y) {
+    const cx = this.scale.width / 2 + 260;
+    this.add.text(cx, y - 44, 'BATTLE INFO', {
+      fontSize: '21px', fontFamily: 'monospace', fontStyle: 'bold', color: '#ccccee',
+    }).setOrigin(0.5);
+
+    [['On', true], ['Off', false]].forEach(([label, on], i) => {
+      drawButton(this, {
+        x: cx - 55 + i * 110, y, w: 100, h: 56, label, fontSize: '21px',
+        active: on === battleInfoOn(),
+        onClick: () => {
+          setBattleInfoOn(on);
+          this.scene.restart({ returnScene: this.returnScene, returnData: this.returnData });
+        },
+      });
+    });
+  }
+
   buildTextSizeRow(y) {
-    const cx = this.scale.width / 2;
+    const cx = this.scale.width / 2 - 140;
     this.add.text(cx, y - 44, 'TEXT SIZE', {
       fontSize: '21px', fontFamily: 'monospace', fontStyle: 'bold', color: '#ccccee',
     }).setOrigin(0.5);
 
-    const bw = 150, bh = 56, gap = 14;
+    const bw = 130, bh = 56, gap = 14;
     const startX = cx - (TEXT_SIZES.length * (bw + gap) - gap) / 2 + bw / 2;
     TEXT_SIZES.forEach((size, i) => {
       drawButton(this, {
