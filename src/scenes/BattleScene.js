@@ -1440,8 +1440,16 @@ export class BattleScene extends Phaser.Scene {
 
     this.playerUnits = battleParty.map(gs => {
       const [col, row] = claimStartTile(...(missionCfg.playerPos[gs.id] ?? [1, 1]));
+      const equippedPassives = getEquippedPassives({ ...gs, designations: currentDesignations(gs) });
+      const passive = (id) => equippedPassives.some(p => p.id === id);
       const eff = effectiveStats(gs);
-      const hp  = gsMaxHp(gs);
+      if (passive('strength_flex')) eff.strength += 10;
+      if (passive('ace')) {
+        eff.speed    = Math.round(eff.speed * 1.1);
+        eff.strength = Math.round(eff.strength * 1.1);
+      }
+      const hp  = Math.round(gsMaxHp(gs) * (passive('life_effort') ? 1.1 : 1));
+      const moveSpeed = gs.moveSpeed + (passive('mobility') ? 1 : 0);
       // Talent-tree units get an expanded SP pool so their tree's higher costs
       // become reachable as the relevant stat(s) grow. Units qualifying for
       // multiple trees get the best applicable pool (not stacked).
@@ -1472,8 +1480,8 @@ export class BattleScene extends Phaser.Scene {
         // to pick a correct fallback ability from a promoted partner's kit.
         t1Role: gs.t1Role, t2Role: gs.t2Role, t3Role: gs.t3Role,
         roleId: currentRoleId(gs), designations: currentDesignations(gs),
-        classGrouping, equippedPassives: getEquippedPassives({ ...gs, designations: currentDesignations(gs) }),
-        moveSpeed: gs.moveSpeed, baseMoveSpeed: gs.moveSpeed, col, row, team: 'player',
+        classGrouping, equippedPassives,
+        moveSpeed, baseMoveSpeed: moveSpeed, col, row, team: 'player',
         speed: eff.speed, strength: eff.strength, stamina: eff.stamina, endurance: eff.endurance,
         hp, maxHp: hp, isDone: false, isDead: false, hitFlash: false, debuffs: [],
         sp: maxSp, maxSp, hasActed: false, hasMoved: false, facing: 'right', level: gs.level ?? 1,
@@ -2437,22 +2445,48 @@ export class BattleScene extends Phaser.Scene {
   // unit.setUpUsedThisTurn, reset once per round in startPlayerTurn(). The
   // flag lives on the DEFENDER, so it correctly caps at one reduction total
   // per round even if multiple different enemies hit this unit before its
-  // next turn (not once per attacker).
-  partnerDefenseMultiplier(unit) {
-    if (!this.sportsPartnerAdjacent(unit)) return 1.0;
-    if (this.hasPassive(unit, 'training_buddy')) return 0.5;
+  // next turn (not once per attacker). Block always applies, on top of those.
+  passiveDefenseMultiplier(unit) {
+    const block = this.hasPassive(unit, 'block') ? 0.9 : 1.0;
+    if (!this.sportsPartnerAdjacent(unit)) return block;
+    if (this.hasPassive(unit, 'training_buddy')) return 0.5 * block;
     if (this.hasPassive(unit, 'set_up') && !unit.setUpUsedThisTurn) {
       unit.setUpUsedThisTurn = true;
-      return 0.5;
+      return 0.5 * block;
     }
-    return 1.0;
+    return block;
   }
-  // Extra range from Lock-On while beside a sports partner.
-  partnerRangeBonus(unit) {
-    return (this.sportsPartnerAdjacent(unit) && this.hasPassive(unit, 'lock_on')) ? 3 : 0;
+  // Stopper: the first hit each round on an ally within 2 tiles lands on the
+  // Stopper hero instead. Returns who actually takes the hit.
+  stopperIntercept(defender) {
+    if (defender.team !== 'player') return defender;
+    const stopper = this.playerUnits.find(o => o !== defender && !o.isDead && !o.stopperUsedThisTurn
+      && this.hasPassive(o, 'stopper')
+      && Math.abs(o.col - defender.col) + Math.abs(o.row - defender.row) <= 2);
+    if (!stopper) return defender;
+    stopper.stopperUsedThisTurn = true;
+    const { x, y } = this.gridToScreen(stopper.col, stopper.row);
+    this.showEffect(x, y + TH2 - 22, 'STOPPER!', '#66ddff');
+    return stopper;
+  }
+  // Tiles this unit can move this turn. Performance Flex gives allies in the
+  // 5×5 around its user +2; several users don't stack.
+  movePoints(unit) {
+    const inAura = unit.team === 'player' && this.playerUnits.some(o => o !== unit && !o.isDead
+      && this.hasPassive(o, 'performance_flex')
+      && Math.abs(o.col - unit.col) <= 2 && Math.abs(o.row - unit.row) <= 2);
+    return unit.moveSpeed + (inAura ? 2 : 0);
+  }
+  // Extra range from passives: Lock-On beside a sports partner, Focus on any
+  // ranged ability, +5 RNG on the normal ranged attack (Throw).
+  rangeBonus(unit, ability) {
+    const lockOn = (this.sportsPartnerAdjacent(unit) && this.hasPassive(unit, 'lock_on')) ? 3 : 0;
+    const focus = (this.hasPassive(unit, 'focus') && (ability.exactRange ?? ability.range ?? 1) > 1) ? 1 : 0;
+    const plusRange = (this.hasPassive(unit, 'ranged_plus_range') && ability === THROW) ? 5 : 0;
+    return lockOn + focus + plusRange;
   }
   effectiveRange(unit, ability) {
-    return (ability.range ?? 1) + this.partnerRangeBonus(unit);
+    return (ability.range ?? 1) + this.rangeBonus(unit, ability);
   }
   // Whether `dist` (Manhattan distance from `unit`) is a valid target
   // distance for `ability`. Exact-range abilities (3-Point: "RNG is EXACTLY
@@ -2462,7 +2496,7 @@ export class BattleScene extends Phaser.Scene {
   // as before (no added lower bound — some ally-support abilities are
   // clickable on the caster's own tile at dist 0).
   abilityRangeMatches(unit, ability, dist) {
-    if (ability.exactRange != null) return dist === ability.exactRange + this.partnerRangeBonus(unit);
+    if (ability.exactRange != null) return dist === ability.exactRange + this.rangeBonus(unit, ability);
     return dist <= this.effectiveRange(unit, ability);
   }
   // A big monster is one target: in range on any of its tiles means in range.
@@ -2587,7 +2621,7 @@ export class BattleScene extends Phaser.Scene {
     const elemMult = elementMultiplier(partner, target);
     let dmg = 0;
     for (let h = 0; h < hits; h++) dmg += Math.round(calcAtk(partner) * followUpMult * desigMult * elemMult);
-    dmg = Math.round(dmg * this.partnerDefenseMultiplier(target) * this.difficultyDamageMult(partner));
+    dmg = Math.round(dmg * this.passiveDefenseMultiplier(target) * this.difficultyDamageMult(partner));
     target.hp = Math.max(0, target.hp - dmg);
 
     const { x, y } = this.gridToScreen(target.col, target.row);
@@ -2612,6 +2646,8 @@ export class BattleScene extends Phaser.Scene {
       const guardian = defender.guardedBy;
       defender.guardedBy = null;
       defender = guardian;
+    } else {
+      defender = this.stopperIntercept(defender);
     }
 
     if (defender.dodgeReady) {
@@ -2624,7 +2660,7 @@ export class BattleScene extends Phaser.Scene {
 
     let dmg = Math.round(calcAtk(attacker) * designationMultiplier(attacker, defender, ATTACK) * elementMultiplier(attacker, defender)
       * this.partnerAttackMultiplier(attacker));
-    dmg = Math.round(dmg * this.partnerDefenseMultiplier(defender) * this.difficultyDamageMult(attacker));
+    dmg = Math.round(dmg * this.passiveDefenseMultiplier(defender) * this.difficultyDamageMult(attacker));
     if (defender.damageReduction) {
       dmg = Math.max(0, dmg - defender.damageReduction.amount);
     }
@@ -3739,7 +3775,7 @@ export class BattleScene extends Phaser.Scene {
     this.phase = 'ability_targeting';
     let rangeLabel;
     if (ability.exactRange != null) {
-      rangeLabel = `exactly ${ability.exactRange + this.partnerRangeBonus(this.selectedUnit)}`;
+      rangeLabel = `exactly ${ability.exactRange + this.rangeBonus(this.selectedUnit, ability)}`;
     } else {
       const range = this.effectiveRange(this.selectedUnit, ability);
       rangeLabel = range === Infinity ? '∞' : range;
@@ -3800,7 +3836,7 @@ export class BattleScene extends Phaser.Scene {
     const partnerAtkMult = this.partnerAttackMultiplier(unit);
     const applyHit = (target, mult) => {
       let dmg = Math.round(calcAtk(unit) * mult * designationMultiplier(unit, target, ability) * elementMultiplier(unit, target) * partnerAtkMult);
-      dmg = Math.round(dmg * this.partnerDefenseMultiplier(target) * this.difficultyDamageMult(unit));
+      dmg = Math.round(dmg * this.passiveDefenseMultiplier(target) * this.difficultyDamageMult(unit));
       target.hp = Math.max(0, target.hp - dmg);
       const { x, y } = this.gridToScreen(target.col, target.row);
       this.showDamage(x, y + TH2, dmg, '#ffaa22', this.countDamageBonuses(unit, target, ability));
@@ -3973,7 +4009,7 @@ export class BattleScene extends Phaser.Scene {
       const elemMult = elementMultiplier(unit, target);
       let dmg = 0;
       for (let h = 0; h < hits; h++) dmg += Math.round(calcAtk(unit) * ability.multiplier * desigMult * elemMult);
-      dmg = Math.round(dmg * this.partnerDefenseMultiplier(target) * this.difficultyDamageMult(unit));
+      dmg = Math.round(dmg * this.passiveDefenseMultiplier(target) * this.difficultyDamageMult(unit));
       target.hp = Math.max(0, target.hp - dmg);
 
       const { x, y } = this.gridToScreen(target.col, target.row);
@@ -4199,7 +4235,7 @@ export class BattleScene extends Phaser.Scene {
       const partnerAtkMult = this.partnerAttackMultiplier(attacker);
       let dmg = 0;
       for (let h = 0; h < hits; h++) dmg += Math.round(calcAtk(attacker) * mult * desigMult * elemMult * partnerAtkMult);
-      dmg = Math.round(dmg * this.partnerDefenseMultiplier(target) * this.difficultyDamageMult(attacker));
+      dmg = Math.round(dmg * this.passiveDefenseMultiplier(target) * this.difficultyDamageMult(attacker));
       target.hp  = Math.max(0, target.hp - dmg);
 
       const { x, y } = this.gridToScreen(target.col, target.row);
@@ -4333,6 +4369,7 @@ export class BattleScene extends Phaser.Scene {
         u.sp = Math.min(u.maxSp, u.sp + 1);
         u.moveSpeed = u.baseMoveSpeed; // reset move buff
         u.atkBuff   = 1.0;            // reset atk buff
+        u.stopperUsedThisTurn = false;
         u.setUpUsedThisTurn = false;  // Set Up's "-50% dmg taken, 1×/turn" cap
         u.duoFreeMoveUsed = false;    // Duo's free move to partner, once/round
         u.duoBonusUsed = false;       // Duo's "attack twice" bonus, once/round
@@ -4469,6 +4506,7 @@ export class BattleScene extends Phaser.Scene {
   // none of which apply to an AI-controlled unit.
   enemySkillAttack(attacker, ability, target) {
     this.consumeAbilityResource(attacker, ability);
+    target = this.stopperIntercept(target);
 
     const dist = this.distanceToUnit(attacker.col, attacker.row, target);
     const hits = ability.hits ?? 1;
@@ -4478,7 +4516,7 @@ export class BattleScene extends Phaser.Scene {
     const partnerAtkMult = this.partnerAttackMultiplier(attacker);
     let dmg = 0;
     for (let h = 0; h < hits; h++) dmg += Math.round(calcAtk(attacker) * mult * desigMult * elemMult * partnerAtkMult);
-    dmg = Math.round(dmg * this.partnerDefenseMultiplier(target) * this.difficultyDamageMult(attacker));
+    dmg = Math.round(dmg * this.passiveDefenseMultiplier(target) * this.difficultyDamageMult(attacker));
     if (attacker.oneShotKill) dmg = target.hp; // see doAttack's oneShotKill comment
     target.hp = Math.max(0, target.hp - dmg);
 
@@ -4659,7 +4697,7 @@ export class BattleScene extends Phaser.Scene {
     while (queue.length) {
       const { col, row, dist } = queue.shift();
       if (dist > 0) reachable.add(`${col},${row}`);
-      if (dist >= unit.moveSpeed) continue;
+      if (dist >= this.movePoints(unit)) continue;
       for (const [dc, dr] of [[-1,0],[1,0],[0,-1],[0,1]]) {
         const nc = col + dc, nr = row + dr;
         const nk = `${nc},${nr}`;
@@ -5121,7 +5159,7 @@ export class BattleScene extends Phaser.Scene {
     // Info text
     const u = this.selectedUnit;
     this.infoText.setText(
-      u                             ? `${u.name.split(' ')[0].toUpperCase()}  ·  HP ${u.hp}/${u.maxHp}  ·  SP ${u.sp}/${u.maxSp}  ·  Mv ${u.moveSpeed}`
+      u                             ? `${u.name.split(' ')[0].toUpperCase()}  ·  HP ${u.hp}/${u.maxHp}  ·  SP ${u.sp}/${u.maxSp}  ·  Mv ${this.movePoints(u)}`
       : this.phase === 'enemy_turn' ? 'Enemy turn...'
       :                               ''
     );

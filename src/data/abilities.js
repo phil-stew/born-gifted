@@ -30,9 +30,6 @@ export const THROW = {
 //               slots (still unlocked at level 5/10/20). Passive content
 //               (Layer 2 Designation / Layer 3 Class / talent-tier) is now
 //               authored below — see getUnitPassivePool for the lookup.
-//               NOTE: the data is authored but BattleScene.js doesn't apply
-//               passive effects in combat yet — see the ENGINE TODO note
-//               above getUnitPassivePool.
 // Every ability that was 'classSkill' (uses-per-battle or cooldown, slotted)
 // is now 'skill' (cooldown only, slot-free) — uses-per-battle limits were
 // converted to a cooldown per-ability (roughly: 1 use/battle → CD 5, 2
@@ -199,9 +196,6 @@ export const ABILITIES = {
   //   scaleByRange  — closer-is-harder damage scaling, keyed by exact range
   //                   (inverse of the existing scaleByDist farther-is-harder)
   //   requiresRecentHit — only usable the turn after this unit took damage
-  // scaleByRange, fixedElement, nonAffinity, requiresRecentHit, and passive
-  // effect application are DATA ONLY here — BattleScene.js doesn't read them
-  // yet (see the ENGINE TODO note above getUnitPassivePool below).
   speed_dash: {
     id: 'speed_dash', name: 'Dash', icon: '➤', category: 'special',
     cost: 1, range: 2, targetType: 'enemy', multiplier: 1.5,
@@ -324,9 +318,7 @@ export const ABILITIES = {
 
   // ── Class grouping ability sets ────────────────────────────────────────────
   // "Same dis" / sports-partner adjacency (2 for 2, Doubles, Lock-On, Set Up,
-  // Gracefulness, Duo, Training Buddy) is DATA ONLY — see the ENGINE TODO note
-  // above getUnitPassivePool. `partnerAdjacent: true` marks these; nothing
-  // reads that flag in combat yet.
+  // Gracefulness, Duo, Training Buddy). `partnerAdjacent: true` marks these.
 
   // Bat & Ball (softball/cricket/baseball — all 3 sports in the class)
   two_for_two: {
@@ -1022,11 +1014,7 @@ export function getEquippedSkillAbilities(unit) {
 
 // Full pool of passives (Class Skills) a unit currently knows, sourced from
 // the talent/designation/class-grouping passive pools authored above.
-// ENGINE TODO: BattleScene.js reads getUnitSpecials/getUnitSkills but does
-// NOT yet call getEquippedPassives or apply any `passiveEffect` in combat —
-// equipping a passive here makes it selectable in PartyScene but currently
-// has zero effect in battle. Applying these (moveBonus, damageReductionPct,
-// statBoost, the sports-partner-adjacency passives, etc.) is follow-up work.
+// BattleScene applies each one by id through equippedPassives.
 export function getUnitPassivePool(unit) {
   const level = unit.level ?? 1;
 
