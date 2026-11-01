@@ -36,7 +36,7 @@ const GLOSSARY = [
   { term: 'Non-affinity', def: 'A move marked non-affinity ignores the element and designation weakness tables: no bonus and no penalty.' },
   { term: 'Talent',      def: 'One of 2 stat-growth picks made at character creation. Picking the same talent twice quadruples that stat\'s growth per level.' },
   { term: 'Class Skill', def: 'A permanent passive buff, equipped into one of up to 3 slots unlocked at levels 5/10/20.' },
-  { term: 'Status icons', def: 'Every buff and debuff has its own icon over the unit: 💧 Wet, 🔥 Burning, 🥶 Frozen, 💫 Stunned, 🐌 Slowed, 📉 Stat down, 🤝 Next attack ×2, 💪 Attack up, 👟 Move up, 💚 Regen, 🛡 Shield, 🔰 Next hit guarded, 🧱 Guarding allies, 😌 Calm, 🏰 Iron Wall, 💨 Dodge, 🥊 Counter, ❤ Endure, ⚡ Overdrive. Open a unit\'s Status to see turns left.' },
+  { term: 'Status icons', def: 'Every buff and debuff has its own icon. Up to 3 show over the unit, debuffs first, with +N for the rest: 💧 Wet, 🔥 Burning, 🥶 Frozen, 💫 Stunned, 🐌 Slowed, 📉 Stat down, 🤝 Next attack ×2, 💪 Attack up, 👟 Move up, 💚 Regen, 🛡 Shield, 🔰 Next hit guarded, 🧱 Guarding allies, 😌 Calm, 🏰 Iron Wall, 💨 Dodge, 🥊 Counter, ❤ Endure, ⚡ Overdrive. Open a unit\'s Status to see them all with turns left.' },
   { term: 'Damage number color', def: 'White = no bonus, orange = 1 stacking, dark orange (bigger) = 2, rainbow (biggest) = 3+ — see Damage Number Colors below.' },
   { term: 'Difficulty',  def: 'Set in Settings (Newbie/Veteran/Perilous) — governs every first-time mission. Separate from the Normal/Hard/Elite picker shown when replaying an already-cleared mission.' },
 ];

@@ -50,6 +50,7 @@ const DANCE_WEATHER = {
 const DANCE_ROUNDS = 3, WIND_FIRE_BONUS = 1.5, SNOW_MISS_CHANCE = 0.2, SUN_DRY_TURNS = 2;
 const HAZARD_COUNT = { newbie: [1, 2], veteran: [2, 5], perilous: [6, 10] };
 const HAZARD_COUNT_REPLAY = { 1: [1, 2], 1.2: [2, 5], 1.5: [6, 10] }; // keyed by replay stat multiplier
+const MAX_STATUS_ICONS = 3;
 const FREEZE_TURNS = 2, FREEZE_MOVE_LOSS = 2, WET_FREEZE_EXTRA = 1;
 const BURN_TURNS = 3, BURN_DAMAGE = 0.05, FIRE_BURN_CHANCE = 0.25;
 // Bigger isometric tiles (2026-07-07 feedback) — was 64×32 at .setScale(2)
@@ -3435,7 +3436,7 @@ export class BattleScene extends Phaser.Scene {
     con.add(shadow);
 
     const bg = this.add.graphics();
-    bg.fillStyle(0x0d1428, 0.3);
+    bg.fillStyle(0x0d1428, 0.85);
     bg.fillRoundedRect(0, 0, PW, PH, RADIUS);
     bg.lineStyle(1.5, unit.color, 0.75);
     bg.strokeRoundedRect(0, 0, PW, PH, RADIUS);
@@ -3474,7 +3475,7 @@ export class BattleScene extends Phaser.Scene {
       shadow.fillStyle(0x000000, 0.32);
       shadow.fillRoundedRect(3, 5, PW, PH2, RADIUS);
       bg.clear();
-      bg.fillStyle(0x0d1428, 0.3);
+      bg.fillStyle(0x0d1428, 0.85);
       bg.fillRoundedRect(0, 0, PW, PH2, RADIUS);
       bg.lineStyle(1.5, unit.color, 0.75);
       bg.strokeRoundedRect(0, 0, PW, PH2, RADIUS);
@@ -3991,20 +3992,23 @@ export class BattleScene extends Phaser.Scene {
     ].filter(Boolean);
   }
 
-  // A centred row of status icons, wrapping after 5 so they stay on the unit.
+  // A short row over the unit: the first few statuses, debuffs first, then +N
+  // for the rest. The Status popup lists them all.
   placeStatusIcons(unit, x, y, alpha) {
     unit.statusIcons ??= [];
-    const list = this.statusList(unit);
+    const list = this.statusList(unit).map(([icon]) => icon);
+    const shown = list.length > MAX_STATUS_ICONS
+      ? [...list.slice(0, MAX_STATUS_ICONS), `+${list.length - MAX_STATUS_ICONS}`] : list;
     const depth = unit.team === 'player' ? 1001 : 661;
-    while (unit.statusIcons.length < list.length) {
-      unit.statusIcons.push(this.add.text(0, 0, '', { fontSize: '13px' }).setOrigin(0.5).setDepth(depth));
+    while (unit.statusIcons.length < shown.length) {
+      unit.statusIcons.push(this.add.text(0, 0, '', {
+        fontSize: '13px', fontStyle: 'bold', color: '#ffffff', stroke: '#000000', strokeThickness: 3,
+      }).setOrigin(0.5).setDepth(depth));
     }
-    const wrap = unit.team === 'player' ? -1 : 1; // heroes stack upward, monsters down
     unit.statusIcons.forEach((text, i) => {
-      if (i >= list.length) { text.setVisible(false); return; }
-      const inRow = Math.min(5, list.length - i + (i % 5));
-      text.setText(list[i][0]).setAlpha(alpha).setVisible(true)
-        .setPosition(x + (i % 5 - (inRow - 1) / 2) * 17, y + wrap * Math.floor(i / 5) * 17);
+      if (i >= shown.length) { text.setVisible(false); return; }
+      text.setText(shown[i]).setAlpha(alpha).setVisible(true)
+        .setPosition(x + (i - (shown.length - 1) / 2) * 18, y);
     });
   }
 
