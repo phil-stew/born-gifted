@@ -847,6 +847,19 @@ export class WorldMapScene extends Phaser.Scene {
       onClick: () => this.scene.start('SettingsScene', { returnScene: 'WorldMapScene', returnData: {} }),
     });
 
+    if (state.academyVisited) {
+      drawButton(this, {
+        x: 690, y: height - 24, w: 112, h: 32, label: 'SKILL BOOK',
+        bg: 0x0e2222, bgHover: 0x153333, border: 0x338888, accent: 0x77dddd,
+        textColor: '#77dddd', depth: 20,
+        onClick: () => this.scene.start('SkillBookScene'),
+      });
+    }
+    if (this.registry.get('skillBookJustUnlocked')) {
+      this.registry.set('skillBookJustUnlocked', false);
+      this.showToast('Skill Book unlocked\nOpen it from the bar below');
+    }
+
     // Tytrate
     drawCurrency(this, state.tytrate, width - 14, height - 24);
 
@@ -1159,6 +1172,7 @@ export class WorldMapScene extends Phaser.Scene {
     }
 
     if (node.id === 'A1' || node.id === 'A2') {
+      if (!state.academyVisited) { state.academyVisited = true; this.registry.set('skillBookJustUnlocked', true); }
       // A single recruit (Drace) is available during 'recruit_pending' —
       // the fuller "pick who to recruit" academy roster is Phase 7 work.
       // sportClass narrows RecruitClassScene's sport picker per HUB_CONFIGS.

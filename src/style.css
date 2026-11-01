@@ -1090,3 +1090,8 @@ button.ui-quest-card { color: inherit; font: inherit; text-align: left; cursor: 
 .ui-forge-paper .ui-action-btn { color: #f6e8c8; background: #7a3a14; border-color: #4e230b; }
 .ui-forge-paper .ui-action-btn:disabled { color: #e5d3ad; background: #a58a63; border-color: #8a6a3f; opacity: 1; }
 .ui-forge-paper .ui-empty-note { color: var(--ui-text-muted); }
+
+.ui-skillbook-route { margin: 6px 0; font-size: calc(16px * var(--font-scale, 1)); font-weight: 600; color: #7fc4ff; }
+.ui-skillbook-gap { margin-top: 14px; }
+.ui-skillbook-known { flex: none; font-weight: 700; color: #7fe69a; }
+.ui-skillbook-row { min-height: 40px; padding-block: 4px; }

@@ -23,6 +23,7 @@ import { HandbookScene } from './scenes/HandbookScene.js';
 import { VillageQuestListScene } from './scenes/VillageQuestListScene.js';
 import { HubBattlesScene } from './scenes/HubBattlesScene.js';
 import { IndexScene } from './scenes/IndexScene.js';
+import { SkillBookScene } from './scenes/SkillBookScene.js';
 import { SettingsScene } from './scenes/SettingsScene.js';
 
 // ── Global error boundary (2026-08-04, pre-launch audit: "no global error
@@ -109,7 +110,7 @@ const config = {
     autoCenter: Phaser.Scale.CENTER_BOTH,
     zoom: Phaser.Scale.ZOOM_2X,
   },
-  scene: [GameScene, CharacterCreationScene, RecruitClassScene, WorldMapScene, BattleScene, PreBattleScene, VictoryScene, LootScene, LevelUpScene, StoryScene, HubScene, ShopScene, ForgeScene, PartyScene, InventoryScene, RewardPopupScene, AcademyTaskListScene, AcademyQuestListScene, HandbookScene, VillageQuestListScene, HubBattlesScene, IndexScene, SettingsScene],
+  scene: [GameScene, CharacterCreationScene, RecruitClassScene, WorldMapScene, BattleScene, PreBattleScene, VictoryScene, LootScene, LevelUpScene, StoryScene, HubScene, ShopScene, ForgeScene, PartyScene, InventoryScene, RewardPopupScene, AcademyTaskListScene, AcademyQuestListScene, HandbookScene, VillageQuestListScene, HubBattlesScene, IndexScene, SkillBookScene, SettingsScene],
 };
 
 installTextScaling();

@@ -1,4 +1,4 @@
-import { unlockedRoleIds, classSkillSlotCount, TALENT_STAT_KEY, CLASS_TIER_LEVELS, roleById, sportById, currentDesignations, MAX_EQUIPPED_SPECIALS, MAX_EQUIPPED_SKILLS } from './gameState.js';
+import { unlockedRoleIds, classSkillSlotCount, TALENT_STAT_KEY, CLASS_TIER_LEVELS, roleById, sportById, currentDesignations, DESIGNATION_NAMES, MAX_EQUIPPED_SPECIALS, MAX_EQUIPPED_SKILLS } from './gameState.js';
 
 // ── Universal baseline moves ─────────────────────────────────────────────────
 // Every unit starts with these, regardless of class — no cost, no cooldown.
@@ -822,6 +822,43 @@ function martialArtsBracketGrant() {
     { id: 'stay_calm',     minLevel: bracket[2] },
     { id: 'fake_counter',  minLevel: fakeCounterLv },
   ];
+}
+
+// Plain-language unlock routes per ability id, read from the same pools the
+// lookups below use so the Skill Book can't drift from the real rules.
+export function skillUnlockRoutes() {
+  const routes = {};
+  const add = (id, text) => { if (!(routes[id] ??= []).includes(text)) routes[id].push(text); };
+  const atLevel = (who, minLevel) => minLevel > 1 ? `${who} at Lv.${minLevel}` : who;
+  const names = (ids, lookup) => ids.map(id => lookup(id)?.name ?? id).join(', ');
+  const gate = (ab) => {
+    if (ab?.onlyRoleIds) return ` (${names(ab.onlyRoleIds, roleById)} only)`;
+    if (ab?.onlySportIds) return ` (${names(ab.onlySportIds, sportById)} only)`;
+    if (ab?.excludeSportIds) return ` (not ${names(ab.excludeSportIds, sportById)})`;
+    return '';
+  };
+
+  for (const pool of [ROLE_SPECIALS, ROLE_SKILL_POOL, CROSS_CLASS_GRANTS]) {
+    for (const [roleId, entries] of Object.entries(pool)) {
+      for (const e of entries) add(e.id, atLevel(roleById(roleId)?.name ?? roleId, e.minLevel));
+    }
+  }
+  for (const pool of [TALENT_SPECIALS, TALENT_SKILL_POOL, TALENT_PASSIVE_POOL]) {
+    for (const [talent, entries] of Object.entries(pool)) {
+      for (const e of entries) add(e.id, `${talent} talent with ${talent} ${e.minStat}`);
+    }
+  }
+  for (const pool of [DESIGNATION_SPECIALS, DESIGNATION_SKILL_POOL, DESIGNATION_PASSIVE_POOL]) {
+    for (const [designation, entries] of Object.entries(pool)) {
+      for (const e of entries) add(e.id, atLevel(`${DESIGNATION_NAMES[designation]} heroes`, e.minLevel));
+    }
+  }
+  for (const pool of [CLASS_GROUPING_SPECIALS, CLASS_GROUPING_SKILL_POOL, CLASS_GROUPING_PASSIVE_POOL]) {
+    for (const [cls, entries] of Object.entries(pool)) {
+      for (const e of entries) add(e.id, atLevel(`${cls} class`, e.minLevel) + gate(ABILITIES[e.id]));
+    }
+  }
+  return routes;
 }
 
 // ── Lookup helpers ────────────────────────────────────────────────────────────

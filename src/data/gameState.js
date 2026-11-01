@@ -430,6 +430,7 @@ export const state = {
   // trigger with the real capitalQuest/capitalCraftCount gate — left in
   // place harmlessly for save-shape compatibility.
   forgeVisited: false,
+  academyVisited: false, // first academy entered; unlocks the Skill Book
   wildsEntryShown: false,
   // Repurposed (Phase 4, M0-M4 redesign) as M4's one-time "never thought
   // I'd fight our instructor" exam-intro flag — previously gated the old
@@ -1114,6 +1115,7 @@ export function saveGame(slot = state.activeSlot ?? 1) {
       })),
       inventory: state.inventory.map(i => ({ ...i })),
       forgeVisited: state.forgeVisited,
+      academyVisited: state.academyVisited,
       wildsEntryShown: state.wildsEntryShown,
       caveEntryShown: state.caveEntryShown,
       missionIntroShown: [...state.missionIntroShown],
@@ -1236,6 +1238,8 @@ export function loadGame(slot) {
     }
     state.currentMission    = data.currentMission    ?? 'M0';
     state.forgeVisited      = data.forgeVisited      ?? false;
+    // Saves from before this flag: a second hero or a finished exam means an academy was entered.
+    state.academyVisited    = data.academyVisited    ?? (state.party.length > 1 || data.capitalQuest === 'done');
     state.wildsEntryShown   = data.wildsEntryShown   ?? false;
     state.caveEntryShown    = data.caveEntryShown    ?? false;
     state.missionIntroShown = data.missionIntroShown ?? [];
@@ -1313,6 +1317,7 @@ export function newGame(starterUnit, slot, carryOverGear = []) {
   state.unlockedMissions  = ['M0'];
   state.currentMission    = 'M0';
   state.forgeVisited      = false;
+  state.academyVisited    = false;
   state.wildsEntryShown   = false;
   state.caveEntryShown    = false;
   state.missionIntroShown = [];
