@@ -34,6 +34,7 @@ function markM1TutorialDone() {
 const COLS = 10, ROWS = 10;
 const LAUNCH_WINDUP_MS = 280, VOLLEY_GAP_MS = 90, WET_TURNS = 3;
 const OBSTACLE_MOVE_COST = 2, COVER_MISS_CHANCE = 0.2;
+const FREEZE_TURNS = 2, FREEZE_MOVE_LOSS = 2;
 const BURN_TURNS = 3, BURN_DAMAGE = 0.05, FIRE_BURN_CHANCE = 0.25;
 // Bigger isometric tiles (2026-07-07 feedback) — was 64×32 at .setScale(2)
 // (native tile art is 32×32, so scale = TILE_W/32 keeps tiles seamless with
@@ -666,6 +667,7 @@ const MISSION_CONFIGS = {
   // buildMonster()'s boss/unique placeholder (always 5) — this is meant
   // to read as end-of-content-so-far, above AT1/AT2's 12-13.
   'DK': {
+    blizzard: true,
     region: 'Gale',
     playerPos: { reno:[1,3], drace:[1,4], sela:[1,2], kael:[1,5], trice:[1,1], zora:[1,0] },
     enemies: [
@@ -687,6 +689,7 @@ const MISSION_CONFIGS = {
   // no-accept-gate shape as DK above and kill_king_wolf, "quest" here just
   // means "tracked in Gale's list", not "needs an accept step first".
   'MH': {
+    blizzard: true,
     region: 'Gale',
     playerPos: { reno:[1,3], drace:[1,4], sela:[1,2], kael:[1,5], trice:[1,1], zora:[1,0] },
     turnLimit: 6,
@@ -1288,6 +1291,7 @@ export class BattleScene extends Phaser.Scene {
       // active. Offset to the buff icon's side so both can show at once.
       u.wetIcon = this.add.text(0, 0, '💧', { fontSize: '13px' }).setOrigin(0.5).setDepth(1001).setVisible(false);
       u.burnIcon = this.add.text(0, 0, '🔥', { fontSize: '13px' }).setOrigin(0.5).setDepth(1001).setVisible(false);
+      u.frozenIcon = this.add.text(0, 0, '🥶', { fontSize: '13px' }).setOrigin(0.5).setDepth(1001).setVisible(false);
       u.debuffIcon = this.add.text(0, 0, '⬇', {
         fontSize: '14px', fontFamily: 'monospace', fontStyle: 'bold', color: '#ff6688',
         stroke: '#000000', strokeThickness: 3,
@@ -1449,6 +1453,7 @@ export class BattleScene extends Phaser.Scene {
     if (cfg.reinforce) rules.push(`More enemies arrive every ${cfg.reinforce.every} turns`);
     if (cfg.enemyFirst) rules.push('Enemies move first');
     if (cfg.eruption) rules.push('Eruption: glowing tiles take a falling rock next round, 1-10% of max HP. Wet units take half. Rocks set units Burning');
+    if (cfg.blizzard) rules.push('Blizzard: ice balls hit random units each round for 1-10% of max HP and Freeze them: 2 less move, no reactions');
     if (cfg.thunderStorm) rules.push('Lightning strikes random units on both sides each round for 1-10% of max HP');
     if (STAGE_CONFIGS[state.currentMission]?.hasObstacles) rules.push('Rocks, logs and tall grass cost 2 extra move, and ranged attacks at a unit on one miss 20% of the time');
     if (STAGE_CONFIGS[state.currentMission]?.hasWater) rules.push('Crossing water makes units Wet: Lightning deals double damage to them, Fire deals half');
@@ -1738,6 +1743,7 @@ export class BattleScene extends Phaser.Scene {
     // in resolveHit/enemySkillAttack).
     e.wetIcon = this.add.text(x, y + TH2 - 74, '💧', { fontSize: '13px' }).setOrigin(0.5).setDepth(661).setVisible(false);
     e.burnIcon = this.add.text(x, y + TH2 - 74, '🔥', { fontSize: '13px' }).setOrigin(0.5).setDepth(661).setVisible(false);
+    e.frozenIcon = this.add.text(x, y + TH2 - 74, '🥶', { fontSize: '13px' }).setOrigin(0.5).setDepth(661).setVisible(false);
     e.debuffIcon = this.add.text(x, y + TH2 - 74, '⬇', {
       fontSize: '14px', fontFamily: 'monospace', fontStyle: 'bold', color: '#ff6688',
       stroke: '#000000', strokeThickness: 3,
@@ -2235,7 +2241,7 @@ export class BattleScene extends Phaser.Scene {
   // Stopper unit instead, for heroes and monsters alike. Returns who actually takes the hit.
   stopperIntercept(defender) {
     const team = defender.team === 'player' ? this.playerUnits : this.enemyUnits;
-    const stopper = team.find(o => o !== defender && !o.isDead && !o.stopperUsedThisTurn
+    const stopper = team.find(o => o !== defender && !o.isDead && !o.stopperUsedThisTurn && !(o.frozenTurns > 0)
       && this.hasPassive(o, 'stopper')
       && Math.abs(o.col - defender.col) + Math.abs(o.row - defender.row) <= 2);
     if (!stopper) return defender;
@@ -2250,7 +2256,7 @@ export class BattleScene extends Phaser.Scene {
     const inAura = unit.team === 'player' && this.playerUnits.some(o => o !== unit && !o.isDead
       && this.hasPassive(o, 'performance_flex')
       && Math.abs(o.col - unit.col) <= 2 && Math.abs(o.row - unit.row) <= 2);
-    return unit.moveSpeed + (inAura ? 2 : 0);
+    return Math.max(1, unit.moveSpeed + (inAura ? 2 : 0) - (unit.frozenTurns > 0 ? FREEZE_MOVE_LOSS : 0));
   }
   // Extra range from passives: Lock-On beside a sports partner, Focus on any
   // ranged ability, +5 RNG on the normal ranged attack (Throw).
@@ -2375,7 +2381,7 @@ export class BattleScene extends Phaser.Scene {
     if (!this.hasPassive(attacker, 'set_up')) return;
     if (target.isDead || target.hp <= 0) return;
     const partner = this.playerUnits.find(o =>
-      o !== attacker && !o.isDead && o.classGrouping === attacker.classGrouping && this.isAdjacent(attacker, o)
+      o !== attacker && !o.isDead && !(o.frozenTurns > 0) && o.classGrouping === attacker.classGrouping && this.isAdjacent(attacker, o)
     );
     if (!partner) return;
 
@@ -2444,7 +2450,7 @@ export class BattleScene extends Phaser.Scene {
     const color = attacker.team === 'player' ? '#ffee44' : '#ff5555';
     this.showDamage(x, y + TH2, dmg, color, this.countDamageBonuses(attacker, defender, ATTACK));
 
-    if (defender.endureReady && defender.hp - dmg <= 0) {
+    if (defender.endureReady && !(defender.frozenTurns > 0) && defender.hp - dmg <= 0) {
       defender.endureReady = false;
       defender.hp = 1;
       this.showEffect(x, y + TH2 - 22, 'ENDURE!', '#ffcc44');
@@ -2482,7 +2488,7 @@ export class BattleScene extends Phaser.Scene {
     if (defender.counterReady && this.counterBack(defender, attacker)) defender.counterReady = false;
   }
   counterBack(defender, attacker) {
-    if (defender.hp <= 0 || defender.isDead || attacker.isDead) return false;
+    if (defender.hp <= 0 || defender.isDead || attacker.isDead || defender.frozenTurns > 0) return false;
     if (this.distanceToUnit(defender.col, defender.row, attacker) > this.effectiveRange(defender, ATTACK)) return false;
     const { x, y } = this.gridToScreen(defender.col, defender.row);
     this.showEffect(x, y + TH2 - 22, 'COUNTER!', '#ffcc44');
@@ -2500,21 +2506,21 @@ export class BattleScene extends Phaser.Scene {
 
   // Who actually takes a hit aimed at defender: a Guard first, then a Stopper.
   redirectHit(defender) {
-    if (defender.guardedBy && !defender.guardedBy.isDead) {
+    if (defender.guardedBy && !defender.guardedBy.isDead && !(defender.guardedBy.frozenTurns > 0)) {
       const guardian = defender.guardedBy;
       defender.guardedBy = null;
       return guardian;
     }
     // Guard skill: takes every hit on adjacent allies until the unit's next turn.
     const team = defender.team === 'player' ? this.playerUnits : this.enemyUnits;
-    const tank = team.find(o => o !== defender && !o.isDead && o.tankReady && this.isAdjacent(o, defender));
+    const tank = team.find(o => o !== defender && !o.isDead && o.tankReady && !(o.frozenTurns > 0) && this.isAdjacent(o, defender));
     if (tank) return tank;
     return this.stopperIntercept(defender);
   }
 
   // Dodge blocks the whole hit, attack or skill. Fake Counter also hits back.
   tryDodge(defender, attacker) {
-    if (!defender.dodgeReady) return false;
+    if (!defender.dodgeReady || defender.frozenTurns > 0) return false;
     defender.dodgeReady = false;
     const { x, y } = this.gridToScreen(defender.col, defender.row);
     this.showEffect(x, y + TH2, 'BLOCKED', '#66ddff');
@@ -2560,6 +2566,7 @@ export class BattleScene extends Phaser.Scene {
     if (unit.debuffIcon){ unit.debuffIcon.setVisible(false); }
     if (unit.wetIcon)   { unit.wetIcon.setVisible(false); }
     if (unit.burnIcon)  { unit.burnIcon.setVisible(false); }
+    if (unit.frozenIcon){ unit.frozenIcon.setVisible(false); }
     if (unit.portrait){ unit.portrait.setVisible(false); }
     if (unit.lvLabel) { unit.lvLabel.setVisible(false); }
     if (unit.auraGfx) { unit.auraGfx.destroy(); unit.auraGfx = null; }
@@ -4001,6 +4008,30 @@ export class BattleScene extends Phaser.Scene {
     else if (element === 'Wind' && target.burnTurns > 0) this.burnDamage(target);
   }
 
+  // Ice maps: each new round 1 to 2 ice balls hit random units on either side
+  // for 1-10% of max HP and Freeze them.
+  blizzardRound() {
+    const strikes = rand(1, 2);
+    for (let i = 0; i < strikes; i++) {
+      const alive = [...this.playerUnits, ...this.enemyUnits].filter(u => !u.isDead);
+      if (!alive.length) return;
+      const unit = alive[rand(0, alive.length - 1)];
+      this.skyHit(unit, 1, 'orbWater', '#99ddff');
+      if (!unit.isDead) this.freeze(unit);
+    }
+    this.cameras.main.flash(120, 190, 225, 255);
+  }
+  // Frozen: 2 less move and no reactions (counters, dodges, Guard, Stopper,
+  // Endure) for FREEZE_TURNS rounds.
+  freeze(unit) {
+    if (!(unit.frozenTurns > 0)) {
+      const { x, y } = this.gridToScreen(unit.col, unit.row);
+      this.showEffect(x, y + TH2 - 22, 'FROZEN', '#99ddff');
+    }
+    unit.frozenTurns = FREEZE_TURNS;
+    this.redraw();
+  }
+
   // Thunder Plains: each new round 1 to 2 bolts hit random units on either side
   // for 1-10% of max HP. Lightning, so Wet units take double.
   stormStrikes() {
@@ -4511,6 +4542,7 @@ export class BattleScene extends Phaser.Scene {
       const slowTotal = e.debuffs.filter(d => d.type === 'slow').reduce((s, d) => s + d.moveReduction, 0);
       e.moveSpeed = Math.max(1, e.baseMoveSpeed - slowTotal);
     }
+    for (const u of [...this.playerUnits, ...this.enemyUnits]) if (u.frozenTurns > 0) u.frozenTurns--;
     this.phase = 'player_turn';
     this.selectedUnit = null;
     this.moveRange = new Set();
@@ -4518,6 +4550,7 @@ export class BattleScene extends Phaser.Scene {
     this.redraw();
     if (this.missionCfg.thunderStorm) this.stormStrikes();
     if (this.missionCfg.eruption) this.eruptionRound();
+    if (this.missionCfg.blizzard) this.blizzardRound();
   }
 
   enemyAct(wolf) {
@@ -4539,7 +4572,7 @@ export class BattleScene extends Phaser.Scene {
     const size = wolf.size ?? 1;
     if (size <= 1) {
       // Move up to moveSpeed steps, never walking into target's tile
-      let moveLeft = wolf.moveSpeed;
+      let moveLeft = this.movePoints(wolf);
       for (let i = 0; i < path.length - 1; i++) {
         const { col, row } = path[i];
         moveLeft -= this.tileMoveCost(col, row);
@@ -4558,7 +4591,7 @@ export class BattleScene extends Phaser.Scene {
       // squeeze the blob somewhere too narrow just stops the walk early,
       // same "give up rather than corrupt state" fallback the size-1
       // branch already has for a single blocked tile.
-      let moveLeft = wolf.moveSpeed;
+      let moveLeft = this.movePoints(wolf);
       for (let i = 0; i < path.length - 1; i++) {
         const { col, row } = path[i];
         moveLeft -= this.tileMoveCost(col, row);
@@ -4734,7 +4767,7 @@ export class BattleScene extends Phaser.Scene {
 
     const path = this.bfsPath(boss.col, boss.row, target.col, target.row);
     if (path) {
-      let moveLeft = boss.moveSpeed;
+      let moveLeft = this.movePoints(boss);
       for (let i = 0; i < path.length - 1; i++) {
         const { col, row } = path[i];
         moveLeft -= this.tileMoveCost(col, row);
@@ -5324,6 +5357,7 @@ export class BattleScene extends Phaser.Scene {
       }
       u.wetIcon.setPosition(cx + 25, cy - 34).setAlpha(alpha).setVisible(u.wetTurns > 0);
       u.burnIcon.setPosition(cx - 25, cy - 34).setAlpha(alpha).setVisible(u.burnTurns > 0);
+      u.frozenIcon.setPosition(cx, cy - 48).setAlpha(alpha).setVisible(u.frozenTurns > 0);
     }
 
     // Wolf HP bars + level labels
@@ -5341,6 +5375,7 @@ export class BattleScene extends Phaser.Scene {
       if (e.debuffIcon) e.debuffIcon.setPosition(x, by - 26).setVisible(hasActiveDebuff(e));
       if (e.wetIcon) e.wetIcon.setPosition(x + 40, by + 2).setVisible(e.wetTurns > 0);
       if (e.burnIcon) e.burnIcon.setPosition(x - 40, by + 2).setVisible(e.burnTurns > 0);
+      if (e.frozenIcon) e.frozenIcon.setPosition(x + 56, by + 2).setVisible(e.frozenTurns > 0);
       if (e.auraGfx) e.auraGfx.setPosition(x, y + TH2).setDepth(Math.max(0, (e.col + e.row) * 10 + 4));
     }
 
