@@ -921,12 +921,18 @@ function martialArtsBracketGrant() {
   ];
 }
 
-// Plain-language unlock routes per ability id, read from the same pools the
-// lookups below use so the Skill Book can't drift from the real rules.
-export function skillUnlockRoutes() {
-  const routes = {};
-  const add = (id, text) => { if (!(routes[id] ??= []).includes(text)) routes[id].push(text); };
+// Every way to unlock every skill, read from the same pools the lookups below
+// use so the Skill Book can't drift from the real rules. Each entry has the
+// ability id, the group it's filed under, `order` to sort within that group
+// (the level or stat needed), a short `tag`, the full `text`, and for skills
+// tied to one position, its `role`.
+export const SKILL_CLASS_GROUPS = ['Athletics', 'Ball', 'Bat & Ball', 'Racquet', 'Target', 'Martial Arts', 'Performance', 'Combat', 'Ranged', 'Defender'];
+export const SKILL_STAT_GROUPS = ['Speed', 'Strength', 'Endurance', 'Stamina', 'Stamina + Endurance'];
+
+export function skillUnlockEntries() {
+  const entries = [];
   const atLevel = (who, minLevel) => minLevel > 1 ? `${who} at Lv.${minLevel}` : who;
+  const levelTag = (minLevel) => minLevel > 1 ? `Lv.${minLevel}` : 'Start';
   const names = (ids, lookup) => ids.map(id => lookup(id)?.name ?? id).join(', ');
   const gate = (ab) => {
     if (ab?.onlyRoleIds) return ` (${names(ab.onlyRoleIds, roleById)} only)`;
@@ -934,31 +940,37 @@ export function skillUnlockRoutes() {
     if (ab?.excludeSportIds) return ` (not ${names(ab.excludeSportIds, sportById)})`;
     return '';
   };
+  const add = (id, group, order, tag, text, role) => {
+    if (!entries.some(e => e.id === id && e.group === group && e.text === text)) entries.push({ id, group, order, tag, text, role });
+  };
 
   for (const pool of [ROLE_SPECIALS, ROLE_SKILL_POOL, CROSS_CLASS_GRANTS]) {
-    for (const [roleId, entries] of Object.entries(pool)) {
-      for (const e of entries) add(e.id, atLevel(roleById(roleId)?.name ?? roleId, e.minLevel));
+    for (const [roleId, list] of Object.entries(pool)) {
+      const role = roleById(roleId);
+      const group = sportById(role?.sportId)?.class;
+      for (const e of list) add(e.id, group, e.minLevel, levelTag(e.minLevel), atLevel(role?.name ?? roleId, e.minLevel), role?.name);
     }
   }
   for (const pool of [TALENT_SPECIALS, TALENT_SKILL_POOL, TALENT_PASSIVE_POOL]) {
-    for (const [talent, entries] of Object.entries(pool)) {
-      for (const e of entries) add(e.id, `${talent} talent with ${talent} ${e.minStat} (gear counts)`);
+    for (const [talent, list] of Object.entries(pool)) {
+      for (const e of list) add(e.id, talent, e.minStat, `${e.minStat}`, `${talent} talent with ${talent} ${e.minStat} (gear counts)`);
     }
   }
   for (const e of [...TECH_SPECIALS, ...TECH_SKILL_POOL]) {
-    add(e.id, `Stamina or Endurance talent with Stamina + Endurance ${e.minStat} (gear counts)`);
+    add(e.id, 'Stamina + Endurance', e.minStat, `${e.minStat}`, `Stamina or Endurance talent with Stamina + Endurance ${e.minStat} (gear counts)`);
   }
   for (const pool of [DESIGNATION_SPECIALS, DESIGNATION_SKILL_POOL, DESIGNATION_PASSIVE_POOL]) {
-    for (const [designation, entries] of Object.entries(pool)) {
-      for (const e of entries) add(e.id, atLevel(`${DESIGNATION_NAMES[designation]} heroes`, e.minLevel));
+    for (const [designation, list] of Object.entries(pool)) {
+      const name = DESIGNATION_NAMES[designation];
+      for (const e of list) add(e.id, name, e.minLevel, levelTag(e.minLevel), atLevel(`${name} heroes`, e.minLevel));
     }
   }
   for (const pool of [CLASS_GROUPING_SPECIALS, CLASS_GROUPING_SKILL_POOL, CLASS_GROUPING_PASSIVE_POOL]) {
-    for (const [cls, entries] of Object.entries(pool)) {
-      for (const e of entries) add(e.id, atLevel(`${cls} class`, e.minLevel) + gate(ABILITIES[e.id]));
+    for (const [cls, list] of Object.entries(pool)) {
+      for (const e of list) add(e.id, cls, e.minLevel, levelTag(e.minLevel), atLevel(`${cls} class`, e.minLevel) + gate(ABILITIES[e.id]));
     }
   }
-  return routes;
+  return entries;
 }
 
 // ── Lookup helpers ────────────────────────────────────────────────────────────

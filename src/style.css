@@ -1095,3 +1095,5 @@ button.ui-quest-card { color: inherit; font: inherit; text-align: left; cursor: 
 .ui-skillbook-gap { margin-top: 14px; }
 .ui-skillbook-known { flex: none; font-weight: 700; color: #7fe69a; }
 .ui-skillbook-row { min-height: 40px; padding-block: 4px; }
+.ui-skillbook-modes { display: flex; gap: 6px; }
+.ui-skillbook-tag { flex: none; font-size: calc(13px * var(--font-scale, 1)); font-weight: 700; color: var(--ui-accent); }
