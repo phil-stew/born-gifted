@@ -39,7 +39,8 @@ const WEATHER = {
   embers: { w: 3, h: 3, color: 0xff8a33, speedX: { min: -30, max: 30 }, speedY: { min: -150, max: -60 }, lifespan: 6000, alpha: { start: 0.9, end: 0 }, frequency: 40, fromBottom: true },
   snow:   { w: 3, h: 3, color: 0xffffff, speedX: { min: -50, max: 10 }, speedY: { min: 60, max: 120 }, lifespan: 8000, alpha: { start: 0.9, end: 0.5 }, frequency: 30 },
 };
-const HAZARD_COUNT = { normal: [4, 5], hard: [6, 10] };
+const HAZARD_COUNT = { newbie: [1, 2], veteran: [2, 5], perilous: [6, 10] };
+const HAZARD_COUNT_REPLAY = { 1: [1, 2], 1.2: [2, 5], 1.5: [6, 10] }; // keyed by replay stat multiplier
 const FREEZE_TURNS = 2, FREEZE_MOVE_LOSS = 2, WET_FREEZE_EXTRA = 1;
 const BURN_TURNS = 3, BURN_DAMAGE = 0.05, FIRE_BURN_CHANCE = 0.25;
 // Bigger isometric tiles (2026-07-07 feedback) — was 64×32 at .setScale(2)
@@ -4027,15 +4028,15 @@ export class BattleScene extends Phaser.Scene {
     this.cameras.main.flash(120, 190, 225, 255);
   }
 
-  // Where this round's falling hazards land: HAZARD_COUNT spots for the
-  // difficulty, 1 to 2 under random units so they stay a threat, the rest
-  // anywhere on the board.
+  // Where this round's falling hazards land. The Settings difficulty sets the
+  // base count and a replay's Normal/Hard/Elite adds its own on top. 1 to 2
+  // spots sit under random units so they stay a threat, the rest go anywhere.
   hazardTiles() {
-    const hard = this.difficultyCfg ? this.difficultyCfg.key !== 'newbie' : this.difficulty > 1;
-    const count = rand(...(hard ? HAZARD_COUNT.hard : HAZARD_COUNT.normal));
+    const replay = this.difficultyCfg ? 0 : rand(...HAZARD_COUNT_REPLAY[this.difficulty] ?? [1, 2]);
+    const count = rand(...HAZARD_COUNT[getDifficultyConfig().key]) + replay;
     const tiles = new Map();
     const alive = [...this.playerUnits, ...this.enemyUnits].filter(u => !u.isDead);
-    for (let i = rand(1, 2); i > 0 && alive.length; i--) {
+    for (let i = Math.min(rand(1, 2), count); i > 0 && alive.length; i--) {
       const { col, row } = alive[rand(0, alive.length - 1)];
       tiles.set(`${col},${row}`, { col, row });
     }
