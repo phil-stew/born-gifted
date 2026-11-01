@@ -1046,7 +1046,13 @@ button.ui-quest-card { color: inherit; font: inherit; text-align: left; cursor: 
   .ui-prebattle .ui-card-sub { font-size: calc(12px * var(--font-scale, 1)); }
   .ui-prebattle .ui-pb-head { font-size: calc(13px * var(--font-scale, 1)); }
   .ui-prebattle .ui-pb-stat { font-size: calc(12px * var(--font-scale, 1)); }
-  .ui-prebattle .ui-pb-foot { padding: 4px; }
+  .ui-prebattle .ui-pb-foot { padding: 2px 4px 4px; }
+  .ui-prebattle .ui-pb-foot .ui-btn { padding: 6px 16px; }
+  .ui-prebattle .ui-card { min-height: 0; flex: none; }
+  .ui-prebattle .ui-portrait-thumb { width: 34px; height: 34px; flex: none; }
+  .ui-prebattle .ui-body { padding: 6px 12px; gap: 8px; }
+  .ui-prebattle .ui-card-name { line-height: 1.1; }
+  .ui-prebattle .ui-pb-matchup, .ui-prebattle .ui-pb-stats { margin-top: 1px; }
   .ui-prebattle .ui-pb-tip, .ui-prebattle .ui-pb-matchup, .ui-prebattle .ui-pb-rule, .ui-prebattle .ui-pb-warn { font-size: calc(12px * var(--font-scale, 1)); }
 }
 

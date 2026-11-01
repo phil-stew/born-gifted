@@ -168,7 +168,7 @@ export class PreBattleScene extends Phaser.Scene {
           </div>
         </div>
         <div class="ui-pb-foot">
-          <button class="ui-btn ui-btn-primary" style="width:min(320px, 90vw);" ${this.selectedIds.length ? '' : 'disabled'} data-confirm="1">
+          <button class="ui-btn ui-btn-primary" style="width:min(200px, 90vw);" ${this.selectedIds.length ? '' : 'disabled'} data-confirm="1">
             Start Battle
           </button>
         </div>

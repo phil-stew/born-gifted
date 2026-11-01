@@ -1505,11 +1505,11 @@ export class BattleScene extends Phaser.Scene {
     else if (cfg.turnLimit) rules.push(`Win within ${cfg.turnLimit} turns`);
     if (cfg.reinforce) rules.push(`More enemies arrive every ${cfg.reinforce.every} turns`);
     if (cfg.enemyFirst) rules.push('Enemies move first');
-    if (cfg.eruption) rules.push('Eruption: glowing tiles take a falling rock next round, 1-10% of max HP. Wet units take half. Rocks set units Burning');
-    if (cfg.blizzard) rules.push('Blizzard: ice balls land each round for 1-10% of max HP and Freeze them: 2 less move, no reactions');
-    if (cfg.thunderStorm) rules.push('Lightning strikes across the map each round for 1-10% of max HP');
-    if (STAGE_CONFIGS[state.currentMission]?.hasObstacles) rules.push('Rocks, logs and tall grass cost 2 extra move, and ranged attacks at a unit on one miss 20% of the time');
-    if (STAGE_CONFIGS[state.currentMission]?.hasWater) rules.push('Crossing water makes units Wet: Lightning deals double damage to them, Fire deals half');
+    if (cfg.eruption) rules.push('Eruption: rocks land on glowing tiles, 1-10% of max HP + Burn');
+    if (cfg.blizzard) rules.push('Blizzard: ice balls each round, 1-10% of max HP + Freeze');
+    if (cfg.thunderStorm) rules.push('Storm: lightning strikes each round, 1-10% of max HP');
+    if (STAGE_CONFIGS[state.currentMission]?.hasObstacles) rules.push('Rocks, logs, tall grass: 2 extra move, 20% ranged miss');
+    if (STAGE_CONFIGS[state.currentMission]?.hasWater) rules.push('Water makes units Wet: Lightning ×2, Fire ×½');
     if (enemies.some(e => e.corrupted)) rules.push('Corrupted enemies all target one hero');
     if (enemies.some(e => e.isCorruptedOneBoss)) rules.push('The Corrupted One grows stronger with each ally beside him');
     return rules;
