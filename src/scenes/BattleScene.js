@@ -4,6 +4,7 @@ import {
   currentSport, sportById, maxBattlePartySize, getBattleParty,
   DESIGNATION_BEATS, designationIcon, DESIGNATION_CYCLE, ELEMENT_CYCLE, ELEMENT_BEATS,
 } from '../data/gameState.js';
+import { PROJECTILE_SHEET, registerProjectileFrames, projectileFor, projectileDisplaySize, projectileHeading } from '../data/projectiles.js';
 import { ATTACK, THROW, ABILITIES, getEquippedSpecialAbilities, getEquippedSkillAbilities, getEquippedPassives } from '../data/abilities.js';
 import { loadHeroSprites, createHeroAnims, stripHeroBackground, stripBackgroundByKey, trimmedSheetConfig, heroKey, getSpriteInfo, firstFrame, spriteKeyForRole, HERO_SPRITES } from '../data/heroSprites.js';
 import { buildMonster, buildMonsterKit, spriteInfoForBase, spForLevel } from '../data/monsters.js';
@@ -48,21 +49,6 @@ const HL_Y_ADJUST = 13;
 const MOVE_OUTLINE = 0x0a1a50, ATTACK_OUTLINE = 0x4a1400;
 
 const rand = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
-
-// Projectile visual for ranged attacks (dist > 1), keyed by the attacker's
-// sport `classGrouping` (already computed per-unit — see playerUnits setup)
-// rather than per-sport, so every Target-class sport (Archer, Dart Player,
-// Paintball) gets an arrow/dart and every ball-handling class gets a ball
-// without having to enumerate all ~30 sports individually. Classes not
-// listed (Athletics, Martial Arts, Performance) have no natural ranged
-// equipment, so ranged attacks from them (e.g. the universal Throw move)
-// just skip the projectile — a bare hand doesn't fly across the board.
-const PROJECTILE_BY_CLASS = {
-  Target:       'arrow',
-  Ball:         'ball',
-  'Bat & Ball': 'ball',
-  Racquet:      'ball',
-};
 
 // Kingdom archetypes: monsters skew heavily toward their kingdom's two primary
 // stats and two elements — rerolled fresh for every encounter. "Ice" reuses the
@@ -1292,6 +1278,7 @@ export class BattleScene extends Phaser.Scene {
     for (const info of this.monsterSpriteInfos(missionCfg)) {
       this.load.spritesheet(info.spriteKey, info.file, trimmedSheetConfig(info.fw, info.fh));
     }
+    if (!this.textures.exists(PROJECTILE_SHEET.key)) this.load.image(PROJECTILE_SHEET.key, PROJECTILE_SHEET.path);
 
     // Load hero sprites for current party — uses each unit's CURRENT (post-
     // promotion) role sprite, not always T1, so a promoted unit shows its
@@ -1494,7 +1481,7 @@ export class BattleScene extends Phaser.Scene {
         // to pick a correct fallback ability from a promoted partner's kit.
         t1Role: gs.t1Role, t2Role: gs.t2Role, t3Role: gs.t3Role,
         roleId: currentRoleId(gs), designations: currentDesignations(gs),
-        classGrouping, equippedPassives,
+        classGrouping, sportId: currentSport(gs), equippedPassives,
         moveSpeed, baseMoveSpeed: moveSpeed, col, row, team: 'player',
         speed: eff.speed, strength: eff.strength, stamina: eff.stamina, endurance: eff.endurance,
         hp, maxHp: hp, isDone: false, isDead: false, hitFlash: false, debuffs: [],
@@ -1697,6 +1684,7 @@ export class BattleScene extends Phaser.Scene {
     for (const { spriteKey: key, bgTol, bgBand, bgErase } of this.monsterSpriteInfos(missionCfg)) {
       stripBackgroundByKey(this, key, { cols: 6, rows: 6, tol: bgTol, band: bgBand, erase: bgErase, edgeFragments: true });
     }
+    registerProjectileFrames(this);
   }
 
   rollEnemyUnits(missionCfg) {
@@ -4191,42 +4179,32 @@ export class BattleScene extends Phaser.Scene {
     unit.sprite.once('animationcomplete', () => { if (idle) unit.sprite?.play(idle); });
   }
 
-  // Draws a projectile (arrow or ball, see PROJECTILE_BY_CLASS) flying from
-  // attacker to target for ranged attacks, then calls onArrive — used to gate
-  // the actual damage application so the hit lands when the projectile does,
-  // not before. Own rAF loop rather than a Phaser tween (see moveUnit).
-  fireProjectile(attacker, target, type, onArrive) {
-    const from = this.gridToScreen(attacker.col, attacker.row);
-    const to   = this.gridToScreen(target.col, target.row);
-    const fromX = from.x, fromY = from.y + TH2;
-    const toX   = to.x,   toY   = to.y + TH2;
+  // Flies a projectile from attacker to target, then calls onArrive so the hit
+  // lands when it does. Own rAF loop rather than a Phaser tween (see moveUnit).
+  fireProjectile(attacker, target, name, onArrive) {
+    const from = this.footprintScreenPos(attacker);
+    const to   = this.footprintScreenPos(target);
+    const fromX = from.x, fromY = from.y + TH2 - 20;
+    const toX   = to.x,   toY   = to.y + TH2 - 20;
     const travelDist = Math.hypot(toX - fromX, toY - fromY);
     const dur = Phaser.Math.Clamp(travelDist * 1.1, 120, 260);
     const angle = Math.atan2(toY - fromY, toX - fromX);
 
-    const gfx = this.add.graphics().setDepth(3000);
-    if (type === 'arrow') {
-      gfx.lineStyle(2, 0x8a6a3a, 1);
-      gfx.lineBetween(-12, 0, 4, 0);
-      gfx.fillStyle(0xf0e0a0, 1);
-      gfx.fillTriangle(8, 0, -2, -4, -2, 4);
-    } else {
-      gfx.fillStyle(0xffffff, 1);
-      gfx.fillCircle(0, 0, 5);
-      gfx.lineStyle(1, 0x333333, 0.9);
-      gfx.strokeCircle(0, 0, 5);
-    }
-    gfx.setRotation(angle);
+    const img = this.add.image(fromX, fromY, PROJECTILE_SHEET.key, name).setDepth(3000);
+    img.setScale(projectileDisplaySize(name) / Math.max(img.width, img.height));
+    const heading = projectileHeading(name);
+    if (heading != null) img.setRotation(angle - Phaser.Math.DegToRad(heading));
 
     const start = performance.now();
     const animate = () => {
-      if (!gfx.scene) return;
+      if (!img.scene) return;
       const t = Math.min((performance.now() - start) / dur, 1);
       const x = fromX + (toX - fromX) * t;
       const y = fromY + (toY - fromY) * t - Math.sin(t * Math.PI) * 14; // slight arc lift
-      gfx.setPosition(x, y);
+      img.setPosition(x, y);
+      if (heading == null) img.setRotation(t * Math.PI * 3);
       if (t < 1) { requestAnimationFrame(animate); return; }
-      gfx.destroy();
+      img.destroy();
       onArrive();
     };
     requestAnimationFrame(animate);
@@ -4399,7 +4377,6 @@ export class BattleScene extends Phaser.Scene {
     // (see PROJECTILE_BY_CLASS) fly there first — damage lands when the
     // projectile arrives, not before, so e.g. an Archer's arrow visibly
     // travels the distance rather than the target flinching instantly.
-    const projectileType = dist > 1 ? PROJECTILE_BY_CLASS[attacker.classGrouping] : null;
     const resolveHit = () => {
       const hits = ability.hits ?? 1;
       const mult = distanceMultiplier(ability, dist);
@@ -4456,7 +4433,7 @@ export class BattleScene extends Phaser.Scene {
       this.finishAbilityTurn(attacker);
     };
 
-    if (projectileType) this.fireProjectile(attacker, target, projectileType, resolveHit);
+    if (dist > 1) this.fireProjectile(attacker, target, projectileFor(attacker, ability), resolveHit);
     else resolveHit();
   }
 
@@ -4655,7 +4632,12 @@ export class BattleScene extends Phaser.Scene {
     if (reach > 1) {
       const far = [target, ...this.playerUnits].find(p => !p.isDead
         && this.distanceToUnit(wolf.col, wolf.row, p) <= reach);
-      if (far) { this.doAttack(wolf, far); return; }
+      if (far) {
+        const hit = () => { if (!wolf.isDead && !far.isDead) this.doAttack(wolf, far); };
+        if (this.distanceToUnit(wolf.col, wolf.row, far) > 1) this.fireProjectile(wolf, far, projectileFor(wolf, ATTACK), hit);
+        else hit();
+        return;
+      }
     }
 
     // Attack any adjacent player
@@ -4720,9 +4702,14 @@ export class BattleScene extends Phaser.Scene {
     this.playEnemyAnim(attacker, 'attack2');
     this.consumeAbilityResource(attacker, ability);
     target = this.redirectHit(target);
-    if (this.tryDodge(target, attacker)) return;
-
     const dist = this.distanceToUnit(attacker.col, attacker.row, target);
+    if (dist > 1) this.fireProjectile(attacker, target, projectileFor(attacker, ability), () => this.landEnemySkill(attacker, ability, target, dist));
+    else this.landEnemySkill(attacker, ability, target, dist);
+  }
+
+  landEnemySkill(attacker, ability, target, dist) {
+    if (attacker.isDead || target.isDead) return;
+    if (this.tryDodge(target, attacker)) return;
     const hits = ability.hits ?? 1;
     const mult = distanceMultiplier(ability, dist);
     const desigMult = designationMultiplier(attacker, target, ability);
