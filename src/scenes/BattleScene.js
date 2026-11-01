@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import {
   state, effectiveStats, maxHp as gsMaxHp, elementIcon, currentRoleId, currentDesignations,
-  currentSport, sportById, maxBattlePartySize, getBattleParty,
+  currentSport, sportById, SPORTS, maxBattlePartySize, getBattleParty,
   DESIGNATION_BEATS, designationIcon, DESIGNATION_CYCLE, ELEMENT_CYCLE, ELEMENT_BEATS,
 } from '../data/gameState.js';
 import { PROJECTILE_SHEET, registerProjectileFrames, projectileFor, projectileDisplaySize, projectileHeading } from '../data/projectiles.js';
@@ -31,6 +31,7 @@ function markM1TutorialDone() {
 }
 
 const COLS = 10, ROWS = 10;
+const LAUNCH_WINDUP_MS = 280, VOLLEY_GAP_MS = 90;
 // Bigger isometric tiles (2026-07-07 feedback) — was 64×32 at .setScale(2)
 // (native tile art is 32×32, so scale = TILE_W/32 keeps tiles seamless with
 // no gaps/overlap). 80×40 is a 1.25× bump: checked the grid's screen-space
@@ -608,6 +609,11 @@ function pickRandomHeroClasses(n) {
 // all of them regardless of class. Consumed by buildEnemyUnit via
 // effectiveStats(), same generic stat/bonusHp/bonusSp aggregation player
 // gear already goes through.
+// The sport behind a human enemy's sprite, so they throw that sport's item.
+function sportForHeroClass(className) {
+  return Object.entries(SPORTS).find(([, s]) => s.roles?.some(r => spriteKeyForRole(r.id) === className))?.[0];
+}
+
 function rollEnemyEquip(rarity) {
   const equip = {};
   for (const slot of ['weapon', 'headwear', 'footwear', 'chest', 'handwear']) {
@@ -1823,7 +1829,8 @@ export class BattleScene extends Phaser.Scene {
     const maxSp = Math.round(spForLevel(lv) * diff) + (this.difficultyCfg?.enemySpBonus ?? 0);
     const ace = passives.some(p => p.id === 'ace');
     return {
-      ...scaled, abilities: skills, passives, equippedPassives: passives.map(p => p.ability),
+      ...scaled, sportId: d.heroClass ? sportForHeroClass(d.heroClass) : undefined,
+      abilities: skills, passives, equippedPassives: passives.map(p => p.ability),
       speed: Math.round(scaled.speed * (ace ? 1.1 : 1)), strength: Math.round(scaled.strength * (ace ? 1.1 : 1)),
       hp: maxHp, maxHp, isDead: false, debuffs: [], baseMoveSpeed: d.moveSpeed,
       sp: maxSp + bonusSp, maxSp, skillCooldowns: {}, skillUses: {},
@@ -3910,6 +3917,12 @@ export class BattleScene extends Phaser.Scene {
     this.playAttackAnim(unit, ability);
     this.consumeAbilityResource(unit, ability);
 
+    // A body charge needs no projectile; a line shot flies to its farthest target.
+    const farthest = targets[targets.length - 1];
+    if (farthest?.dist > 1 && !ability.moveThrough) {
+      this.fireProjectile(unit, farthest.unit, projectileFor(unit, ability), () => {});
+    }
+
     const partnerAtkMult = this.partnerAttackMultiplier(unit);
     const applyHit = (target, mult) => {
       let dmg = Math.round(calcAtk(unit) * mult * designationMultiplier(unit, target, ability) * elementMultiplier(unit, target, ability) * partnerAtkMult);
@@ -4179,6 +4192,17 @@ export class BattleScene extends Phaser.Scene {
     unit.sprite.once('animationcomplete', () => { if (idle) unit.sprite?.play(idle); });
   }
 
+  // Multi-hit moves throw one projectile per hit, up to 5, a beat apart. The
+  // last one carries onArrive.
+  fireVolley(attacker, target, ability, onArrive) {
+    const name = projectileFor(attacker, ability);
+    const shots = Math.min(ability.hits ?? 1, 5);
+    for (let i = 0; i < shots - 1; i++) {
+      this.time.delayedCall(i * VOLLEY_GAP_MS, () => this.fireProjectile(attacker, target, name, () => {}));
+    }
+    this.time.delayedCall((shots - 1) * VOLLEY_GAP_MS, () => this.fireProjectile(attacker, target, name, onArrive));
+  }
+
   // Flies a projectile from attacker to target, then calls onArrive so the hit
   // lands when it does. Own rAF loop rather than a Phaser tween (see moveUnit).
   fireProjectile(attacker, target, name, onArrive) {
@@ -4373,10 +4397,8 @@ export class BattleScene extends Phaser.Scene {
 
     const dist = this.distanceToUnit(attacker.col, attacker.row, target);
 
-    // Ranged (dist > 1) hits from a sport with natural projectile equipment
-    // (see PROJECTILE_BY_CLASS) fly there first — damage lands when the
-    // projectile arrives, not before, so e.g. an Archer's arrow visibly
-    // travels the distance rather than the target flinching instantly.
+    // Ranged (dist > 1) hits fly there first — damage lands when the
+    // projectile arrives, not before.
     const resolveHit = () => {
       const hits = ability.hits ?? 1;
       const mult = distanceMultiplier(ability, dist);
@@ -4433,8 +4455,14 @@ export class BattleScene extends Phaser.Scene {
       this.finishAbilityTurn(attacker);
     };
 
-    if (dist > 1) this.fireProjectile(attacker, target, projectileFor(attacker, ability), resolveHit);
-    else resolveHit();
+    if (dist > 1) {
+      // Blocks further taps until it lands, then waits for the windup so the
+      // ball leaves the hero's foot instead of duplicating the one in their art.
+      this.phase = 'resolving';
+      this.time.delayedCall(LAUNCH_WINDUP_MS, () => this.fireVolley(attacker, target, ability, resolveHit));
+    } else {
+      resolveHit();
+    }
   }
 
   // ── Enemy AI ──────────────────────────────────────────────────────────────
@@ -4703,7 +4731,7 @@ export class BattleScene extends Phaser.Scene {
     this.consumeAbilityResource(attacker, ability);
     target = this.redirectHit(target);
     const dist = this.distanceToUnit(attacker.col, attacker.row, target);
-    if (dist > 1) this.fireProjectile(attacker, target, projectileFor(attacker, ability), () => this.landEnemySkill(attacker, ability, target, dist));
+    if (dist > 1) this.fireVolley(attacker, target, ability, () => this.landEnemySkill(attacker, ability, target, dist));
     else this.landEnemySkill(attacker, ability, target, dist);
   }
 
