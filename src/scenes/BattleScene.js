@@ -447,6 +447,7 @@ const MISSION_CONFIGS = {
   },
   'M2': {
     region: 'Altroes',
+    thunderStorm: true,
     playerPos: { reno:[1,3], drace:[1,4], sela:[1,2], kael:[1,5], trice:[1,1] },
     enemies: [
       { col:7, row:2, name:'Boar', spriteKey:'boar-idle', animKey:'boar-idle', spriteScale:0.35, moveSpeed:5, speed:4, strength:12, stamina:8, endurance:9, level:2, designation:'C' },
@@ -1442,6 +1443,7 @@ export class BattleScene extends Phaser.Scene {
     else if (cfg.turnLimit) rules.push(`Win within ${cfg.turnLimit} turns`);
     if (cfg.reinforce) rules.push(`More enemies arrive every ${cfg.reinforce.every} turns`);
     if (cfg.enemyFirst) rules.push('Enemies move first');
+    if (cfg.thunderStorm) rules.push('Lightning strikes random units on both sides each round for 1-10% of max HP');
     if (STAGE_CONFIGS[state.currentMission]?.hasObstacles) rules.push('Rocks, logs and tall grass cost 2 extra move, and ranged attacks at a unit on one miss 20% of the time');
     if (STAGE_CONFIGS[state.currentMission]?.hasWater) rules.push('Crossing water makes units Wet: Lightning deals double damage to them, Fire deals half');
     if (enemies.some(e => e.corrupted)) rules.push('Corrupted enemies all target one hero');
@@ -3948,6 +3950,35 @@ export class BattleScene extends Phaser.Scene {
     unit.sprite.once('animationcomplete', () => { if (idle) unit.sprite?.play(idle); });
   }
 
+  // Thunder Plains: each new round 1 to 2 bolts hit random units on either side
+  // for 1-10% of max HP. Lightning, so Wet units take double.
+  stormStrikes() {
+    const strikes = rand(1, 2);
+    for (let i = 0; i < strikes; i++) {
+      const alive = [...this.playerUnits, ...this.enemyUnits].filter(u => !u.isDead);
+      if (alive.length) this.lightningStrike(alive[rand(0, alive.length - 1)]);
+    }
+  }
+  lightningStrike(unit) {
+    const dmg = Math.max(1, Math.round(unit.maxHp * rand(1, 10) / 100 * (unit.wetTurns > 0 ? 2 : 1)));
+    const hit = this.absorbShield(unit, dmg);
+    unit.hp = Math.max(0, unit.hp - hit);
+    const { x, y } = this.footprintScreenPos(unit);
+    const bolt = this.add.image(x, y + TH2 - 34, PROJECTILE_SHEET.key, 'cometLightning').setDepth(3000);
+    bolt.setScale(70 / bolt.width).setRotation(Phaser.Math.DegToRad(-60));
+    this.time.delayedCall(240, () => bolt.destroy());
+    this.cameras.main.flash(140, 255, 255, 220);
+    playSfx(this, SFX.hit);
+    this.showDamage(x, y + TH2, hit, '#ffee66');
+    this.playEnemyAnim(unit, 'hurt');
+    if (unit.team === 'player') {
+      unit.hitFlash = true;
+      this.time.delayedCall(200, () => { unit.hitFlash = false; this.redraw(); });
+    }
+    if (unit.hp <= 0) this.killUnit(unit);
+    else this.redraw();
+  }
+
   // Rocks, logs and tall grass cost 2 extra move to step onto.
   tileMoveCost(col, row) {
     return this.stageCfg.obstacle(col, row) ? 1 + OBSTACLE_MOVE_COST : 1;
@@ -4398,6 +4429,7 @@ export class BattleScene extends Phaser.Scene {
     this.moveRange = new Set();
     this.showPhaseBanner('PLAYER TURN');
     this.redraw();
+    if (this.missionCfg.thunderStorm) this.stormStrikes();
   }
 
   enemyAct(wolf) {
