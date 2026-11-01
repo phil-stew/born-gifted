@@ -331,8 +331,8 @@ export class InventoryScene extends Phaser.Scene {
       y += 8;
     }
 
-    if (item.classMult) {
-      this.detCon.add(this.add.text(cx, y, "Changes with wearer's class", {
+    if (item.baseValues) {
+      this.detCon.add(this.add.text(cx, y, "Base stats · hero's class ×1 to ×3", {
         fontSize: '15px', fontFamily: 'monospace', color: '#d6d6e4',
       }).setOrigin(0.5));
       y += 24;

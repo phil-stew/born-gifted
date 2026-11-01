@@ -811,23 +811,26 @@ function wornItems(unit) {
   return gearLayoutForUnit(unit).slots.map(slot => unit.equip[slot]).filter(Boolean);
 }
 
-// The classItemMultiplier an item's stored values were rolled with. Items from
-// before classMult was stamped only carry the forClass label.
-function rolledClassMult(item) {
-  if (item.classMult != null) return item.classMult;
-  const entry = Object.entries(SPORTS).find(([, s]) => s.roles?.some(r => r.name === item.forClass));
-  if (!entry) return 1;
-  const [sportId, sport] = entry;
-  const layoutKey = GEAR_LAYOUT_SPORT_OVERRIDE[sportId] ?? sport.class;
-  return (CLASS_GEAR_LAYOUT[layoutKey] ?? DEFAULT_GEAR_LAYOUT).classItemMultiplier;
+// The multiplier belongs to the hero: Class Items store base values and the
+// wearer's class multiplies them when worn. God Tier items are a fixed template
+// and enemies have no class, so neither scales.
+export function classItemScale(unit, item) {
+  if (item.slot !== 'weapon' || item.rarity === 'god' || !unit.t1Sport) return 1;
+  return gearLayoutForUnit(unit).classItemMultiplier;
 }
 
-// A Class Item's strength follows whoever wears it, so a 2-slot class always
-// gets its ×3 and a 5-slot class never does, whoever the item was rolled for.
-// God Tier items are a fixed template and enemies have no class, so neither scales.
-function classItemScale(unit, item) {
-  if (item.slot !== 'weapon' || item.rarity === 'god' || !unit.t1Sport) return 1;
-  return gearLayoutForUnit(unit).classItemMultiplier / rolledClassMult(item);
+// Older saves stored a Class Item's values already multiplied, by item.classMult
+// or by the class named in forClass. Turns those back into base values, once.
+function toBaseClassItem(item) {
+  if (item?.slot !== 'weapon' || item.rarity === 'god' || item.baseValues) return item;
+  const entry = Object.entries(SPORTS).find(([, s]) => s.roles?.some(r => r.name === item.forClass));
+  const layoutKey = entry && (GEAR_LAYOUT_SPORT_OVERRIDE[entry[0]] ?? entry[1].class);
+  const rolled = item.classMult ?? CLASS_GEAR_LAYOUT[layoutKey]?.classItemMultiplier ?? 1;
+  for (const k of Object.keys(item.stats ?? {})) item.stats[k] = Math.round(item.stats[k] / rolled);
+  for (const k of Object.keys(item.multipliers ?? {})) item.multipliers[k] /= rolled;
+  delete item.classMult;
+  item.baseValues = true;
+  return item;
 }
 
 // An item's stats and multipliers as they apply to this unit.
@@ -1081,7 +1084,7 @@ export function collectAllGear(slot) {
     const data = JSON.parse(raw);
     const fromInventory = (data.inventory ?? []).filter(i => i.type === 'equipment');
     const fromParty = (data.party ?? []).flatMap(u => Object.values(u.equip ?? {}).filter(Boolean));
-    return [...fromInventory, ...fromParty];
+    return [...fromInventory, ...fromParty].map(toBaseClassItem);
   } catch (e) {
     return [];
   }
@@ -1216,7 +1219,8 @@ export function loadGame(slot) {
         hasActed:  false, hasMoved: false,
       };
     });
-    state.inventory         = data.inventory         ?? [];
+    state.inventory         = (data.inventory ?? []).map(toBaseClassItem);
+    for (const u of state.party) Object.values(u.equip).forEach(toBaseClassItem);
     state.tytrate           = data.tytrate           ?? 150;
     state.completedMissions = data.completedMissions ?? [];
     state.unlockedMissions  = data.unlockedMissions  ?? ['M0'];

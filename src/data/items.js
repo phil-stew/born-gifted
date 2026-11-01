@@ -381,10 +381,7 @@ const BRACKET_RARE_ORE_ID = 'silver_ore';
 // same material ×2 as separate entries so callers can display/stack them
 // the same way killDrops already does). Brackets now cover level 1+, so this
 // only returns null for a malformed/negative level.
-// classItemMultiplier mirrors ForgeScene's craft roll (gearLayoutForUnit(unit)
-// .classItemMultiplier) — a weapon-slot roll only, so it's a no-op for every
-// other slot and defaults to 1 for callers that don't pass one.
-export function rollBracketedDrop(level, talents = [], classItemMultiplier = 1, forClass) {
+export function rollBracketedDrop(level, talents = [], forClass) {
   const bracket = LEVEL_BRACKETS.find(b => level >= b.min && level <= b.max);
   if (!bracket) return null;
 
@@ -398,7 +395,7 @@ export function rollBracketedDrop(level, talents = [], classItemMultiplier = 1, 
       return ore ? [{ ...ore }, { ...ore }] : null;
     }
     const slot = BRACKET_GEAR_SLOTS[Math.floor(Math.random() * BRACKET_GEAR_SLOTS.length)];
-    return [rollGearItem({ slot, rarity: outcome.rarity, talents, classItemMultiplier, forClass, cost: RARITY_GEAR_VALUE[outcome.rarity] ?? 0 })];
+    return [rollGearItem({ slot, rarity: outcome.rarity, talents, forClass, cost: RARITY_GEAR_VALUE[outcome.rarity] ?? 0 })];
   }
   return null;
 }
@@ -491,12 +488,12 @@ function rollTalentLine(talent, rarity) {
   if (!stat) return rollRandomLine(rarity); // no talent picked for this slot — fall back to a random line
   return { kind: 'flat', stat, value: rollFlatStat(rarity) };
 }
-function applyLine(item, line, mult = 1) {
+function applyLine(item, line) {
   if (line.kind !== 'flat') {
-    item.multipliers[line.stat] = (item.multipliers[line.stat] ?? 0) + line.value * mult;
+    item.multipliers[line.stat] = (item.multipliers[line.stat] ?? 0) + line.value;
     return;
   }
-  const v = Math.round(line.value * mult);
+  const v = Math.round(line.value);
   const pair = HYBRID_STAT_PAIRS[line.stat];
   if (pair) for (const stat of pair) item.stats[stat] = (item.stats[stat] ?? 0) + v;
   else item.stats[line.stat] = (item.stats[line.stat] ?? 0) + v;
@@ -523,29 +520,27 @@ function defaultGearName(slot, rarity) {
 }
 
 // Rolls a full gear item for `slot` at `rarity`, for a unit with the given
-// `talents` (its 2 picked talents) and `classItemMultiplier` (1/2/3 — see
-// CLASS_GEAR_LAYOUT in gameState.js; only applied when slot === 'weapon').
+// `talents` (its 2 picked talents). Values are base: a Class Item's ×1/×2/×3
+// comes from whoever wears it (classItemScale in gameState.js).
 // `forClass` (2026-07-09, "class items should have a label for the class
-// they are for") — the roleDisplayLabel of whichever unit's talents/
-// classItemMultiplier this roll actually used (e.g. "Boxer"), so a Class
+// they are for") — the roleDisplayLabel of whichever unit's talents
+// this roll actually used (e.g. "Boxer"), so a Class
 // Item sitting in inventory still shows who it was tuned for. Only stored
-// on the weapon slot (the "Class Item" itself) — other slots' stats aren't
-// class-multiplier-scaled, so there's nothing distinctive to label there.
-export function rollGearItem({ slot, rarity, talents = [], classItemMultiplier = 1, name, desc, cost = 0, forClass }) {
+// on the weapon slot (the "Class Item" itself).
+export function rollGearItem({ slot, rarity, talents = [], name, desc, cost = 0, forClass }) {
   const item = {
     id: `${slot}_${rarity}_${Date.now()}_${Math.floor(Math.random() * 1e6)}`,
     name: name ?? defaultGearName(slot, rarity), slot, rarity, type: 'equipment', cost,
     stats: {}, multipliers: {}, desc: desc ?? '',
   };
   if (slot === 'weapon' && forClass) item.forClass = forClass;
-  const mult = slot === 'weapon' ? classItemMultiplier : 1;
-  if (slot === 'weapon') item.classMult = mult; // read by wornItemValues
+  if (slot === 'weapon') item.baseValues = true; // see toBaseClassItem
 
   const main = rollMainLine(slot, rarity);
   if (main.kind === 'flat-all') {
-    for (const stat of ['speed', 'strength', 'stamina', 'endurance']) applyLine(item, { kind: 'flat', stat, value: main.value }, mult);
+    for (const stat of ['speed', 'strength', 'stamina', 'endurance']) applyLine(item, { kind: 'flat', stat, value: main.value });
   } else {
-    applyLine(item, main, mult);
+    applyLine(item, main);
   }
 
   if (slot === 'weapon') {
@@ -554,9 +549,9 @@ export function rollGearItem({ slot, rarity, talents = [], classItemMultiplier =
     // Random(epic) · Random(legendary)" as a rarity-gated line COUNT (2
     // lines at uncommon, 3 at rare, 4 at epic, 5 at legendary), not 4 fixed
     // lines always present regardless of rarity.
-    applyLine(item, rollTalentLine(talents[0], rarity), mult);
+    applyLine(item, rollTalentLine(talents[0], rarity));
     const extraLines = Math.max(0, (RARITY_TIER_INDEX[rarity] ?? 0) - 1); // rare=1, epic=2, legendary=3
-    for (let i = 0; i < extraLines; i++) applyLine(item, rollRandomLine(rarity), mult);
+    for (let i = 0; i < extraLines; i++) applyLine(item, rollRandomLine(rarity));
   } else {
     // Head/Foot/Chest/Hand: Talent1 · Talent2 · R · R · R — always all 5.
     applyLine(item, rollTalentLine(talents[0], rarity));

@@ -229,7 +229,7 @@ export class PartyScene extends Phaser.Scene {
 
     const equipmentTabHTML = `
       <div class="ui-section">
-        <div class="ui-section-label">Tap a slot to change</div>
+        <div class="ui-section-label">Tap a slot to change · Class Item ×${layout.classItemMultiplier}</div>
         <div class="ui-slot-grid">${slotsHTML}</div>
       </div>`;
 

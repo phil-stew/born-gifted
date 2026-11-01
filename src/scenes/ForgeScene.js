@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { state, roleDisplayLabel, gearLayoutForUnit, wornItemValues } from '../data/gameState.js';
+import { state, roleDisplayLabel, gearLayoutForUnit, wornItemValues, classItemScale } from '../data/gameState.js';
 import { FORGE_RECIPES, ORE_TIER_TO_RARITY, RARITY_GEAR_VALUE, rollGearItem, getItem } from '../data/items.js';
 import { playSfx, SFX } from '../audio/sound.js';
 import { playMusic } from '../audio/music.js';
@@ -75,7 +75,7 @@ export class ForgeScene extends Phaser.Scene {
       <div class="ui-forge-stars">${'✦'.repeat(lvl)}${'✧'.repeat(MAX_REINFORCE - lvl)}</div>
       ${stats}
       ${lvl < MAX_REINFORCE ? `
-        ${targetStat ? `<div class="ui-item-desc">Reinforce adds +1 ${esc(targetStat[0].toUpperCase() + targetStat.slice(1))}</div>` : ''}
+        ${targetStat ? `<div class="ui-item-desc">Reinforce adds +${classItemScale(unit, item)} ${esc(targetStat[0].toUpperCase() + targetStat.slice(1))}</div>` : ''}
         <button class="ui-action-btn" data-reinforce="${targetStat ?? ''}" ${canUp ? '' : 'disabled'}>
           Reinforce for ${cost} Tytrate
         </button>` : '<div class="ui-item-desc">Fully reinforced</div>'}`;
@@ -249,10 +249,8 @@ export class ForgeScene extends Phaser.Scene {
       if (idx !== -1) state.inventory.splice(idx, 1);
     }
 
-    const layout = gearLayoutForUnit(unit);
-    const classItemMultiplier = resultSlot === 'weapon' ? layout.classItemMultiplier : 1;
     const item = rollGearItem({
-      slot: resultSlot, rarity, talents: unit.talents ?? [], classItemMultiplier,
+      slot: resultSlot, rarity, talents: unit.talents ?? [],
       cost: RARITY_GEAR_VALUE[rarity] ?? 0,
       forClass: roleDisplayLabel(unit),
     });

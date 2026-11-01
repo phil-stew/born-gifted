@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { state, gearLayoutForUnit, roleDisplayLabel } from '../data/gameState.js';
+import { state, roleDisplayLabel } from '../data/gameState.js';
 import { getItem, gearItemFrame, materialFrameName, rollGearItem, ICON_SHEET_STRIP, registerGearFrames, MATERIAL_ICON_FRAME } from '../data/items.js';
 import { stripBackgroundByKey } from '../data/heroSprites.js';
 import { playSfx, SFX } from '../audio/sound.js';
@@ -113,13 +113,12 @@ export class ShopScene extends Phaser.Scene {
     const leader  = state.party[0];
     const level   = leader?.level ?? 1;
     const talents = leader?.talents ?? [];
-    const classItemMultiplier = leader ? gearLayoutForUnit(leader).classItemMultiplier : 1;
     const forClass = leader ? roleDisplayLabel(leader) : undefined;
     this.rolledGear = SHOP_RARITY_UNLOCKS
       .filter(t => level >= t.minLevel)
       .flatMap(t => Array.from({ length: ROLLS_PER_TIER }, () => {
         const slot = SHOP_GEAR_SLOTS[Math.floor(Math.random() * SHOP_GEAR_SLOTS.length)];
-        return rollGearItem({ slot, rarity: t.rarity, talents, classItemMultiplier, forClass, cost: t.cost });
+        return rollGearItem({ slot, rarity: t.rarity, talents, forClass, cost: t.cost });
       }));
   }
 
@@ -210,7 +209,7 @@ export class ShopScene extends Phaser.Scene {
     ].filter(Boolean).map(esc).join(' &middot; ');
     const stats = Object.entries(item.stats ?? {}).map(([stat, val]) =>
       `<div class="ui-item-stat">+${val} ${esc(stat[0].toUpperCase() + stat.slice(1))}</div>`).join('')
-      + (item.classMult ? '<div class="ui-item-desc">Class Item: strength changes with the wearer\'s class</div>' : '');
+      + (item.baseValues ? '<div class="ui-item-desc">Base stats. The hero\'s class multiplies them: ×1 to ×3.</div>' : '');
     return `
       <div class="ui-item-head">
         ${this.iconHTML(item, 64)}
