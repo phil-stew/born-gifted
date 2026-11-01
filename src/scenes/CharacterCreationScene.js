@@ -47,10 +47,10 @@ export class CharacterCreationScene extends Phaser.Scene {
       fontSize: '26px', fontFamily: 'Georgia, serif', fontStyle: 'bold', color: '#ffffff',
     }).setOrigin(0.5);
 
-    this.subText = this.add.text(width / 2, 56, '', {
+    this.subText = this.add.text(width / 2, 44, '', {
       fontSize: '18px', fontFamily: 'monospace', color: '#aabbdd',
       align: 'center', wordWrap: { width: width - 60 },
-    }).setOrigin(0.5);
+    }).setOrigin(0.5, 0);
 
     this.con = this.add.container(0, 0);
     this.cameras.main.fadeIn(300, 0, 0, 0);
@@ -136,7 +136,7 @@ export class CharacterCreationScene extends Phaser.Scene {
 
   renderSportStep() {
     this.headerText.setText('WHAT ROLE SHALL I TRAIN FOR?');
-    this.subText.setText('This is who you are — your talent picks (next) only affect stat growth');
+    this.subText.setText('This is who you are — your talent picks come next');
 
     const S = this.S;
     const cols = 2, bw = 220 * S, bh = 44 * S, gapX = 20, gapY = 12;
@@ -224,8 +224,8 @@ export class CharacterCreationScene extends Phaser.Scene {
     this.headerText.setText(`PICK TALENT ${which} OF 2`);
     this.subText.setText(
       prev
-        ? `First pick: ${prev}. Picking it again quadruples its growth instead of doubling.`
-        : 'Each talent doubles that stat\'s growth per level-up.'
+        ? `First pick: ${prev}. Pick it again for ×4 growth and bonus points, but you'll lose out on another talent's moves and abilities.`
+        : 'Talents set which stats grow fastest (×2) and which moves and abilities you can learn later. Choose carefully.'
     );
 
     const bw = 260 * this.S, bh = 56 * this.S, gap = 16;
@@ -235,7 +235,7 @@ export class CharacterCreationScene extends Phaser.Scene {
       const y = startY + i * (bh + gap);
       const willStack = prev === t;
       const mult = willStack ? '×4 growth' : '×2 growth';
-      this.makeButton(this.W / 2, y, bw, bh, t, `${mult}${willStack ? '  (stacks with pick 1)' : ''}`, () => {
+      this.makeButton(this.W / 2, y, bw, bh, t, `${mult}${willStack ? '  (2nd pick)' : ''}`, () => {
         this.chosenTalents[which - 1] = t;
         this.step = which === 1 ? 'talent2' : 'confirm';
         this.render();
