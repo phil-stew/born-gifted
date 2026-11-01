@@ -72,7 +72,7 @@ export const ABILITIES = {
   tri_shot: {
     id: 'tri_shot', name: 'Tri-Shot', icon: '🎯', category: 'skill',
     cooldown: 3, range: 4, targetType: 'enemy', multiplier: 1.5, hits: 3,
-    desc: '3× 1.5× dmg  ·  range 4  ·  CD 2',
+    desc: '3× 1.5× dmg  ·  range 4  ·  CD 3',
   },
   tackle_kick: {
     id: 'tackle_kick', name: 'Tackle Kick', icon: '💥', category: 'skill',
