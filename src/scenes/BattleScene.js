@@ -34,6 +34,11 @@ function markM1TutorialDone() {
 const COLS = 10, ROWS = 10;
 const LAUNCH_WINDUP_MS = 280, VOLLEY_GAP_MS = 90, WET_TURNS = 3;
 const OBSTACLE_MOVE_COST = 2, COVER_MISS_CHANCE = 0.2;
+const WEATHER = {
+  rain:   { w: 2, h: 12, color: 0xaaccff, speedX: { min: -70, max: -50 }, speedY: { min: 520, max: 640 }, lifespan: 1300, alpha: { start: 0.7, end: 0.3 }, frequency: 12, tint: 0x101830 },
+  embers: { w: 3, h: 3, color: 0xff8a33, speedX: { min: -30, max: 30 }, speedY: { min: -150, max: -60 }, lifespan: 6000, alpha: { start: 0.9, end: 0 }, frequency: 40, fromBottom: true },
+  snow:   { w: 3, h: 3, color: 0xffffff, speedX: { min: -50, max: 10 }, speedY: { min: 60, max: 120 }, lifespan: 8000, alpha: { start: 0.9, end: 0.5 }, frequency: 30 },
+};
 const FREEZE_TURNS = 2, FREEZE_MOVE_LOSS = 2, WET_FREEZE_EXTRA = 1;
 const BURN_TURNS = 3, BURN_DAMAGE = 0.05, FIRE_BURN_CHANCE = 0.25;
 // Bigger isometric tiles (2026-07-07 feedback) — was 64×32 at .setScale(2)
@@ -1103,6 +1108,7 @@ export class BattleScene extends Phaser.Scene {
     // threading it through every call — 2026-07-11 ("Goblin King"/"Cave
     // Depths" quests, see spawnReinforcements/isVictory below).
     this.missionCfg = missionCfg;
+    this.startWeather(missionCfg);
     this.eruptionTiles = [];
     this.missionId = missionId;
 
@@ -4030,6 +4036,28 @@ export class BattleScene extends Phaser.Scene {
     }
     unit.frozenTurns = FREEZE_TURNS + (unit.wetTurns > 0 ? WET_FREEZE_EXTRA : 0);
     this.redraw();
+  }
+
+  // Falling rain, embers or snow over the map's hazards. Kept light for phones.
+  startWeather(cfg) {
+    const style = cfg.thunderStorm ? WEATHER.rain : cfg.eruption ? WEATHER.embers : cfg.blizzard ? WEATHER.snow : null;
+    if (!style) return;
+    const key = `weather-${style.w}-${style.h}-${style.color}`;
+    if (!this.textures.exists(key)) {
+      const g = this.add.graphics();
+      g.fillStyle(style.color, 1);
+      g.fillRect(0, 0, style.w, style.h);
+      g.generateTexture(key, style.w, style.h);
+      g.destroy();
+    }
+    const { width, height } = this.scale;
+    if (style.tint) this.add.rectangle(width / 2, height / 2, width, height, style.tint, 0.22).setDepth(2400);
+    this.add.particles(0, style.fromBottom ? height + 8 : -8, key, {
+      x: { min: -40, max: width + 40 },
+      speedX: style.speedX, speedY: style.speedY,
+      lifespan: style.lifespan, alpha: style.alpha, angle: 0,
+      frequency: style.frequency, quantity: 1,
+    }).setDepth(2500);
   }
 
   // Thunder Plains: each new round 1 to 2 bolts hit random units on either side
