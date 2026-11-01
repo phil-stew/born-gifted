@@ -39,6 +39,7 @@ const WEATHER = {
   embers: { w: 3, h: 3, color: 0xff8a33, speedX: { min: -30, max: 30 }, speedY: { min: -150, max: -60 }, lifespan: 6000, alpha: { start: 0.9, end: 0 }, frequency: 40, fromBottom: true },
   snow:   { w: 3, h: 3, color: 0xffffff, speedX: { min: -50, max: 10 }, speedY: { min: 60, max: 120 }, lifespan: 8000, alpha: { start: 0.9, end: 0.5 }, frequency: 30 },
 };
+const HAZARD_COUNT = { normal: [4, 5], hard: [6, 10] };
 const FREEZE_TURNS = 2, FREEZE_MOVE_LOSS = 2, WET_FREEZE_EXTRA = 1;
 const BURN_TURNS = 3, BURN_DAMAGE = 0.05, FIRE_BURN_CHANCE = 0.25;
 // Bigger isometric tiles (2026-07-07 feedback) — was 64×32 at .setScale(2)
@@ -1459,8 +1460,8 @@ export class BattleScene extends Phaser.Scene {
     if (cfg.reinforce) rules.push(`More enemies arrive every ${cfg.reinforce.every} turns`);
     if (cfg.enemyFirst) rules.push('Enemies move first');
     if (cfg.eruption) rules.push('Eruption: glowing tiles take a falling rock next round, 1-10% of max HP. Wet units take half. Rocks set units Burning');
-    if (cfg.blizzard) rules.push('Blizzard: ice balls hit random units each round for 1-10% of max HP and Freeze them: 2 less move, no reactions');
-    if (cfg.thunderStorm) rules.push('Lightning strikes random units on both sides each round for 1-10% of max HP');
+    if (cfg.blizzard) rules.push('Blizzard: ice balls land each round for 1-10% of max HP and Freeze them: 2 less move, no reactions');
+    if (cfg.thunderStorm) rules.push('Lightning strikes across the map each round for 1-10% of max HP');
     if (STAGE_CONFIGS[state.currentMission]?.hasObstacles) rules.push('Rocks, logs and tall grass cost 2 extra move, and ranged attacks at a unit on one miss 20% of the time');
     if (STAGE_CONFIGS[state.currentMission]?.hasWater) rules.push('Crossing water makes units Wet: Lightning deals double damage to them, Fire deals half');
     if (enemies.some(e => e.corrupted)) rules.push('Corrupted enemies all target one hero');
@@ -4014,19 +4015,37 @@ export class BattleScene extends Phaser.Scene {
     else if (element === 'Wind' && target.burnTurns > 0) this.burnDamage(target);
   }
 
-  // Ice maps: each new round 1 to 2 ice balls hit random units on either side
-  // for 1-10% of max HP and Freeze them.
+  // Ice maps: each new round ice balls hit hazardTiles() for 1-10% of max HP
+  // and Freeze whoever they hit.
   blizzardRound() {
-    const strikes = rand(1, 2);
-    for (let i = 0; i < strikes; i++) {
-      const alive = [...this.playerUnits, ...this.enemyUnits].filter(u => !u.isDead);
-      if (!alive.length) return;
-      const unit = alive[rand(0, alive.length - 1)];
+    for (const { col, row } of this.hazardTiles()) {
+      const unit = this.unitMap.get(`${col},${row}`);
+      if (!unit) { this.skyImpact(this.gridToScreen(col, row), 'orbWater'); continue; }
       this.skyHit(unit, 1, 'orbWater', '#99ddff');
       if (!unit.isDead) this.freeze(unit);
     }
     this.cameras.main.flash(120, 190, 225, 255);
   }
+
+  // Where this round's falling hazards land: HAZARD_COUNT spots for the
+  // difficulty, 1 to 2 under random units so they stay a threat, the rest
+  // anywhere on the board.
+  hazardTiles() {
+    const hard = this.difficultyCfg ? this.difficultyCfg.key !== 'newbie' : this.difficulty > 1;
+    const count = rand(...(hard ? HAZARD_COUNT.hard : HAZARD_COUNT.normal));
+    const tiles = new Map();
+    const alive = [...this.playerUnits, ...this.enemyUnits].filter(u => !u.isDead);
+    for (let i = rand(1, 2); i > 0 && alive.length; i--) {
+      const { col, row } = alive[rand(0, alive.length - 1)];
+      tiles.set(`${col},${row}`, { col, row });
+    }
+    while (tiles.size < count) {
+      const col = rand(0, COLS - 1), row = rand(0, ROWS - 1);
+      tiles.set(`${col},${row}`, { col, row });
+    }
+    return [...tiles.values()];
+  }
+
   // Frozen: 2 less move and no reactions (counters, dodges, Guard, Stopper,
   // Endure) for FREEZE_TURNS rounds, one more if the unit is Wet.
   freeze(unit) {
@@ -4060,23 +4079,20 @@ export class BattleScene extends Phaser.Scene {
     }).setDepth(2500);
   }
 
-  // Thunder Plains: each new round 1 to 2 bolts hit random units on either side
-  // for 1-10% of max HP. Lightning, so Wet units take double.
+  // Thunder Plains: each new round bolts hit hazardTiles() for 1-10% of max HP.
+  // Lightning, so Wet units take double.
   stormStrikes() {
-    const strikes = rand(1, 2);
-    for (let i = 0; i < strikes; i++) {
-      const alive = [...this.playerUnits, ...this.enemyUnits].filter(u => !u.isDead);
-      if (alive.length) this.lightningStrike(alive[rand(0, alive.length - 1)]);
+    for (const { col, row } of this.hazardTiles()) {
+      const unit = this.unitMap.get(`${col},${row}`);
+      if (unit) this.skyHit(unit, unit.wetTurns > 0 ? 2 : 1, 'cometLightning', '#ffee66');
+      else this.skyImpact(this.gridToScreen(col, row), 'cometLightning');
     }
-  }
-  lightningStrike(unit) {
-    this.skyHit(unit, unit.wetTurns > 0 ? 2 : 1, 'cometLightning', '#ffee66');
     this.cameras.main.flash(140, 255, 255, 220);
   }
 
   // Volcano maps: each round rocks land on the tiles marked last round, then
-  // new tiles are marked under 1 to 2 random units, so either side can step
-  // away. Fire, so Wet units take half.
+  // new tiles are marked, so either side can step away. Fire, so Wet units
+  // take half.
   eruptionRound() {
     for (const { col, row } of this.eruptionTiles) {
       const unit = this.unitMap.get(`${col},${row}`);
@@ -4087,14 +4103,7 @@ export class BattleScene extends Phaser.Scene {
       else this.skyImpact(this.gridToScreen(col, row), 'cometEarth');
     }
     if (this.eruptionTiles.length) this.cameras.main.shake(160, 0.006);
-    this.eruptionTiles = [];
-    const marks = rand(1, 2);
-    for (let i = 0; i < marks; i++) {
-      const alive = [...this.playerUnits, ...this.enemyUnits].filter(u => !u.isDead);
-      if (!alive.length) break;
-      const { col, row } = alive[rand(0, alive.length - 1)];
-      if (!this.eruptionTiles.some(t => t.col === col && t.row === row)) this.eruptionTiles.push({ col, row });
-    }
+    this.eruptionTiles = this.hazardTiles();
     this.redraw();
   }
 
