@@ -4165,6 +4165,8 @@ export class BattleScene extends Phaser.Scene {
     else if (element === 'Wind' && target.burnTurns > 0) this.burnDamage(target);
   }
 
+  // Ice maps: each new round ice balls hit hazardTiles() for 1-10% of max HP
+  // and Freeze whoever they hit.
   blizzardRound() {
     for (const { col, row } of this.hazardTiles()) {
       const unit = this.unitMap.get(`${col},${row}`);
@@ -4275,48 +4277,6 @@ export class BattleScene extends Phaser.Scene {
     this.showAbilitySubmenu(unit, Object.entries(DANCE_WEATHER).map(([weather, w]) => ({
       ...dance, name: w.name, icon: w.icon, desc: w.desc, effect: 'setWeather', weather,
     })));
-  }
-
-  // Ice maps: each new round ice balls hit hazardTiles() for 1-10% of max HP
-  // and Freeze whoever they hit.
-  blizzardRound() {
-    for (const { col, row } of this.hazardTiles()) {
-      const unit = this.unitMap.get(`${col},${row}`);
-      if (!unit) { this.skyImpact(this.gridToScreen(col, row), 'orbWater'); continue; }
-      this.skyHit(unit, 1, 'orbWater', '#99ddff');
-      if (!unit.isDead) this.freeze(unit);
-    }
-    this.cameras.main.flash(120, 190, 225, 255);
-  }
-
-  // Where this round's falling hazards land. The Settings difficulty sets the
-  // base count and a replay's Normal/Hard/Elite adds its own on top. 1 to 2
-  // spots sit under random units so they stay a threat, the rest go anywhere.
-  hazardTiles() {
-    const replay = this.difficultyCfg ? 0 : rand(...HAZARD_COUNT_REPLAY[this.difficulty] ?? [1, 2]);
-    const count = rand(...HAZARD_COUNT[getDifficultyConfig().key]) + replay;
-    const tiles = new Map();
-    const alive = [...this.playerUnits, ...this.enemyUnits].filter(u => !u.isDead);
-    for (let i = Math.min(rand(1, 2), count); i > 0 && alive.length; i--) {
-      const { col, row } = alive[rand(0, alive.length - 1)];
-      tiles.set(`${col},${row}`, { col, row });
-    }
-    while (tiles.size < count) {
-      const col = rand(0, COLS - 1), row = rand(0, ROWS - 1);
-      tiles.set(`${col},${row}`, { col, row });
-    }
-    return [...tiles.values()];
-  }
-
-  // Frozen: 2 less move and no reactions (counters, dodges, Guard, Stopper,
-  // Endure) for FREEZE_TURNS rounds, one more if the unit is Wet.
-  freeze(unit) {
-    if (!(unit.frozenTurns > 0)) {
-      const { x, y } = this.gridToScreen(unit.col, unit.row);
-      this.showEffect(x, y + TH2 - 22, 'FROZEN', '#99ddff');
-    }
-    unit.frozenTurns = FREEZE_TURNS + (unit.wetTurns > 0 ? WET_FREEZE_EXTRA : 0);
-    this.redraw();
   }
 
   // Falling rain, embers or snow over the map's hazards. Kept light for phones.
