@@ -1097,3 +1097,8 @@ button.ui-quest-card { color: inherit; font: inherit; text-align: left; cursor: 
 .ui-skillbook-row { min-height: 40px; padding-block: 4px; }
 .ui-skillbook-modes { display: flex; gap: 6px; }
 .ui-skillbook-tag { flex: none; font-size: calc(13px * var(--font-scale, 1)); font-weight: 700; color: var(--ui-accent); }
+.ui-tower-row { margin: 8px 0; font-size: calc(16px * var(--font-scale, 1)); color: var(--ui-text-muted); }
+.ui-tower-row b { color: var(--ui-text); }
+.ui-tower-single { grid-template-columns: 1fr; }
+.ui-tower-climb { margin-top: 10px; }
+.ui-tower-abandon { margin-top: 10px; background: rgba(255, 255, 255, 0.1); color: var(--ui-text); }

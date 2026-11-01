@@ -5,7 +5,10 @@ import {
   DESIGNATION_BEATS, designationIcon, DESIGNATION_CYCLE, ELEMENT_CYCLE, ELEMENT_BEATS,
 } from '../data/gameState.js';
 import { buildTerrain } from '../data/terrain.js';
-import { TOWER_FLOORS, towerFloorId, towerFloorLevel, towerFloorPlace, towerStage, towerEnemies, isTowerFloor } from '../data/tower.js';
+import {
+  TOWER_TRACKS, towerFloorId, towerFloorLevel, towerFloorPlace, towerStage, towerBeasts, isTowerFloor, rollRandomFloor,
+  towerHumanTeam, towerHumanElement, towerHumanSpots, towerHumanGear, towerHumanStats,
+} from '../data/tower.js';
 import { PROJECTILE_SHEET, registerProjectileFrames, projectileFor, projectileDisplaySize, projectileHeading } from '../data/projectiles.js';
 import { ATTACK, THROW, ABILITIES, getEquippedSpecialAbilities, getEquippedSkillAbilities, getEquippedPassives } from '../data/abilities.js';
 import { loadHeroSprites, createHeroAnims, stripHeroBackground, stripBackgroundByKey, trimmedSheetConfig, heroKey, getSpriteInfo, firstFrame, spriteKeyForRole, HERO_SPRITES } from '../data/heroSprites.js';
@@ -349,10 +352,13 @@ const STAGE_THEME = {
   M4: 'arena', A1b: 'arena', AT1: 'arena', AT2: 'arena', GT: 'arena', M7: 'arena', FT: 'arena',
   T1: 'field', T2: 'field', T3: 'field', T4: 'field', T5: 'field', T6: 'field', T7: 'field',
 };
-for (let floor = 1; floor <= TOWER_FLOORS; floor++) {
-  const id = towerFloorId(floor);
-  STAGE_CONFIGS[id] = towerStage(floor);
-  STAGE_THEME[id] = towerFloorPlace(floor).theme;
+for (const { key, floors } of TOWER_TRACKS) {
+  if (key === 'random') continue; // rolled by prepareRandomTowerFloor
+  for (let floor = 1; floor <= floors; floor++) {
+    const id = towerFloorId(key, floor);
+    STAGE_CONFIGS[id] = towerStage(towerFloorPlace(floor), floor);
+    STAGE_THEME[id] = towerFloorPlace(floor).theme;
+  }
 }
 for (const [id, cfg] of Object.entries(STAGE_CONFIGS)) {
   Object.assign(cfg, buildTerrain(id, STAGE_THEME[id] ?? 'plains', COLS));
@@ -879,17 +885,49 @@ const MISSION_CONFIGS = {
   // above, 2026-07-17 — unrelated to the one removed here.)
 };
 
-for (let floor = 1; floor <= TOWER_FLOORS; floor++) {
-  const id = towerFloorId(floor);
-  const place = towerFloorPlace(floor);
+const towerPlayerPos = { reno:[1,3], drace:[1,4], sela:[1,2], kael:[1,5], trice:[1,1], zora:[1,0] };
+const towerHuman = (col, row, heroClass, floor, element) => ({
+  ...tournamentEnemyDef(col, row, heroClass, towerFloorLevel(floor), towerHumanStats(floor), towerHumanGear(floor)), element,
+});
+for (const { key: track, floors } of TOWER_TRACKS) {
+  if (track === 'random') continue;
+  for (let floor = 1; floor <= floors; floor++) {
+    const id = towerFloorId(track, floor);
+    const place = towerFloorPlace(floor);
+    const human = track === 'human';
+    const team = human ? towerHumanTeam(floor) : null;
+    MISSION_ENEMY_LEVEL[id] = towerFloorLevel(floor);
+    MISSION_CONFIGS[id] = {
+      region: place.region,
+      ...(place.hazard ? { [place.hazard]: true } : {}),
+      weather: place.weather,
+      playerPos: towerPlayerPos,
+      ...(human ? { enemyHeroClasses: [...new Set(team)] } : {}),
+      enemies: human
+        ? () => towerHumanSpots().map(([col, row], i) => towerHuman(col, row, team[i], floor, towerHumanElement(floor)))
+        : () => towerBeasts(floor),
+    };
+  }
+}
+
+// Rolls a Random floor from scratch just before it's entered: map, weather and
+// enemies are all fresh on every attempt.
+export function prepareRandomTowerFloor(floor) {
+  const id = towerFloorId('random', floor);
+  const { place, team } = rollRandomFloor(floor, TOURNAMENT_HERO_CLASSES);
+  STAGE_CONFIGS[id] = { ...towerStage(place, floor), ...buildTerrain(`${id}-${Math.random()}`, place.theme, COLS) };
   MISSION_ENEMY_LEVEL[id] = towerFloorLevel(floor);
+  const humans = team.filter(e => e.heroClass);
+  const defs = team.map(e => (e.heroClass ? towerHuman(e.col, e.row, e.heroClass, floor, e.element) : e));
   MISSION_CONFIGS[id] = {
     region: place.region,
     ...(place.hazard ? { [place.hazard]: true } : {}),
     weather: place.weather,
-    playerPos: { reno:[1,3], drace:[1,4], sela:[1,2], kael:[1,5], trice:[1,1], zora:[1,0] },
-    enemies: () => towerEnemies(floor),
+    playerPos: towerPlayerPos,
+    ...(humans.length ? { enemyHeroClasses: [...new Set(humans.map(e => e.heroClass))] } : {}),
+    enemies: () => defs,
   };
+  return id;
 }
 
 const enemyMaxHp = u => (u.endurance + u.stamina) * (2 + (u.level ?? 1));
@@ -1580,7 +1618,7 @@ export class BattleScene extends Phaser.Scene {
       stamina:   Math.round(d.stamina   * diff * repeatHpMult) + levelGrowth,
       endurance: Math.round(d.endurance * diff * repeatHpMult) + levelGrowth,
       xpValue:   40 * lv,
-      primaryStat, element,
+      primaryStat, element: d.element ?? element,
       // monsters.js's buildMonster() only ever sets a singular `designation`
       // (e.g. 'C') — designationMultiplier/attackDesignations read the
       // plural `designations` ARRAY player units get from currentDesignations().

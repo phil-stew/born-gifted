@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { isTowerFloor, towerFloorOf, towerReward } from '../data/tower.js';
+import { isTowerFloor, isRandomTowerFloor, towerFloorOf, towerReward, winTowerFloor } from '../data/tower.js';
 import { state, addXP, xpToNext, completeMission, roleDisplayLabel, TRIAL_CLASS, sportById, currentSport, resolvePartyLines } from '../data/gameState.js';
 import { getMissionMaterials, getKillDrops, rollHealHerbDrop, rollBracketedDrop, rollGodTierClassItem } from '../data/items.js';
 import { BACKDROPS } from '../data/storyBackdrops.js';
@@ -300,6 +300,7 @@ export class VictoryScene extends Phaser.Scene {
     // Complete mission and unlock next (main chain + any side-battle branch)
     const nextMission = MISSION_NEXT[this.missionId];
     completeMission(this.missionId, nextMission);
+    if (isRandomTowerFloor(this.missionId)) winTowerFloor();
     const sideUnlock = SIDE_MISSION_UNLOCK[this.missionId];
     if (sideUnlock) completeMission(this.missionId, sideUnlock);
 
