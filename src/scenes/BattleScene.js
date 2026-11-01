@@ -816,7 +816,7 @@ const MISSION_CONFIGS = {
     enemies: [
       {
         col: 5, row: 5, size: 2, name: 'Rock',
-        spriteKey: 'rock-proc', animKey: null, spriteScale: 0.95, moveSpeed: 0,
+        spriteKey: 'rock-proc', animKey: null, spriteScale: 0.72, moveSpeed: 0,
         speed: 0, strength: 0, stamina: 1, endurance: 1, level: 12,
         fixedMaxHp: 15000, alwaysWeak: true, noAttack: true,
       },
@@ -5291,6 +5291,18 @@ export class BattleScene extends Phaser.Scene {
     for (const e of this.enemyUnits) {
       if (e.isDead) continue;
       for (const { col, row } of this.occupiedTiles(e)) this.drawDiamond(col, row, 0x8b1a1a, 0.4);
+    }
+
+    // A big monster's art turns see-through while a hero stands behind it.
+    for (const e of this.enemyUnits) {
+      if (e.isDead || (e.size ?? 1) <= 1 || !e.sprite) continue;
+      const bounds = e.sprite.getBounds();
+      const hidden = this.playerUnits.some(u => {
+        if (u.isDead || u.col + u.row >= e.col + e.row + 2) return false;
+        const { x, y } = this.gridToScreen(u.col, u.row);
+        return bounds.contains(x, y + TH2);
+      });
+      e.sprite.setAlpha(hidden ? 0.6 : 1);
     }
 
     // Player unit circles + HP bars
