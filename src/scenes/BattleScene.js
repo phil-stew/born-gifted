@@ -1111,6 +1111,7 @@ const hasActiveBuff = u =>
   u.moveSpeed > u.baseMoveSpeed ||
   !!u.dodgeReady ||
   !!u.endureReady ||
+  !!u.counterReady ||
   (u.overdriveTurns ?? 0) > 0 ||
   !!u.damageReduction;
 
@@ -1161,6 +1162,8 @@ function designationMultiplier(attacker, defender, ability) {
   // marks Wolf/Boar/Deer/Goblin/Lion as C), and stacks multiplicatively
   // with everything below (the advantage roll, or the alwaysWeak override).
   const comboMult = live.includes('C') ? 2.0 : 1.0;
+  // Non-affinity moves ignore the weakness tables: no bonus, no penalty.
+  if (ability.nonAffinity) return comboMult;
 
   // alwaysWeak (Ester Academy's "Rock" quest, 2026-07-11) — a defender that's
   // "weak to everything" always takes the same advantage bonus a matching
@@ -1178,9 +1181,11 @@ function designationMultiplier(attacker, defender, ability) {
 // ── Elemental affinity cycle ────────────────────────────────────────────────
 // Fire > Wind > Earth > Lightning > Water > Fire. Beating the defender's
 // element deals 1.5x damage; being beaten by it reduces damage to 0.8x.
-function elementMultiplier(attacker, defender) {
+function elementMultiplier(attacker, defender, ability) {
+  if (ability?.nonAffinity) return 1.0;
   if (defender.alwaysWeak) return 1.5; // see designationMultiplier's alwaysWeak note
-  const a = attacker.element, d = defender.element;
+  // A fixed-element move stays that element whatever the hero's own element is.
+  const a = ability?.fixedElement ?? attacker.element, d = defender.element;
   if (!a || !d) return 1.0;
   if (ELEMENT_BEATS[a] === d) return 1.5;
   if (ELEMENT_BEATS[d] === a) return 0.8;
@@ -2618,7 +2623,7 @@ export class BattleScene extends Phaser.Scene {
     const followUpDist = Math.abs(partner.col - target.col) + Math.abs(partner.row - target.row);
     const followUpMult = distanceMultiplier(followUp, followUpDist);
     const desigMult = designationMultiplier(partner, target, followUp);
-    const elemMult = elementMultiplier(partner, target);
+    const elemMult = elementMultiplier(partner, target, followUp);
     let dmg = 0;
     for (let h = 0; h < hits; h++) dmg += Math.round(calcAtk(partner) * followUpMult * desigMult * elemMult);
     dmg = Math.round(dmg * this.passiveDefenseMultiplier(target) * this.difficultyDamageMult(partner));
@@ -2658,7 +2663,7 @@ export class BattleScene extends Phaser.Scene {
       return;
     }
 
-    let dmg = Math.round(calcAtk(attacker) * designationMultiplier(attacker, defender, ATTACK) * elementMultiplier(attacker, defender)
+    let dmg = Math.round(calcAtk(attacker) * designationMultiplier(attacker, defender, ATTACK) * elementMultiplier(attacker, defender, ATTACK)
       * this.partnerAttackMultiplier(attacker));
     dmg = Math.round(dmg * this.passiveDefenseMultiplier(defender) * this.difficultyDamageMult(attacker));
     if (defender.damageReduction) {
@@ -2700,6 +2705,18 @@ export class BattleScene extends Phaser.Scene {
     if (defender.hp > 0) this.triggerSetUpFollowUp(attacker, ATTACK, defender);
     if (defender.hp <= 0) this.killUnit(defender);
     else this.redraw();
+    this.tryCounter(defender, attacker);
+  }
+
+  // Counter Hit: an armed hero who survives an attack hits back once with a
+  // normal attack, if the attacker is inside their Throw range.
+  tryCounter(defender, attacker) {
+    if (!defender.counterReady || defender.hp <= 0 || attacker.isDead) return;
+    if (this.distanceToUnit(defender.col, defender.row, attacker) > this.effectiveRange(defender, THROW)) return;
+    defender.counterReady = false;
+    const { x, y } = this.gridToScreen(defender.col, defender.row);
+    this.showEffect(x, y + TH2 - 22, 'COUNTER!', '#ffcc44');
+    this.doAttack(defender, attacker);
   }
 
   killUnit(unit) {
@@ -2843,12 +2860,12 @@ export class BattleScene extends Phaser.Scene {
     const live = attackDesignations(attacker, ability);
     if (live.includes('C')) n++; // Combat adjacency x2
     const defDesigs = defender.designations ?? [];
-    if (live.length && defDesigs.length) {
+    if (!ability?.nonAffinity && live.length && defDesigs.length) {
       const advantage    = live.some(ad => defDesigs.includes(DESIGNATION_BEATS[ad]));
       const disadvantage = live.some(ad => defDesigs.some(dd => DESIGNATION_BEATS[dd] === ad));
       if (advantage && !disadvantage) n++; // designation-triangle advantage
     }
-    if (elementMultiplier(attacker, defender) > 1.0) n++; // elemental affinity
+    if (elementMultiplier(attacker, defender, ability) > 1.0) n++; // elemental affinity
     if (this.partnerAttackMultiplier(attacker) > 1.0) n++; // partner damage buff
     return n;
   }
@@ -3835,7 +3852,7 @@ export class BattleScene extends Phaser.Scene {
 
     const partnerAtkMult = this.partnerAttackMultiplier(unit);
     const applyHit = (target, mult) => {
-      let dmg = Math.round(calcAtk(unit) * mult * designationMultiplier(unit, target, ability) * elementMultiplier(unit, target) * partnerAtkMult);
+      let dmg = Math.round(calcAtk(unit) * mult * designationMultiplier(unit, target, ability) * elementMultiplier(unit, target, ability) * partnerAtkMult);
       dmg = Math.round(dmg * this.passiveDefenseMultiplier(target) * this.difficultyDamageMult(unit));
       target.hp = Math.max(0, target.hp - dmg);
       const { x, y } = this.gridToScreen(target.col, target.row);
@@ -3908,6 +3925,10 @@ export class BattleScene extends Phaser.Scene {
       unit.atkBuff = (unit.atkBuff ?? 1.0) * (1 + ability.atkMultiplier);
       const { x, y } = this.gridToScreen(unit.col, unit.row);
       this.showEffect(x, y + TH2, `+${Math.round(ability.atkMultiplier * 100)}% ATK`, '#ffcc44');
+    } else if (ability.effect === 'counter') {
+      unit.counterReady = true;
+      const { x, y } = this.gridToScreen(unit.col, unit.row);
+      this.showEffect(x, y + TH2, 'COUNTER READY', '#ffcc44');
     } else if (ability.effect === 'dodge') {
       unit.dodgeReady = true;
       const { x, y } = this.gridToScreen(unit.col, unit.row);
@@ -4006,7 +4027,7 @@ export class BattleScene extends Phaser.Scene {
     const hits = ability.hits ?? 1;
     for (const target of targets) {
       const desigMult = designationMultiplier(unit, target, ability);
-      const elemMult = elementMultiplier(unit, target);
+      const elemMult = elementMultiplier(unit, target, ability);
       let dmg = 0;
       for (let h = 0; h < hits; h++) dmg += Math.round(calcAtk(unit) * ability.multiplier * desigMult * elemMult);
       dmg = Math.round(dmg * this.passiveDefenseMultiplier(target) * this.difficultyDamageMult(unit));
@@ -4231,7 +4252,7 @@ export class BattleScene extends Phaser.Scene {
       const hits = ability.hits ?? 1;
       const mult = distanceMultiplier(ability, dist);
       const desigMult = designationMultiplier(attacker, target, ability);
-      const elemMult = elementMultiplier(attacker, target);
+      const elemMult = elementMultiplier(attacker, target, ability);
       const partnerAtkMult = this.partnerAttackMultiplier(attacker);
       let dmg = 0;
       for (let h = 0; h < hits; h++) dmg += Math.round(calcAtk(attacker) * mult * desigMult * elemMult * partnerAtkMult);
@@ -4488,7 +4509,6 @@ export class BattleScene extends Phaser.Scene {
       const ab = entry.ability;
       if (!ab || ab.targetType !== 'enemy' || typeof ab.multiplier !== 'number') continue;
       if (!this.abilityUsable(attacker, ab)) continue;
-      if (ab.requiresRecentHit && !attacker.recentlyHit) continue;
       const range = ab.range ?? 1;
       let candidates = hostiles.filter(u => !u.isDead && this.distanceToUnit(attacker.col, attacker.row, u) <= range);
       if (ab.atMaxRangeOnly) candidates = candidates.filter(u => this.distanceToUnit(attacker.col, attacker.row, u) === range);
@@ -4512,7 +4532,7 @@ export class BattleScene extends Phaser.Scene {
     const hits = ability.hits ?? 1;
     const mult = distanceMultiplier(ability, dist);
     const desigMult = designationMultiplier(attacker, target, ability);
-    const elemMult = elementMultiplier(attacker, target);
+    const elemMult = elementMultiplier(attacker, target, ability);
     const partnerAtkMult = this.partnerAttackMultiplier(attacker);
     let dmg = 0;
     for (let h = 0; h < hits; h++) dmg += Math.round(calcAtk(attacker) * mult * desigMult * elemMult * partnerAtkMult);
@@ -4551,6 +4571,7 @@ export class BattleScene extends Phaser.Scene {
 
     if (target.hp <= 0) this.killUnit(target);
     else this.redraw();
+    this.tryCounter(target, attacker);
   }
 
   // The Corrupted One's own turn (FT, 2026-08-03, "we can use any skill he

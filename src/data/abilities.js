@@ -191,11 +191,10 @@ export const ABILITIES = {
   //   passiveEffect — the bonus a 'passive' category ability actually grants
   //                   (mirrors 'effect' on selfActivate actives)
   //   fixedElement  — overrides the attacker's own element for this hit
-  //                   (Blitz/Counter Hit always deal a fixed element)
-  //   nonAffinity   — bypasses the elemental multiplier entirely (neutral dmg)
+  //                   (Blitz always deals a fixed element)
+  //   nonAffinity   — ignores the element and designation weakness tables (neutral dmg)
   //   scaleByRange  — closer-is-harder damage scaling, keyed by exact range
   //                   (inverse of the existing scaleByDist farther-is-harder)
-  //   requiresRecentHit — only usable the turn after this unit took damage
   speed_dash: {
     id: 'speed_dash', name: 'Dash', icon: '➤', category: 'special',
     cost: 1, range: 2, targetType: 'enemy', multiplier: 1.5,
@@ -241,9 +240,8 @@ export const ABILITIES = {
   },
   counter_hit: {
     id: 'counter_hit', name: 'Counter Hit', icon: '👊', category: 'special',
-    cost: 3, range: 1, targetType: 'enemy', multiplier: 2.5,
-    fixedElement: 'Earth', requiresRecentHit: true,
-    desc: '2.5× dmg  ·  Earth  ·  usable only after taking damage  ·  3 SP',
+    cost: 3, targetType: 'self', selfActivate: true, effect: 'counter',
+    desc: 'When next attacked, hit back with a normal attack  ·  3 SP',
   },
   performance: {
     id: 'performance', name: 'Performance', icon: '🎤', category: 'special',

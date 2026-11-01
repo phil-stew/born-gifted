@@ -28,6 +28,7 @@ const GLOSSARY = [
   { term: 'Boss',        def: 'A mission-ending monster with sharply boosted stats and a name of its own.' },
   { term: 'Unique',      def: 'A rarer, mid-boosted monster with a randomly rolled name — encountered outside of a mission\'s final fight.' },
   { term: 'Designation', def: 'A unit or monster\'s combat role (Combat/Ranged/Defender/Support) — see the triangle below.' },
+  { term: 'Non-affinity', def: 'A move marked non-affinity ignores the element and designation weakness tables: no bonus and no penalty.' },
   { term: 'Talent',      def: 'One of 2 stat-growth picks made at character creation. Picking the same talent twice quadruples that stat\'s growth per level.' },
   { term: 'Class Skill', def: 'A permanent passive buff, equipped into one of up to 3 slots unlocked at levels 5/10/20.' },
   { term: 'Buff icon (⬆)',   def: 'Shown above a unit\'s head in battle whenever it has an active attack/move buff, an armed dodge/endure, or a ticking overdrive/damage-reduction effect.' },

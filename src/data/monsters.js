@@ -268,7 +268,7 @@ export function rollUniqueName() {
 // stopper, ranged_plus_range, focus) automatically flavor with whatever
 // element the monster rolled at spawn — this falls out of the existing
 // elementMultiplier logic for free and needs no special-casing here.
-// Abilities WITH one (offside=Wind, counter_hit=Earth) override it, same
+// Abilities WITH one (offside=Wind) override it, same
 // as for heroes.
 const MONSTER_ABILITY_POOL = {
   C:  ['fake_out', 'offside', 'ace', 'counter_hit'],
