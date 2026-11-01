@@ -938,8 +938,9 @@ function elementMultiplier(attacker, defender, ability) {
   if (ability?.nonAffinity) return 1.0;
   // A fixed-element move stays that element whatever the hero's own element is.
   const a = ability?.fixedElement ?? attacker.element;
-  const shock = a === 'Lightning' && defender.wetTurns > 0 ? 2.0 : 1.0; // water conducts
-  return affinityMultiplier(a, defender) * shock;
+  // Water conducts Lightning and dampens Fire.
+  const soaked = defender.wetTurns > 0 ? { Lightning: 2.0, Fire: 0.5 }[a] ?? 1.0 : 1.0;
+  return affinityMultiplier(a, defender) * soaked;
 }
 function affinityMultiplier(a, defender) {
   if (defender.alwaysWeak) return 1.5; // see designationMultiplier's alwaysWeak note
@@ -1440,7 +1441,7 @@ export class BattleScene extends Phaser.Scene {
     else if (cfg.turnLimit) rules.push(`Win within ${cfg.turnLimit} turns`);
     if (cfg.reinforce) rules.push(`More enemies arrive every ${cfg.reinforce.every} turns`);
     if (cfg.enemyFirst) rules.push('Enemies move first');
-    if (STAGE_CONFIGS[state.currentMission]?.hasWater) rules.push('Crossing water makes units Wet: Lightning deals double damage to them');
+    if (STAGE_CONFIGS[state.currentMission]?.hasWater) rules.push('Crossing water makes units Wet: Lightning deals double damage to them, Fire deals half');
     if (enemies.some(e => e.corrupted)) rules.push('Corrupted enemies all target one hero');
     if (enemies.some(e => e.isCorruptedOneBoss)) rules.push('The Corrupted One grows stronger with each ally beside him');
     return rules;
