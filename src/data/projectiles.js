@@ -41,6 +41,7 @@ const MONSTER_PROJECTILE = {
   'goblin-idle': 'club', 'goblinking-idle': 'mace', 'wolf-idle': 'claw', 'kingwolf-idle': 'claw',
   'lion-idle': 'claw', 'kinglion-idle': 'claw', 'boar-idle': 'rock', 'deer-idle': 'rock',
   'dragon-idle': 'cometFire', 'wyven-idle': 'cometWind',
+  'golem-idle': 'boulder', 'bear-idle': 'boulder',
 };
 
 // Strips the sheet once and names its frames. The texture outlives the scene.

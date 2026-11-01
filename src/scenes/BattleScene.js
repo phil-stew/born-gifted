@@ -1041,9 +1041,7 @@ const MISSION_CONFIGS = {
   // this is just the tournament's entry requirement, "proof of clearing
   // ONE trial." Level 21, a notch above T1-T7's 19 and on par with M7's
   // villain-tier 20, since the story frames it as the last thing standing
-  // between the party and the Final Tournament. Golem has no sprite art
-  // (see monsters.js's SPRITE_INFO.Golem) — ensureGolemTexture() in this
-  // file generates a placeholder.
+  // between the party and the Final Tournament.
   'TG': {
     region: 'Lametus',
     playerPos: { reno:[1,3], drace:[1,4], sela:[1,2], kael:[1,5], trice:[1,1], zora:[1,0] },
@@ -1309,7 +1307,6 @@ export class BattleScene extends Phaser.Scene {
       const enemyUnits = this.rollEnemyUnits(missionCfg);
       this.stripEnemySprites(missionCfg); // the preview's enemy icons need this
       this.ensureRockTexture();
-      this.ensureGolemTexture();
       this.scene.start('PreBattleScene', {
         battleData: { ...this._initData, enemyUnits },
         rules: this.missionRules(missionCfg, enemyUnits),
@@ -1880,32 +1877,9 @@ export class BattleScene extends Phaser.Scene {
     g.destroy();
   }
 
-  // Golem (2026-07-18) — no dedicated art (see the SPRITE_INFO.Golem
-  // comment in monsters.js), so a blocky humanoid rock silhouette gets
-  // baked into a real texture the same way ensureRockTexture() above does.
-  ensureGolemTexture() {
-    if (this.textures.exists('golem-proc')) return;
-    const g = this.add.graphics();
-    g.fillStyle(0x6a6660, 1);
-    g.fillRect(75, 10, 50, 40);   // head
-    g.fillStyle(0x5a5650, 1);
-    g.fillRect(60, 40, 80, 90);   // torso
-    g.fillStyle(0x4a4640, 1);
-    g.fillRect(30, 50, 30, 70);   // left arm
-    g.fillRect(140, 50, 30, 70);  // right arm
-    g.fillRect(65, 130, 30, 60);  // left leg
-    g.fillRect(105, 130, 30, 60); // right leg
-    g.lineStyle(3, 0x2a2620, 1);
-    g.strokeRect(75, 10, 50, 40);
-    g.strokeRect(60, 40, 80, 90);
-    g.generateTexture('golem-proc', 200, 200);
-    g.destroy();
-  }
-
   spawnEnemyVisual(e) {
     const ENEMY_TINT = 0x4a5566;
     if (e.spriteKey === 'rock-proc') this.ensureRockTexture();
-    if (e.spriteKey === 'golem-proc') this.ensureGolemTexture();
     // footprintScreenPos centers a multi-tile unit (King Wolf, size:2)
     // over its whole block instead of just its anchor tile's own cell.
     const { x, y } = this.footprintScreenPos(e);

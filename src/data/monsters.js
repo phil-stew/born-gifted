@@ -98,16 +98,9 @@ const SPRITE_INFO = {
       .map(([x, y, w, h]) => ({ x, y, w, h, onlyColor: [0, 0, 0], colorTol: 14 })),
   },
   Wyvern: { spriteKey: 'wyven-idle',  animKey: 'wyven-idle',  file: 'monster/wyven.webp',  fw: 256, fh: 170, spriteScale: 0.35, moveSpeed: 3 },
-  // Golem (2026-07-18, "North of A3 they will fight the Golems as their
-  // last trial") — no Golem art exists on disk (still one of the 7
-  // "data first" species from the original monster redesign). No `file`
-  // key on purpose: BattleScene.js's monsterSpriteInfos() only preloads
-  // entries that have one, so this is deliberately skipped there and
-  // instead generated at spawn time as a procedural texture (same trick
-  // Ester Academy's "Rock" quest uses for rock-proc) — see
-  // ensureGolemTexture()/spawnEnemyVisual in BattleScene.js. No animKey
-  // (nothing to play), slow moveSpeed matching Golem's low `speed` stat.
-  Golem:  { spriteKey: 'golem-proc',  animKey: null, spriteScale: 0.55, moveSpeed: 1 },
+  Golem:  { spriteKey: 'golem-idle',  animKey: 'golem-idle',  file: 'monster/golem.webp',  fw: 256, fh: 170, spriteScale: 0.4,  moveSpeed: 1 },
+  Bear:   { spriteKey: 'bear-idle',   animKey: 'bear-idle',   file: 'monster/bear.webp',   fw: 256, fh: 170, spriteScale: 0.4,  moveSpeed: 2 },
+  Hawk:   { spriteKey: 'hawk-idle',   animKey: 'hawk-idle',   file: 'monster/hawk.webp',   fw: 256, fh: 170, spriteScale: 0.35, moveSpeed: 4 },
 };
 export function spriteInfoForBase(base) {
   return SPRITE_INFO[base] ?? null;
