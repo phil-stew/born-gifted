@@ -1113,6 +1113,9 @@ const hasActiveBuff = u =>
   !!u.endureReady ||
   !!u.counterReady ||
   !!u.shieldHp ||
+  u.nextHitMult != null ||
+  !!u.tankReady ||
+  (u.calmTurns ?? 0) > 0 ||
   (u.overdriveTurns ?? 0) > 0 ||
   !!u.damageReduction;
 
@@ -2325,6 +2328,7 @@ export class BattleScene extends Phaser.Scene {
   // `free: true` (Duo's free move to a sports partner) repositions the unit
   // without consuming its normal move for the turn.
   moveUnit(unit, col, row, { free = false } = {}) {
+    unit.calmTurns = 0; // Stay Calm ends when its user moves
     // Manhattan tile distance — moveUnit is always called with the FINAL
     // destination (getReachableTiles' BFS steps are never replayed visually),
     // so a multi-tile move needs a proportionally longer tween. A fixed
@@ -2455,7 +2459,9 @@ export class BattleScene extends Phaser.Scene {
   // per round even if multiple different enemies hit this unit before its
   // next turn (not once per attacker). Block always applies, on top of those.
   passiveDefenseMultiplier(unit) {
-    const block = this.hasPassive(unit, 'block') ? 0.9 : 1.0;
+    const calm = this.playerUnits.some(o => !o.isDead && o.calmTurns > 0 && unit.team === o.team
+      && Math.abs(o.col - unit.col) <= 1 && Math.abs(o.row - unit.row) <= 1);
+    const block = (this.hasPassive(unit, 'block') ? 0.9 : 1.0) * (calm ? 0.7 : 1.0);
     if (!this.sportsPartnerAdjacent(unit)) return block;
     if (this.hasPassive(unit, 'training_buddy')) return 0.5 * block;
     if (this.hasPassive(unit, 'set_up') && !unit.setUpUsedThisTurn) {
@@ -2511,6 +2517,7 @@ export class BattleScene extends Phaser.Scene {
   }
   // A big monster is one target: in range on any of its tiles means in range.
   abilityReachesUnit(unit, ability, target) {
+    if (ability.effect === 'extraTurnAlly' && target === unit) return false; // Baton Pass needs a teammate
     return this.occupiedTiles(target).some(t =>
       this.abilityRangeMatches(unit, ability, Math.abs(t.col - unit.col) + Math.abs(t.row - unit.row)));
   }
@@ -2698,6 +2705,7 @@ export class BattleScene extends Phaser.Scene {
     if (defender.hp > 0) this.triggerSetUpFollowUp(attacker, ATTACK, defender);
     if (defender.hp <= 0) this.killUnit(defender);
     else this.redraw();
+    this.spendAssist(attacker);
     this.tryCounter(defender, attacker);
   }
 
@@ -2716,6 +2724,13 @@ export class BattleScene extends Phaser.Scene {
     return true;
   }
 
+  // Assist's ×2 lasts for one attack.
+  spendAssist(unit) {
+    if (!unit.assistReady) return;
+    unit.assistReady = false;
+    unit.atkBuff /= 2;
+  }
+
   // Who actually takes a hit aimed at defender: a Guard first, then a Stopper.
   redirectHit(defender) {
     if (defender.guardedBy && !defender.guardedBy.isDead) {
@@ -2723,6 +2738,10 @@ export class BattleScene extends Phaser.Scene {
       defender.guardedBy = null;
       return guardian;
     }
+    // Guard skill: takes every hit on adjacent allies until the unit's next turn.
+    const team = defender.team === 'player' ? this.playerUnits : this.enemyUnits;
+    const tank = team.find(o => o !== defender && !o.isDead && o.tankReady && this.isAdjacent(o, defender));
+    if (tank) return tank;
     return this.stopperIntercept(defender);
   }
 
@@ -2742,6 +2761,11 @@ export class BattleScene extends Phaser.Scene {
 
   // A Shield soaks damage until it runs out.
   absorbShield(unit, dmg) {
+    // Force Field halves the next hit, Screen stops it.
+    if (unit.nextHitMult != null) {
+      dmg = Math.round(dmg * unit.nextHitMult);
+      unit.nextHitMult = null;
+    }
     if (!unit.shieldHp) return dmg;
     const soaked = Math.min(unit.shieldHp, dmg);
     unit.shieldHp -= soaked;
@@ -3939,6 +3963,7 @@ export class BattleScene extends Phaser.Scene {
 
     this.hideActionMenu();
     this.redraw();
+    this.spendAssist(unit);
     this.finishAbilityTurn(unit);
   }
 
@@ -3962,6 +3987,14 @@ export class BattleScene extends Phaser.Scene {
       unit.atkBuff = (unit.atkBuff ?? 1.0) * (1 + ability.atkMultiplier);
       const { x, y } = this.gridToScreen(unit.col, unit.row);
       this.showEffect(x, y + TH2, `+${Math.round(ability.atkMultiplier * 100)}% ATK`, '#ffcc44');
+    } else if (ability.effect === 'damageReductionPct') {
+      unit.calmTurns = ability.duration;
+      const { x, y } = this.gridToScreen(unit.col, unit.row);
+      this.showEffect(x, y + TH2, 'CALM', '#88aaff');
+    } else if (ability.effect === 'tankForAdjacent') {
+      unit.tankReady = true;
+      const { x, y } = this.gridToScreen(unit.col, unit.row);
+      this.showEffect(x, y + TH2, 'GUARDING', '#66ddff');
     } else if (ability.effect === 'counter') {
       unit.counterReady = true;
       const { x, y } = this.gridToScreen(unit.col, unit.row);
@@ -4028,6 +4061,7 @@ export class BattleScene extends Phaser.Scene {
       this.showEffect(x, y + TH2, 'FREESTYLE!', '#ff44cc');
     } else if (ability.hitsAllUnitsOnField) {
       this.castBlitzBall(unit, ability);
+      this.spendAssist(unit);
     }
 
     if (ability.effect === 'extraTurn') {
@@ -4223,6 +4257,42 @@ export class BattleScene extends Phaser.Scene {
     if (target.team !== attacker.team) target = this.redirectHit(target);
 
     // Ally-support effects deal no damage — handle and return early.
+    if (ability.effect === 'allyAtkBuff') {
+      if (!target.assistReady) target.atkBuff = (target.atkBuff ?? 1.0) * 2;
+      target.assistReady = true;
+      const { x, y } = this.gridToScreen(target.col, target.row);
+      this.showEffect(x, y + TH2, 'NEXT ATTACK ×2', '#ffcc44');
+      this.redraw();
+      this.finishAbilityTurn(attacker);
+      return;
+    }
+    if (ability.effect === 'healAllyPctOfCasterMaxHp') {
+      const heal = Math.round(attacker.maxHp * ability.amount * this.gracefulnessMultiplier(attacker));
+      target.hp = Math.min(target.maxHp, target.hp + heal);
+      const { x, y } = this.gridToScreen(target.col, target.row);
+      this.showEffect(x, y + TH2, `+${heal} HP`, '#44ffaa');
+      this.redraw();
+      this.finishAbilityTurn(attacker);
+      return;
+    }
+    if (ability.effect === 'extraTurnAlly') {
+      target.isDone = false;
+      target.hasActed = false;
+      target.hasMoved = false;
+      const { x, y } = this.gridToScreen(target.col, target.row);
+      this.showEffect(x, y + TH2, 'ACT AGAIN', '#44ffaa');
+      this.redraw();
+      this.finishAbilityTurn(attacker);
+      return;
+    }
+    if (ability.effect === 'shield') {
+      target.nextHitMult = ability.nextHitMult;
+      const { x, y } = this.gridToScreen(target.col, target.row);
+      this.showEffect(x, y + TH2, 'PROTECTED', '#66ddff');
+      this.redraw();
+      this.finishAbilityTurn(attacker);
+      return;
+    }
     if (ability.effect === 'shieldPct') {
       this.applyShield(target, ability);
       this.finishAbilityTurn(attacker);
@@ -4299,8 +4369,12 @@ export class BattleScene extends Phaser.Scene {
       const desigMult = designationMultiplier(attacker, target, ability);
       const elemMult = elementMultiplier(attacker, target, ability);
       const partnerAtkMult = this.partnerAttackMultiplier(attacker);
+      const elements = Object.keys(ELEMENT_BEATS);
+      const hitElemMult = () => ability.randomAffinity // Quick Fire rolls an element per hit
+        ? elementMultiplier(attacker, target, { fixedElement: elements[rand(0, elements.length - 1)] })
+        : elemMult;
       let dmg = 0;
-      for (let h = 0; h < hits; h++) dmg += Math.round(calcAtk(attacker) * mult * desigMult * elemMult * partnerAtkMult);
+      for (let h = 0; h < hits; h++) dmg += Math.round(calcAtk(attacker) * mult * desigMult * hitElemMult() * partnerAtkMult);
       dmg = Math.round(dmg * this.passiveDefenseMultiplier(target) * this.difficultyDamageMult(attacker));
       dmg = this.absorbShield(target, dmg);
       target.hp  = Math.max(0, target.hp - dmg);
@@ -4338,6 +4412,7 @@ export class BattleScene extends Phaser.Scene {
       if (target.hp > 0) this.triggerSetUpFollowUp(attacker, ability, target);
       if (target.hp <= 0) this.killUnit(target);
       else this.redraw();
+      this.spendAssist(attacker);
       this.tryCounter(target, attacker);
       if (attacker.isDead) { this.endUnitTurn(attacker); return; }
       this.finishAbilityTurn(attacker);
@@ -4438,7 +4513,9 @@ export class BattleScene extends Phaser.Scene {
         u.hasMoved = false;
         u.sp = Math.min(u.maxSp, u.sp + 1);
         u.moveSpeed = u.baseMoveSpeed; // reset move buff
-        u.atkBuff   = 1.0;            // reset atk buff
+        u.atkBuff   = u.assistReady ? 2.0 : 1.0; // reset atk buff; Assist waits for the next attack
+        u.tankReady = false;
+        if (u.calmTurns > 0) u.calmTurns--;
         u.stopperUsedThisTurn = false;
         u.setUpUsedThisTurn = false;  // Set Up's "-50% dmg taken, 1×/turn" cap
         u.duoFreeMoveUsed = false;    // Duo's free move to partner, once/round

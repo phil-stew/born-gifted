@@ -82,7 +82,7 @@ export const ABILITIES = {
   force_field: {
     id: 'force_field', name: 'Force Field', icon: '🛡', category: 'special',
     cost: 3, range: 1, targetType: 'player', multiplier: 0,
-    effect: 'shield',
+    effect: 'shield', nextHitMult: 0.5,
     desc: 'Halves next hit on ally  ·  3 SP',
   },
   diving_save: {
@@ -151,7 +151,7 @@ export const ABILITIES = {
   screen: {
     id: 'screen', name: 'Screen', icon: '🛡', category: 'skill',
     cooldown: 2, range: 1, targetType: 'player', multiplier: 0,
-    effect: 'shield',
+    effect: 'shield', nextHitMult: 0,
     desc: 'Absorbs next enemy hit for ally  ·  CD 2',
   },
   box_out: {
