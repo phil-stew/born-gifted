@@ -32,7 +32,7 @@ function markM1TutorialDone() {
 }
 
 const COLS = 10, ROWS = 10;
-const LAUNCH_WINDUP_MS = 280, VOLLEY_GAP_MS = 90, WET_TURNS = 2;
+const LAUNCH_WINDUP_MS = 280, VOLLEY_GAP_MS = 90, WET_TURNS = 3;
 const OBSTACLE_MOVE_COST = 2, COVER_MISS_CHANCE = 0.2;
 // Bigger isometric tiles (2026-07-07 feedback) — was 64×32 at .setScale(2)
 // (native tile art is 32×32, so scale = TILE_W/32 keeps tiles seamless with
