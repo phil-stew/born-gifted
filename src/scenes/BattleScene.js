@@ -1357,6 +1357,11 @@ export class BattleScene extends Phaser.Scene {
     for (const { spriteKey: key } of monsterSpriteInfos) {
       if (!this.anims.exists(key)) {
         this.anims.create({ key, frames: this.anims.generateFrameNumbers(key, { start: 0, end: 5 }), frameRate: 6, repeat: -1 });
+        // Rows after idle: walk, attack, heavy attack, hurt, death.
+        ['run', 'attack', 'attack2', 'hurt', 'death'].forEach((name, i) => {
+          const start = (i + 1) * 6;
+          this.anims.create({ key: `${key}-${name}`, frames: this.anims.generateFrameNumbers(key, { start, end: start + 5 }), frameRate: 12, repeat: 0 });
+        });
       }
     }
 
@@ -2647,6 +2652,7 @@ export class BattleScene extends Phaser.Scene {
     this.showDamage(x, y + TH2, dmg, '#ffcc44', this.countDamageBonuses(partner, target, followUp));
     if (target.sprite) {
       target.sprite.setTint(0xff3300);
+      this.playEnemyAnim(target, 'hurt');
       this.time.delayedCall(180, () => {
         if (!target.isDead && target.sprite) {
           if (target.enemyTint) target.sprite.setTint(target.enemyTint);
@@ -2659,6 +2665,7 @@ export class BattleScene extends Phaser.Scene {
   // ── Combat ────────────────────────────────────────────────────────────────
 
   doAttack(attacker, defender) {
+    if (attacker.team === 'enemy') this.playEnemyAnim(attacker, 'attack');
     defender = this.redirectHit(defender);
     if (this.tryDodge(defender, attacker)) return;
 
@@ -2690,6 +2697,7 @@ export class BattleScene extends Phaser.Scene {
     // Flash hit
     if (defender.sprite) {
       defender.sprite.setTint(0xff2222);
+      this.playEnemyAnim(defender, 'hurt');
       this.time.delayedCall(180, () => {
         if (!defender.isDead && defender.sprite) {
           if (defender.enemyTint) defender.sprite.setTint(defender.enemyTint);
@@ -2795,7 +2803,17 @@ export class BattleScene extends Phaser.Scene {
     if (unit.portrait){ unit.portrait.setVisible(false); }
     if (unit.lvLabel) { unit.lvLabel.setVisible(false); }
     if (unit.auraGfx) { unit.auraGfx.destroy(); unit.auraGfx = null; }
-    if (unit.sprite)  { unit.sprite.destroy(); unit.sprite = null; }
+    if (unit.sprite) {
+      const sprite = unit.sprite, death = `${unit.spriteKey}-death`;
+      unit.sprite = null;
+      if (this.anims.exists(death)) {
+        sprite.off('animationcomplete');
+        sprite.play(death);
+        this.time.delayedCall(900, () => sprite.destroy());
+      } else {
+        sprite.destroy();
+      }
+    }
     this.redraw();
     this.checkEndConditions();
   }
@@ -3914,6 +3932,7 @@ export class BattleScene extends Phaser.Scene {
       this.showDamage(x, y + TH2, dmg, '#ffaa22', this.countDamageBonuses(unit, target, ability));
       if (target.sprite) {
         target.sprite.setTint(0xff3300);
+        this.playEnemyAnim(target, 'hurt');
         this.time.delayedCall(180, () => {
           if (!target.isDead && target.sprite) {
             if (target.enemyTint) target.sprite.setTint(target.enemyTint);
@@ -4111,6 +4130,7 @@ export class BattleScene extends Phaser.Scene {
       this.showDamage(x, y + TH2, dmg, target.team === 'player' ? '#ff5555' : '#ffaa22', this.countDamageBonuses(unit, target, ability));
       if (target.sprite) {
         target.sprite.setTint(0xff3300);
+        this.playEnemyAnim(target, 'hurt');
         this.time.delayedCall(180, () => {
           if (!target.isDead && target.sprite) {
             if (target.enemyTint) target.sprite.setTint(target.enemyTint);
@@ -4156,6 +4176,19 @@ export class BattleScene extends Phaser.Scene {
     attacker.portrait.once('animationcomplete', () => {
       this.playIdle(attacker, spriteKey);
     });
+  }
+
+  // Plays one of an enemy's one-shot rows, then returns to its idle loop. A hit
+  // doesn't cut off an attack already playing.
+  playEnemyAnim(unit, name) {
+    const key = `${unit.spriteKey}-${name}`;
+    if (!unit.sprite || unit.isDead || !this.anims.exists(key)) return;
+    const current = unit.sprite.anims.currentAnim?.key ?? '';
+    if (name === 'hurt' && unit.sprite.anims.isPlaying && current.includes('-attack')) return;
+    unit.sprite.off('animationcomplete');
+    unit.sprite.play(key);
+    const idle = unit.fixedIdleFrames ? `${unit.spriteKey}-fixedidle` : unit.animKey;
+    unit.sprite.once('animationcomplete', () => { if (idle) unit.sprite?.play(idle); });
   }
 
   // Draws a projectile (arrow or ball, see PROJECTILE_BY_CLASS) flying from
@@ -4388,6 +4421,7 @@ export class BattleScene extends Phaser.Scene {
 
       if (target.sprite) {
         target.sprite.setTint(0xff3300);
+        this.playEnemyAnim(target, 'hurt');
         this.time.delayedCall(180, () => {
           if (!target.isDead && target.sprite) {
             if (target.enemyTint) target.sprite.setTint(target.enemyTint);
@@ -4469,7 +4503,7 @@ export class BattleScene extends Phaser.Scene {
       }
       this.enemyAct(aliveEnemies[i++]);
       this.redraw();
-      this.time.delayedCall(400, actNext);
+      this.time.delayedCall(550, actNext); // long enough to see the attack play
     };
 
     this.time.delayedCall(700, actNext);
@@ -4575,6 +4609,7 @@ export class BattleScene extends Phaser.Scene {
     const path = this.bfsPath(wolf.col, wolf.row, target.col, target.row);
     if (!path) return;
 
+    const startCol = wolf.col, startRow = wolf.row;
     const size = wolf.size ?? 1;
     if (size <= 1) {
       // Move up to moveSpeed steps, never walking into target's tile
@@ -4606,6 +4641,7 @@ export class BattleScene extends Phaser.Scene {
       const { x, y } = this.footprintScreenPos(wolf);
       wolf.sprite.setPosition(x, y + TH2).setDepth((wolf.col + wolf.row) * 10 + 5);
     }
+    if (wolf.col !== startCol || wolf.row !== startRow) this.playEnemyAnim(wolf, 'run');
 
     // 2026-07-09 ("monster will need sp as well to use skills") — try an
     // equipped attack skill first (it may reach targets a plain adjacent
@@ -4681,6 +4717,7 @@ export class BattleScene extends Phaser.Scene {
   // projectile visuals, finishAbilityTurn's showActionMenu/endUnitTurn),
   // none of which apply to an AI-controlled unit.
   enemySkillAttack(attacker, ability, target) {
+    this.playEnemyAnim(attacker, 'attack2');
     this.consumeAbilityResource(attacker, ability);
     target = this.redirectHit(target);
     if (this.tryDodge(target, attacker)) return;
@@ -4703,6 +4740,7 @@ export class BattleScene extends Phaser.Scene {
 
     if (target.sprite) {
       target.sprite.setTint(0xff2222);
+      this.playEnemyAnim(target, 'hurt');
       this.time.delayedCall(180, () => {
         if (!target.isDead && target.sprite) {
           if (target.enemyTint) target.sprite.setTint(target.enemyTint);
