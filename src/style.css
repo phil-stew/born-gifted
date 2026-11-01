@@ -837,9 +837,10 @@ canvas {
 .ui-action-btn {
   appearance: none;
   display: block;
-  width: 100%;
-  min-height: 50px;
-  margin-top: 12px;
+  min-width: 180px;
+  min-height: 46px;
+  margin: 12px auto 0;
+  padding: 0 28px;
   border: 0;
   border-radius: var(--ui-radius-sm);
   background: var(--ui-accent);
@@ -1100,5 +1101,5 @@ button.ui-quest-card { color: inherit; font: inherit; text-align: left; cursor: 
 .ui-tower-row { margin: 8px 0; font-size: calc(16px * var(--font-scale, 1)); color: var(--ui-text-muted); }
 .ui-tower-row b { color: var(--ui-text); }
 .ui-tower-single { grid-template-columns: 1fr; }
-.ui-tower-climb { margin-top: 10px; }
-.ui-tower-abandon { margin-top: 10px; background: rgba(255, 255, 255, 0.1); color: var(--ui-text); }
+.ui-tower-abandon { background: rgba(255, 255, 255, 0.1); color: var(--ui-text); }
+.ui-dismiss-btn { display: block; margin: 10px 0 0 auto; padding: 6px 12px; font-size: calc(12px * var(--font-scale, 1)); text-align: center; }

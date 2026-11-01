@@ -224,7 +224,7 @@ export class PartyScene extends Phaser.Scene {
         </div>
       </div>
       ${state.party.length > 1 ? `
-        <button class="ui-btn ui-btn-danger" style="margin-top:10px;width:100%;" data-dismiss-start="${unit.id}">Dismiss from Roster</button>
+        <button class="ui-btn ui-btn-danger ui-dismiss-btn" data-dismiss-start="${unit.id}">Dismiss</button>
       ` : ''}`;
 
     const equipmentTabHTML = `
