@@ -93,7 +93,7 @@ function arenaMap(size, rnd) {
       ground[`${col},${row}`] = pick(tile, rnd);
     }
   }
-  return { ground, decor: {} };
+  return { ground, decor: {}, water: new Set() };
 }
 
 function themedMap(size, theme, rnd) {
@@ -131,10 +131,10 @@ function themedMap(size, theme, rnd) {
       if (!edge && onRightGround && rnd() < theme.decorAmount) decor[k] = pick(theme.decor, rnd);
     }
   }
-  return { ground, decor };
+  return { ground, decor, water: river };
 }
 
-// Returns { tiles, layout(col, row), decor(col, row) } for a stage.
+// Returns { tiles, layout(col, row), decor(col, row), water(col, row) } for a stage.
 export function buildTerrain(stageId, themeName, size) {
   const rnd = seededRandom(stageId);
   const map = themeName === 'arena' ? arenaMap(size, rnd) : themedMap(size, THEMES[themeName], rnd);
@@ -142,5 +142,7 @@ export function buildTerrain(stageId, themeName, size) {
     tiles: [...new Set([...Object.values(map.ground), ...Object.values(map.decor)])],
     layout: (col, row) => map.ground[`${col},${row}`],
     decor: (col, row) => map.decor[`${col},${row}`],
+    water: (col, row) => map.water.has(`${col},${row}`),
+    hasWater: map.water.size > 0,
   };
 }

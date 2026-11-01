@@ -32,7 +32,7 @@ function markM1TutorialDone() {
 }
 
 const COLS = 10, ROWS = 10;
-const LAUNCH_WINDUP_MS = 280, VOLLEY_GAP_MS = 90;
+const LAUNCH_WINDUP_MS = 280, VOLLEY_GAP_MS = 90, WET_TURNS = 2;
 // Bigger isometric tiles (2026-07-07 feedback) — was 64×32 at .setScale(2)
 // (native tile art is 32×32, so scale = TILE_W/32 keeps tiles seamless with
 // no gaps/overlap). 80×40 is a 1.25× bump: checked the grid's screen-space
@@ -936,9 +936,14 @@ function designationMultiplier(attacker, defender, ability) {
 // element deals 1.5x damage; being beaten by it reduces damage to 0.8x.
 function elementMultiplier(attacker, defender, ability) {
   if (ability?.nonAffinity) return 1.0;
-  if (defender.alwaysWeak) return 1.5; // see designationMultiplier's alwaysWeak note
   // A fixed-element move stays that element whatever the hero's own element is.
-  const a = ability?.fixedElement ?? attacker.element, d = defender.element;
+  const a = ability?.fixedElement ?? attacker.element;
+  const shock = a === 'Lightning' && defender.wetTurns > 0 ? 2.0 : 1.0; // water conducts
+  return affinityMultiplier(a, defender) * shock;
+}
+function affinityMultiplier(a, defender) {
+  if (defender.alwaysWeak) return 1.5; // see designationMultiplier's alwaysWeak note
+  const d = defender.element;
   if (!a || !d) return 1.0;
   if (ELEMENT_BEATS[a] === d) return 1.5;
   if (ELEMENT_BEATS[d] === a) return 0.8;
@@ -1083,6 +1088,7 @@ export class BattleScene extends Phaser.Scene {
     const missionId  = state.currentMission ?? 'M1';
     const missionCfg = MISSION_CONFIGS[missionId] ?? MISSION_CONFIGS['M1'];
     const stageCfg   = STAGE_CONFIGS[missionId]   ?? STAGE_CONFIGS['M1'];
+    this.stageCfg = stageCfg;
     // Stored so later methods (checkEndConditions' win-condition check,
     // startPlayerTurn's reinforcement-wave trigger) can read it without
     // threading it through every call — 2026-07-11 ("Goblin King"/"Cave
@@ -1273,6 +1279,7 @@ export class BattleScene extends Phaser.Scene {
       }).setOrigin(0.5).setDepth(1001).setVisible(false);
       // Debuff icon — same idea, shown whenever u.debuffs has anything
       // active. Offset to the buff icon's side so both can show at once.
+      u.wetIcon = this.add.text(0, 0, '💧', { fontSize: '13px' }).setOrigin(0.5).setDepth(1001).setVisible(false);
       u.debuffIcon = this.add.text(0, 0, '⬇', {
         fontSize: '14px', fontFamily: 'monospace', fontStyle: 'bold', color: '#ff6688',
         stroke: '#000000', strokeThickness: 3,
@@ -1433,6 +1440,7 @@ export class BattleScene extends Phaser.Scene {
     else if (cfg.turnLimit) rules.push(`Win within ${cfg.turnLimit} turns`);
     if (cfg.reinforce) rules.push(`More enemies arrive every ${cfg.reinforce.every} turns`);
     if (cfg.enemyFirst) rules.push('Enemies move first');
+    if (STAGE_CONFIGS[state.currentMission]?.hasWater) rules.push('Crossing water makes units Wet: Lightning deals double damage to them');
     if (enemies.some(e => e.corrupted)) rules.push('Corrupted enemies all target one hero');
     if (enemies.some(e => e.isCorruptedOneBoss)) rules.push('The Corrupted One grows stronger with each ally beside him');
     return rules;
@@ -1717,6 +1725,7 @@ export class BattleScene extends Phaser.Scene {
     // e.debuffs has anything active (slow/statDown, applied by player
     // abilities like Tackle Kick/Cross-Check — see debuff.type handling
     // in resolveHit/enemySkillAttack).
+    e.wetIcon = this.add.text(x, y + TH2 - 74, '💧', { fontSize: '13px' }).setOrigin(0.5).setDepth(661).setVisible(false);
     e.debuffIcon = this.add.text(x, y + TH2 - 74, '⬇', {
       fontSize: '14px', fontFamily: 'monospace', fontStyle: 'bold', color: '#ff6688',
       stroke: '#000000', strokeThickness: 3,
@@ -2067,6 +2076,8 @@ export class BattleScene extends Phaser.Scene {
   // without consuming its normal move for the turn.
   moveUnit(unit, col, row, { free = false } = {}) {
     unit.calmTurns = 0; // Stay Calm ends when its user moves
+    const walked = free ? [{ col, row }] : (this.bfsPath(unit.col, unit.row, col, row) ?? [{ col, row }]);
+    if (walked.some(t => this.stageCfg.water(t.col, t.row))) this.soak(unit);
     // Manhattan tile distance — moveUnit is always called with the FINAL
     // destination (getReachableTiles' BFS steps are never replayed visually),
     // so a multi-tile move needs a proportionally longer tween. A fixed
@@ -2533,6 +2544,7 @@ export class BattleScene extends Phaser.Scene {
     if (unit.label)   { unit.label.setVisible(false); }
     if (unit.buffIcon)  { unit.buffIcon.setVisible(false); }
     if (unit.debuffIcon){ unit.debuffIcon.setVisible(false); }
+    if (unit.wetIcon)   { unit.wetIcon.setVisible(false); }
     if (unit.portrait){ unit.portrait.setVisible(false); }
     if (unit.lvLabel) { unit.lvLabel.setVisible(false); }
     if (unit.auraGfx) { unit.auraGfx.destroy(); unit.auraGfx = null; }
@@ -3933,6 +3945,28 @@ export class BattleScene extends Phaser.Scene {
     unit.sprite.once('animationcomplete', () => { if (idle) unit.sprite?.play(idle); });
   }
 
+  // Walking in or through water leaves a unit Wet: Lightning hits it for double.
+  // Lasts WET_TURNS turns, topped up by still standing in it at turn start.
+  soak(unit) {
+    if (!(unit.wetTurns > 0)) {
+      const { x, y } = this.gridToScreen(unit.col, unit.row);
+      this.showEffect(x, y + TH2 - 22, 'WET', '#66bbff');
+    }
+    unit.wetTurns = WET_TURNS;
+  }
+  inWater(unit) {
+    return this.occupiedTiles(unit).some(t => this.stageCfg.water(t.col, t.row));
+  }
+  // Soaks an enemy that crossed water on the part of `path` it actually walked.
+  soakAlong(unit, path) {
+    const walkedTo = path.findIndex(t => t.col === unit.col && t.row === unit.row);
+    if (path.slice(0, walkedTo + 1).some(t => this.stageCfg.water(t.col, t.row))) this.soak(unit);
+  }
+  tickWet(unit) {
+    if (unit.wetTurns > 0) unit.wetTurns--;
+    if (this.inWater(unit)) unit.wetTurns = WET_TURNS;
+  }
+
   // Multi-hit moves throw one projectile per hit, up to 5, a beat apart. The
   // last one carries onArrive.
   fireVolley(attacker, target, ability, onArrive) {
@@ -4228,6 +4262,7 @@ export class BattleScene extends Phaser.Scene {
       if (e.isCorruptedOneBoss) e.sp = e.maxSp;
       else if (e.maxSp != null) e.sp = Math.min(e.maxSp, (e.sp ?? 0) + 1);
       e.stopperUsedThisTurn = false;
+      this.tickWet(e);
       for (const id of Object.keys(e.skillCooldowns ?? {})) {
         e.skillCooldowns[id] = Math.max(0, e.skillCooldowns[id] - 1);
       }
@@ -4299,6 +4334,7 @@ export class BattleScene extends Phaser.Scene {
         u.moveSpeed = u.baseMoveSpeed; // reset move buff
         u.atkBuff   = u.assistReady ? 2.0 : 1.0; // reset atk buff; Assist waits for the next attack
         u.tankReady = false;
+        this.tickWet(u);
         if (u.calmTurns > 0) u.calmTurns--;
         u.stopperUsedThisTurn = false;
         u.setUpUsedThisTurn = false;  // Set Up's "-50% dmg taken, 1×/turn" cap
@@ -4388,6 +4424,7 @@ export class BattleScene extends Phaser.Scene {
       wolf.sprite.setPosition(x, y + TH2).setDepth((wolf.col + wolf.row) * 10 + 5);
     }
     if (wolf.col !== startCol || wolf.row !== startRow) this.playEnemyAnim(wolf, 'run');
+    this.soakAlong(wolf, path);
 
     // 2026-07-09 ("monster will need sp as well to use skills") — try an
     // equipped attack skill first (it may reach targets a plain adjacent
@@ -4553,6 +4590,7 @@ export class BattleScene extends Phaser.Scene {
         boss.col = col; boss.row = row;
         this.unitMap.set(nk, boss);
       }
+      this.soakAlong(boss, path);
     }
     if (boss.sprite) {
       const { x, y } = this.footprintScreenPos(boss);
@@ -5123,6 +5161,7 @@ export class BattleScene extends Phaser.Scene {
       } else {
         u.debuffIcon.setVisible(false);
       }
+      u.wetIcon.setPosition(cx + 25, cy - 34).setAlpha(alpha).setVisible(u.wetTurns > 0);
     }
 
     // Wolf HP bars + level labels
@@ -5138,6 +5177,7 @@ export class BattleScene extends Phaser.Scene {
       this.wolfHpGfx.fillRect(bx, by, bw * (e.hp / e.maxHp), bh);
       if (e.lvLabel) e.lvLabel.setPosition(x, by - 12);
       if (e.debuffIcon) e.debuffIcon.setPosition(x, by - 26).setVisible(hasActiveDebuff(e));
+      if (e.wetIcon) e.wetIcon.setPosition(x + 40, by + 2).setVisible(e.wetTurns > 0);
       if (e.auraGfx) e.auraGfx.setPosition(x, y + TH2).setDepth(Math.max(0, (e.col + e.row) * 10 + 4));
     }
 
