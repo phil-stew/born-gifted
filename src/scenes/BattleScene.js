@@ -34,6 +34,7 @@ function markM1TutorialDone() {
 const COLS = 10, ROWS = 10;
 const LAUNCH_WINDUP_MS = 280, VOLLEY_GAP_MS = 90, WET_TURNS = 3;
 const OBSTACLE_MOVE_COST = 2, COVER_MISS_CHANCE = 0.2;
+const BURN_TURNS = 3, BURN_DAMAGE = 0.05, FIRE_BURN_CHANCE = 0.25;
 // Bigger isometric tiles (2026-07-07 feedback) — was 64×32 at .setScale(2)
 // (native tile art is 32×32, so scale = TILE_W/32 keeps tiles seamless with
 // no gaps/overlap). 80×40 is a 1.25× bump: checked the grid's screen-space
@@ -1286,6 +1287,7 @@ export class BattleScene extends Phaser.Scene {
       // Debuff icon — same idea, shown whenever u.debuffs has anything
       // active. Offset to the buff icon's side so both can show at once.
       u.wetIcon = this.add.text(0, 0, '💧', { fontSize: '13px' }).setOrigin(0.5).setDepth(1001).setVisible(false);
+      u.burnIcon = this.add.text(0, 0, '🔥', { fontSize: '13px' }).setOrigin(0.5).setDepth(1001).setVisible(false);
       u.debuffIcon = this.add.text(0, 0, '⬇', {
         fontSize: '14px', fontFamily: 'monospace', fontStyle: 'bold', color: '#ff6688',
         stroke: '#000000', strokeThickness: 3,
@@ -1446,7 +1448,7 @@ export class BattleScene extends Phaser.Scene {
     else if (cfg.turnLimit) rules.push(`Win within ${cfg.turnLimit} turns`);
     if (cfg.reinforce) rules.push(`More enemies arrive every ${cfg.reinforce.every} turns`);
     if (cfg.enemyFirst) rules.push('Enemies move first');
-    if (cfg.eruption) rules.push('Eruption: glowing tiles take a falling rock next round, 1-10% of max HP. Wet units take half');
+    if (cfg.eruption) rules.push('Eruption: glowing tiles take a falling rock next round, 1-10% of max HP. Wet units take half. Rocks set units Burning');
     if (cfg.thunderStorm) rules.push('Lightning strikes random units on both sides each round for 1-10% of max HP');
     if (STAGE_CONFIGS[state.currentMission]?.hasObstacles) rules.push('Rocks, logs and tall grass cost 2 extra move, and ranged attacks at a unit on one miss 20% of the time');
     if (STAGE_CONFIGS[state.currentMission]?.hasWater) rules.push('Crossing water makes units Wet: Lightning deals double damage to them, Fire deals half');
@@ -1735,6 +1737,7 @@ export class BattleScene extends Phaser.Scene {
     // abilities like Tackle Kick/Cross-Check — see debuff.type handling
     // in resolveHit/enemySkillAttack).
     e.wetIcon = this.add.text(x, y + TH2 - 74, '💧', { fontSize: '13px' }).setOrigin(0.5).setDepth(661).setVisible(false);
+    e.burnIcon = this.add.text(x, y + TH2 - 74, '🔥', { fontSize: '13px' }).setOrigin(0.5).setDepth(661).setVisible(false);
     e.debuffIcon = this.add.text(x, y + TH2 - 74, '⬇', {
       fontSize: '14px', fontFamily: 'monospace', fontStyle: 'bold', color: '#ff6688',
       stroke: '#000000', strokeThickness: 3,
@@ -2398,6 +2401,7 @@ export class BattleScene extends Phaser.Scene {
     for (let h = 0; h < hits; h++) dmg += Math.round(calcAtk(partner) * followUpMult * desigMult * elemMult);
     dmg = Math.round(dmg * this.passiveDefenseMultiplier(target) * this.difficultyDamageMult(partner));
     dmg = this.absorbShield(target, dmg);
+    this.elementReaction(partner, target, followUp);
     target.hp = Math.max(0, target.hp - dmg);
 
     const { x, y } = this.gridToScreen(target.col, target.row);
@@ -2426,6 +2430,7 @@ export class BattleScene extends Phaser.Scene {
       * this.partnerAttackMultiplier(attacker));
     dmg = Math.round(dmg * this.passiveDefenseMultiplier(defender) * this.difficultyDamageMult(attacker));
     dmg = this.absorbShield(defender, dmg);
+    this.elementReaction(attacker, defender, ATTACK);
     if (defender.damageReduction) {
       dmg = Math.max(0, dmg - defender.damageReduction.amount);
     }
@@ -2554,6 +2559,7 @@ export class BattleScene extends Phaser.Scene {
     if (unit.buffIcon)  { unit.buffIcon.setVisible(false); }
     if (unit.debuffIcon){ unit.debuffIcon.setVisible(false); }
     if (unit.wetIcon)   { unit.wetIcon.setVisible(false); }
+    if (unit.burnIcon)  { unit.burnIcon.setVisible(false); }
     if (unit.portrait){ unit.portrait.setVisible(false); }
     if (unit.lvLabel) { unit.lvLabel.setVisible(false); }
     if (unit.auraGfx) { unit.auraGfx.destroy(); unit.auraGfx = null; }
@@ -3687,6 +3693,7 @@ export class BattleScene extends Phaser.Scene {
       let dmg = Math.round(calcAtk(unit) * mult * designationMultiplier(unit, target, ability) * elementMultiplier(unit, target, ability) * partnerAtkMult);
       dmg = Math.round(dmg * this.passiveDefenseMultiplier(target) * this.difficultyDamageMult(unit));
       dmg = this.absorbShield(target, dmg);
+      this.elementReaction(unit, target, ability);
       target.hp = Math.max(0, target.hp - dmg);
       const { x, y } = this.gridToScreen(target.col, target.row);
       this.showDamage(x, y + TH2, dmg, '#ffaa22', this.countDamageBonuses(unit, target, ability));
@@ -3887,6 +3894,7 @@ export class BattleScene extends Phaser.Scene {
       for (let h = 0; h < hits; h++) dmg += Math.round(calcAtk(unit) * ability.multiplier * desigMult * elemMult);
       dmg = Math.round(dmg * this.passiveDefenseMultiplier(target) * this.difficultyDamageMult(unit));
       dmg = this.absorbShield(target, dmg);
+      this.elementReaction(unit, target, ability);
       target.hp = Math.max(0, target.hp - dmg);
 
       const { x, y } = this.gridToScreen(target.col, target.row);
@@ -3954,6 +3962,45 @@ export class BattleScene extends Phaser.Scene {
     unit.sprite.once('animationcomplete', () => { if (idle) unit.sprite?.play(idle); });
   }
 
+  // Burn: BURN_DAMAGE of max HP at the start of each of the unit's next
+  // BURN_TURNS turns. Wet units can't catch fire.
+  burn(unit) {
+    if (unit.isDead || unit.wetTurns > 0) return;
+    if (!(unit.burnTurns > 0)) {
+      const { x, y } = this.gridToScreen(unit.col, unit.row);
+      this.showEffect(x, y + TH2 - 22, 'BURNING', '#ff8844');
+    }
+    unit.burnTurns = BURN_TURNS;
+  }
+  burnDamage(unit) {
+    const dmg = Math.max(1, Math.round(unit.maxHp * BURN_DAMAGE));
+    unit.hp = Math.max(0, unit.hp - dmg);
+    const { x, y } = this.gridToScreen(unit.col, unit.row);
+    this.showDamage(x, y + TH2 - 16, dmg, '#ff8844');
+  }
+  tickBurn(unit) {
+    if (unit.isDead || !(unit.burnTurns > 0)) return;
+    unit.burnTurns--;
+    this.burnDamage(unit);
+    if (unit.hp <= 0) this.killUnit(unit);
+  }
+  extinguish(unit) {
+    if (!(unit.burnTurns > 0)) return;
+    unit.burnTurns = 0;
+    const { x, y } = this.gridToScreen(unit.col, unit.row);
+    this.showEffect(x, y + TH2 - 22, 'PUT OUT', '#66bbff');
+  }
+  // How a hit's element plays off Burn: Fire can start one, Water puts it out,
+  // Wind fans it for an instant extra round of burn damage. The caller's own
+  // hit handles a kill, so this only lowers HP.
+  elementReaction(attacker, target, ability) {
+    if (ability?.nonAffinity) return;
+    const element = ability?.fixedElement ?? attacker.element;
+    if (element === 'Fire' && Math.random() < FIRE_BURN_CHANCE) this.burn(target);
+    else if (element === 'Water') this.extinguish(target);
+    else if (element === 'Wind' && target.burnTurns > 0) this.burnDamage(target);
+  }
+
   // Thunder Plains: each new round 1 to 2 bolts hit random units on either side
   // for 1-10% of max HP. Lightning, so Wet units take double.
   stormStrikes() {
@@ -3974,7 +4021,10 @@ export class BattleScene extends Phaser.Scene {
   eruptionRound() {
     for (const { col, row } of this.eruptionTiles) {
       const unit = this.unitMap.get(`${col},${row}`);
-      if (unit) this.skyHit(unit, unit.wetTurns > 0 ? 0.5 : 1, 'cometEarth', '#ff8844');
+      if (unit) {
+        this.skyHit(unit, unit.wetTurns > 0 ? 0.5 : 1, 'cometEarth', '#ff8844');
+        this.burn(unit);
+      }
       else this.skyImpact(this.gridToScreen(col, row), 'cometEarth');
     }
     if (this.eruptionTiles.length) this.cameras.main.shake(160, 0.006);
@@ -4036,6 +4086,7 @@ export class BattleScene extends Phaser.Scene {
       this.showEffect(x, y + TH2 - 22, 'WET', '#66bbff');
     }
     unit.wetTurns = WET_TURNS;
+    this.extinguish(unit);
   }
   inWater(unit) {
     return this.occupiedTiles(unit).some(t => this.stageCfg.water(t.col, t.row));
@@ -4047,7 +4098,7 @@ export class BattleScene extends Phaser.Scene {
   }
   tickWet(unit) {
     if (unit.wetTurns > 0) unit.wetTurns--;
-    if (this.inWater(unit)) unit.wetTurns = WET_TURNS;
+    if (this.inWater(unit)) this.soak(unit);
   }
 
   // Multi-hit moves throw one projectile per hit, up to 5, a beat apart. The
@@ -4276,6 +4327,7 @@ export class BattleScene extends Phaser.Scene {
       for (let h = 0; h < hits; h++) dmg += Math.round(calcAtk(attacker) * mult * desigMult * hitElemMult() * partnerAtkMult);
       dmg = Math.round(dmg * this.passiveDefenseMultiplier(target) * this.difficultyDamageMult(attacker));
       dmg = this.absorbShield(target, dmg);
+      this.elementReaction(attacker, target, ability);
       target.hp  = Math.max(0, target.hp - dmg);
 
       const { x, y } = this.gridToScreen(target.col, target.row);
@@ -4351,6 +4403,7 @@ export class BattleScene extends Phaser.Scene {
       else if (e.maxSp != null) e.sp = Math.min(e.maxSp, (e.sp ?? 0) + 1);
       e.stopperUsedThisTurn = false;
       this.tickWet(e);
+      this.tickBurn(e);
       for (const id of Object.keys(e.skillCooldowns ?? {})) {
         e.skillCooldowns[id] = Math.max(0, e.skillCooldowns[id] - 1);
       }
@@ -4423,6 +4476,7 @@ export class BattleScene extends Phaser.Scene {
         u.atkBuff   = u.assistReady ? 2.0 : 1.0; // reset atk buff; Assist waits for the next attack
         u.tankReady = false;
         this.tickWet(u);
+        this.tickBurn(u);
         if (u.calmTurns > 0) u.calmTurns--;
         u.stopperUsedThisTurn = false;
         u.setUpUsedThisTurn = false;  // Set Up's "-50% dmg taken, 1×/turn" cap
@@ -4469,7 +4523,7 @@ export class BattleScene extends Phaser.Scene {
   enemyAct(wolf) {
     // noAttack (Ester Academy's "Rock" quest, 2026-07-11) — a stationary
     // punching-bag target that never moves or fights back.
-    if (wolf.noAttack) return;
+    if (wolf.noAttack || wolf.isDead) return;
     // isCorruptedOneBoss (FT, 2026-08-03) — the finale boss gets bespoke
     // turn logic instead of the generic path below; see
     // enemyActCorruptedOne's own comment for why.
@@ -4622,6 +4676,7 @@ export class BattleScene extends Phaser.Scene {
     for (let h = 0; h < hits; h++) dmg += Math.round(calcAtk(attacker) * mult * desigMult * elemMult * partnerAtkMult);
     dmg = Math.round(dmg * this.passiveDefenseMultiplier(target) * this.difficultyDamageMult(attacker));
     dmg = this.absorbShield(target, dmg);
+    this.elementReaction(attacker, target, ability);
     if (attacker.oneShotKill) dmg = target.hp; // see doAttack's oneShotKill comment
     target.hp = Math.max(0, target.hp - dmg);
 
@@ -5268,6 +5323,7 @@ export class BattleScene extends Phaser.Scene {
         u.debuffIcon.setVisible(false);
       }
       u.wetIcon.setPosition(cx + 25, cy - 34).setAlpha(alpha).setVisible(u.wetTurns > 0);
+      u.burnIcon.setPosition(cx - 25, cy - 34).setAlpha(alpha).setVisible(u.burnTurns > 0);
     }
 
     // Wolf HP bars + level labels
@@ -5284,6 +5340,7 @@ export class BattleScene extends Phaser.Scene {
       if (e.lvLabel) e.lvLabel.setPosition(x, by - 12);
       if (e.debuffIcon) e.debuffIcon.setPosition(x, by - 26).setVisible(hasActiveDebuff(e));
       if (e.wetIcon) e.wetIcon.setPosition(x + 40, by + 2).setVisible(e.wetTurns > 0);
+      if (e.burnIcon) e.burnIcon.setPosition(x - 40, by + 2).setVisible(e.burnTurns > 0);
       if (e.auraGfx) e.auraGfx.setPosition(x, y + TH2).setDepth(Math.max(0, (e.col + e.row) * 10 + 4));
     }
 
