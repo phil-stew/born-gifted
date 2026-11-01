@@ -34,7 +34,7 @@ function markM1TutorialDone() {
 const COLS = 10, ROWS = 10;
 const LAUNCH_WINDUP_MS = 280, VOLLEY_GAP_MS = 90, WET_TURNS = 3;
 const OBSTACLE_MOVE_COST = 2, COVER_MISS_CHANCE = 0.2;
-const FREEZE_TURNS = 2, FREEZE_MOVE_LOSS = 2;
+const FREEZE_TURNS = 2, FREEZE_MOVE_LOSS = 2, WET_FREEZE_EXTRA = 1;
 const BURN_TURNS = 3, BURN_DAMAGE = 0.05, FIRE_BURN_CHANCE = 0.25;
 // Bigger isometric tiles (2026-07-07 feedback) — was 64×32 at .setScale(2)
 // (native tile art is 32×32, so scale = TILE_W/32 keeps tiles seamless with
@@ -4022,13 +4022,13 @@ export class BattleScene extends Phaser.Scene {
     this.cameras.main.flash(120, 190, 225, 255);
   }
   // Frozen: 2 less move and no reactions (counters, dodges, Guard, Stopper,
-  // Endure) for FREEZE_TURNS rounds.
+  // Endure) for FREEZE_TURNS rounds, one more if the unit is Wet.
   freeze(unit) {
     if (!(unit.frozenTurns > 0)) {
       const { x, y } = this.gridToScreen(unit.col, unit.row);
       this.showEffect(x, y + TH2 - 22, 'FROZEN', '#99ddff');
     }
-    unit.frozenTurns = FREEZE_TURNS;
+    unit.frozenTurns = FREEZE_TURNS + (unit.wetTurns > 0 ? WET_FREEZE_EXTRA : 0);
     this.redraw();
   }
 

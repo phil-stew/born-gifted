@@ -30,7 +30,7 @@ const GLOSSARY = [
   { term: 'Designation', def: 'A unit or monster\'s combat role (Combat/Ranged/Defender/Support) — see the triangle below.' },
   { term: 'Wet (💧)', def: 'Walking in or through water leaves a unit Wet for 3 turns. Lightning attacks deal double damage to Wet units and Fire attacks deal half, heroes and monsters alike. It stacks with weakness, so Lightning does ×3 to a Wet Water unit. Non-affinity moves don\'t get the bonus.' },
   { term: 'Burning (🔥)', def: 'A burning unit loses 5% of max HP at the start of its turn for 3 turns. Volcano rocks always set units Burning, and Fire attacks have a 25% chance. Water attacks or stepping in water put it out, Wet units can\'t burn, and Wind attacks fan it for instant burn damage.' },
-  { term: 'Frozen (🥶)', def: 'Blizzards on ice maps Freeze units for 2 rounds: 2 less move, and reactions don\'t work, including Counter Hit, Fake Counter, dodges, Guard, Stopper, Endure and Set Up follow-ups.' },
+  { term: 'Frozen (🥶)', def: 'Blizzards on ice maps Freeze units for 2 rounds, or 3 if they\'re Wet: 2 less move, and reactions don\'t work, including Counter Hit, Fake Counter, dodges, Guard, Stopper, Endure and Set Up follow-ups.' },
   { term: 'Obstacles', def: 'Rocks, logs and tall grass on the battlefield cost 2 extra move to step onto. Ranged attacks at a unit standing on one have a 20% chance to miss, for heroes and monsters alike.' },
   { term: 'Non-affinity', def: 'A move marked non-affinity ignores the element and designation weakness tables: no bonus and no penalty.' },
   { term: 'Talent',      def: 'One of 2 stat-growth picks made at character creation. Picking the same talent twice quadruples that stat\'s growth per level.' },
