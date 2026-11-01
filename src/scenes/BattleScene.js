@@ -934,13 +934,10 @@ function designationMultiplier(attacker, defender, ability) {
 // ── Elemental affinity cycle ────────────────────────────────────────────────
 // Fire > Wind > Earth > Lightning > Water > Fire. Beating the defender's
 // element deals 1.5x damage; being beaten by it reduces damage to 0.8x.
-// The current battle's water tiles, set in create().
-let stageWater = () => false;
 function elementMultiplier(attacker, defender, ability) {
   if (ability?.nonAffinity) return 1.0;
   // A fixed-element move stays that element whatever the hero's own element is.
   const a = ability?.fixedElement ?? attacker.element;
-  if (a === 'Lightning' && defender.element === 'Water' && stageWater(defender.col, defender.row)) return 4.0;
   const shock = a === 'Lightning' && defender.wetTurns > 0 ? 2.0 : 1.0; // water conducts
   return affinityMultiplier(a, defender) * shock;
 }
@@ -1092,7 +1089,6 @@ export class BattleScene extends Phaser.Scene {
     const missionCfg = MISSION_CONFIGS[missionId] ?? MISSION_CONFIGS['M1'];
     const stageCfg   = STAGE_CONFIGS[missionId]   ?? STAGE_CONFIGS['M1'];
     this.stageCfg = stageCfg;
-    stageWater = stageCfg.water;
     // Stored so later methods (checkEndConditions' win-condition check,
     // startPlayerTurn's reinforcement-wave trigger) can read it without
     // threading it through every call — 2026-07-11 ("Goblin King"/"Cave
@@ -1444,7 +1440,7 @@ export class BattleScene extends Phaser.Scene {
     else if (cfg.turnLimit) rules.push(`Win within ${cfg.turnLimit} turns`);
     if (cfg.reinforce) rules.push(`More enemies arrive every ${cfg.reinforce.every} turns`);
     if (cfg.enemyFirst) rules.push('Enemies move first');
-    if (STAGE_CONFIGS[state.currentMission]?.hasWater) rules.push('Crossing water makes units Wet: Lightning deals double damage to them, and 4× to Water units standing in it');
+    if (STAGE_CONFIGS[state.currentMission]?.hasWater) rules.push('Crossing water makes units Wet: Lightning deals double damage to them');
     if (enemies.some(e => e.corrupted)) rules.push('Corrupted enemies all target one hero');
     if (enemies.some(e => e.isCorruptedOneBoss)) rules.push('The Corrupted One grows stronger with each ally beside him');
     return rules;
