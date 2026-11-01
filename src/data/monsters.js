@@ -80,12 +80,23 @@ const SPRITE_INFO = {
   // regions, confirmed by inspection).
   Goblin: {
     spriteKey: 'goblin-idle', animKey: 'goblin-idle', file: 'monster/goblin.webp', fw: 249, fh: 175, spriteScale: 0.35, moveSpeed: 2,
-    bgErase: [{ x: 1214, y: 48, w: 33, h: 88 }, { x: 980, y: 48, w: 20, h: 50 }],
+    idleEnd: 4, // the 6th idle pose loses its club to a cell overflow
+    bgErase: [
+      { x: 1214, y: 48, w: 33, h: 88 }, { x: 980, y: 48, w: 20, h: 50 },
+      // Background trapped between the body and the swing arc on the attack row.
+      ...[[1060, 374, 38, 32], [1069, 392, 73, 76], [795, 392, 27, 25], [839, 412, 16, 20]]
+        .map(([x, y, w, h]) => ({ x, y, w, h, onlyColor: [0, 0, 0], colorTol: 14 })),
+    ],
   },
   Lion:   { spriteKey: 'lion-idle',   animKey: 'lion-idle',   file: 'monster/lion.webp',   fw: 249, fh: 175, spriteScale: 0.35, moveSpeed: 3 },
   // Wired for Ester Academy's "Defeat 1 dragon and two wyverns" quest
   // (2026-07-11). Same 1536x1024 canvas as Boar, so the same fw/fh (256x170).
-  Dragon: { spriteKey: 'dragon-idle', animKey: 'dragon-idle', file: 'monster/dragon.webp', fw: 256, fh: 170, spriteScale: 0.4,  moveSpeed: 2 },
+  Dragon: {
+    spriteKey: 'dragon-idle', animKey: 'dragon-idle', file: 'monster/dragon.webp', fw: 256, fh: 170, spriteScale: 0.4, moveSpeed: 2,
+    // Background trapped inside the curl of the tail on some poses.
+    bgErase: [[691, 118, 22, 34], [673, 124, 19, 22], [1430, 122, 41, 30], [169, 625, 21, 22], [592, 625, 17, 22], [1365, 808, 21, 23], [1381, 819, 40, 19]]
+      .map(([x, y, w, h]) => ({ x, y, w, h, onlyColor: [0, 0, 0], colorTol: 14 })),
+  },
   Wyvern: { spriteKey: 'wyven-idle',  animKey: 'wyven-idle',  file: 'monster/wyven.webp',  fw: 256, fh: 170, spriteScale: 0.35, moveSpeed: 3 },
   // Golem (2026-07-18, "North of A3 they will fight the Golems as their
   // last trial") — no Golem art exists on disk (still one of the 7

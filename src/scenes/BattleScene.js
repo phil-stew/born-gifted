@@ -1354,9 +1354,9 @@ export class BattleScene extends Phaser.Scene {
     // Row 0 (frames 0-5) = idle, for every monster sheet this mission needs
     // (the 5 always-loaded base species + any named-unique sprite it uses).
     const monsterSpriteInfos = this.monsterSpriteInfos(missionCfg);
-    for (const { spriteKey: key } of monsterSpriteInfos) {
+    for (const { spriteKey: key, idleEnd = 5 } of monsterSpriteInfos) {
       if (!this.anims.exists(key)) {
-        this.anims.create({ key, frames: this.anims.generateFrameNumbers(key, { start: 0, end: 5 }), frameRate: 6, repeat: -1 });
+        this.anims.create({ key, frames: this.anims.generateFrameNumbers(key, { start: 0, end: idleEnd }), frameRate: 6, repeat: -1 });
         // Rows after idle: walk, attack, heavy attack, hurt, death.
         ['run', 'attack', 'attack2', 'hurt', 'death'].forEach((name, i) => {
           const start = (i + 1) * 6;
@@ -1695,7 +1695,7 @@ export class BattleScene extends Phaser.Scene {
     // HERO_SPRITES; this loop never threaded it through for monsters at
     // all until Goblin King's cell-boundary weapon bleed needed one.
     for (const { spriteKey: key, bgTol, bgBand, bgErase } of this.monsterSpriteInfos(missionCfg)) {
-      stripBackgroundByKey(this, key, { cols: 6, rows: 6, tol: bgTol, band: bgBand, erase: bgErase });
+      stripBackgroundByKey(this, key, { cols: 6, rows: 6, tol: bgTol, band: bgBand, erase: bgErase, edgeFragments: true });
     }
   }
 

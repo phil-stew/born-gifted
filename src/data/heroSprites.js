@@ -276,7 +276,7 @@ function clearStrayCellLines(d, W, x0, y0, x1, y1) {
 const DEFAULT_TOL = 30;
 const DEFAULT_BAND = 3;
 const BRIGHTNESS = 1.22;
-export function stripBackgroundByKey(scene, key, { cols, rows, tol, band, erase } = {}) {
+export function stripBackgroundByKey(scene, key, { cols, rows, tol, band, erase, edgeFragments } = {}) {
   if (!scene.textures.exists(key)) return;
 
   const src = scene.textures.get(key).source[0];
@@ -427,8 +427,50 @@ export function stripBackgroundByKey(scene, key, { cols, rows, tol, band, erase 
     }
   }
 
+  if (edgeFragments) dropEdgeFragments(d, W, H, cols, rows);
+
   ctx.putImageData(imgData, 0, 0);
   src.updateSource(canvas);
+}
+
+// A pose that overflows its cell leaves a cut-off scrap in the row above or
+// below. Removes any small piece resting on a cell's top or bottom edge; a
+// piece that's a real part of the pose is either joined to it or far larger.
+const EDGE_REACH = 8, EDGE_PIECE_MAX = 0.03;
+function dropEdgeFragments(d, W, H, cols, rows) {
+  const cw = Math.floor(W / cols), ch = Math.floor(H / rows);
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const x0 = c * cw, y0 = r * ch;
+      const seen = new Uint8Array(cw * ch);
+      const pieces = [];
+      for (let i = 0; i < cw * ch; i++) {
+        if (seen[i] || d[((y0 + Math.floor(i / cw)) * W + x0 + i % cw) * 4 + 3] === 0) continue;
+        const stack = [i], tiles = [];
+        let touches = false;
+        seen[i] = 1;
+        while (stack.length) {
+          const k = stack.pop();
+          tiles.push(k);
+          const ky = Math.floor(k / cw), kx = k % cw;
+          if (ky < EDGE_REACH || ky >= ch - EDGE_REACH) touches = true;
+          for (const [nx, ny] of [[kx - 1, ky], [kx + 1, ky], [kx, ky - 1], [kx, ky + 1]]) {
+            if (nx < 0 || ny < 0 || nx >= cw || ny >= ch) continue;
+            const n = ny * cw + nx;
+            if (seen[n] || d[((y0 + ny) * W + x0 + nx) * 4 + 3] === 0) continue;
+            seen[n] = 1;
+            stack.push(n);
+          }
+        }
+        pieces.push({ tiles, touches });
+      }
+      const biggest = Math.max(0, ...pieces.map(p => p.tiles.length));
+      for (const { tiles, touches } of pieces) {
+        if (!touches || tiles.length > biggest * EDGE_PIECE_MAX) continue;
+        for (const k of tiles) d[((y0 + Math.floor(k / cw)) * W + x0 + k % cw) * 4 + 3] = 0;
+      }
+    }
+  }
 }
 
 // Create standard animations for a class in a Phaser scene.
