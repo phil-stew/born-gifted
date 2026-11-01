@@ -2086,6 +2086,8 @@ export class BattleScene extends Phaser.Scene {
     this.unitMap.delete(`${unit.col},${unit.row}`);
     unit.col = lm.fromCol;
     unit.row = lm.fromRow;
+    unit.wetTurns = lm.wetTurns;
+    unit.burnTurns = lm.burnTurns;
     this.unitMap.set(`${unit.col},${unit.row}`, unit);
 
     const { x, y } = this.gridToScreen(unit.col, unit.row);
@@ -2118,6 +2120,7 @@ export class BattleScene extends Phaser.Scene {
   // without consuming its normal move for the turn.
   moveUnit(unit, col, row, { free = false } = {}) {
     unit.calmTurns = 0; // Stay Calm ends when its user moves
+    const { wetTurns, burnTurns } = unit; // for Undo Last Move, before any soak below
     const walked = free ? [{ col, row }] : (this.bfsPath(unit.col, unit.row, col, row) ?? [{ col, row }]);
     if (walked.some(t => this.stageCfg.water(t.col, t.row))) this.soak(unit);
     // Manhattan tile distance — moveUnit is always called with the FINAL
@@ -2134,7 +2137,7 @@ export class BattleScene extends Phaser.Scene {
     // (2026-08-04). Free moves (Duo's partner-swap) don't count as an
     // undoable "move" — Duo has its own cancel path already.
     if (unit.team === 'player' && !free) {
-      this.lastMove = { unit, fromCol: unit.col, fromRow: unit.row };
+      this.lastMove = { unit, fromCol: unit.col, fromRow: unit.row, wetTurns, burnTurns };
     }
 
     // Track facing direction for future use
@@ -3520,7 +3523,9 @@ export class BattleScene extends Phaser.Scene {
       { label: 'SPD', val: `${unit.speed}`,  color: '#44aaff' },
       { label: 'END', val: `${unit.endurance}`, color: '#44cccc' },
     ];
-    const PH2 = 62 + rows.length * 24 + 8;
+    const statuses = this.statusLines(unit);
+    const PH2 = 62 + rows.length * 24 + 8 + statuses.length * 22;
+    con.y = Math.max(40, Math.min(py, height - PH2 - 36));
     if (PH2 !== PH) {
       shadow.clear();
       shadow.fillStyle(0x000000, 0.32);
@@ -3541,6 +3546,12 @@ export class BattleScene extends Phaser.Scene {
       con.add(this.add.text(PW - 12, ry, val, {
         fontSize:'18px', fontFamily:'monospace', fontStyle:'bold', color, stroke:'#000000', strokeThickness:2,
       }).setOrigin(1,0));
+    });
+
+    statuses.forEach((line, i) => {
+      con.add(this.add.text(12, 62 + rows.length * 24 + 4 + i * 22, line, {
+        fontSize:'16px', fontFamily:'monospace', color:'#ffee99', stroke:'#000000', strokeThickness:2,
+      }));
     });
 
     // Auto-dismiss after 3s
@@ -3738,6 +3749,7 @@ export class BattleScene extends Phaser.Scene {
           }
         });
       }
+      this.applyDebuff(unit, target, ability);
       if (target.hp <= 0) this.killUnit(target);
     };
 
@@ -4005,6 +4017,96 @@ export class BattleScene extends Phaser.Scene {
     unit.sprite.play(key);
     const idle = unit.fixedIdleFrames ? `${unit.spriteKey}-fixedidle` : unit.animKey;
     unit.sprite.once('animationcomplete', () => { if (idle) unit.sprite?.play(idle); });
+  }
+
+  // One centred row of status icons, so nothing overlaps as they come and go.
+  placeStatusIcons(unit, x, y, alpha) {
+    const icons = [
+      [unit.buffIcon, hasActiveBuff(unit)], [unit.debuffIcon, hasActiveDebuff(unit)],
+      [unit.wetIcon, unit.wetTurns > 0], [unit.burnIcon, unit.burnTurns > 0], [unit.frozenIcon, unit.frozenTurns > 0],
+    ].filter(([icon]) => icon);
+    for (const [icon] of icons) icon.setVisible(false);
+    const shown = icons.filter(([, on]) => on).map(([icon]) => icon);
+    shown.forEach((icon, i) => icon.setPosition(x + (i - (shown.length - 1) / 2) * 18, y).setAlpha(alpha).setVisible(true));
+  }
+
+  // Every status on a unit, for the Status popup.
+  statusLines(u) {
+    const debuffs = (type) => (u.debuffs ?? []).filter(d => d.type === type);
+    const longest = (list) => Math.max(...list.map(d => d.turnsLeft));
+    const slow = debuffs('slow'), stun = debuffs('stun');
+    return [
+      u.wetTurns > 0 && `💧 Wet ${u.wetTurns}`,
+      u.burnTurns > 0 && `🔥 Burning ${u.burnTurns}`,
+      u.frozenTurns > 0 && `🥶 Frozen ${u.frozenTurns}`,
+      stun.length && `💫 Stunned ${longest(stun)}`,
+      slow.length && `⬇ Slowed ${longest(slow)}`,
+      ...debuffs('statDown').map(d => `⬇ ${d.stat[0].toUpperCase() + d.stat.slice(1)} -${d.amount} ${d.turnsLeft}`),
+      (u.atkBuff ?? 1) > 1 && '⬆ Attack up',
+      u.moveSpeed > u.baseMoveSpeed && '⬆ Move up',
+      u.regen && `💚 Regen ${u.regen.turnsLeft}`,
+      u.shieldHp && `🛡 Shield ${u.shieldHp}`,
+      u.nextHitMult != null && '🛡 Next hit guarded',
+      u.tankReady && '🛡 Guarding allies',
+      u.calmTurns > 0 && `🛡 Calm ${u.calmTurns}`,
+      u.damageReduction && `🛡 Iron Wall ${u.damageReduction.turnsLeft}`,
+      u.dodgeReady && '⬆ Dodge ready',
+      u.counterReady && '⬆ Counter ready',
+      u.endureReady && '⬆ Endure ready',
+      u.overdriveTurns > 0 && `⬆ Overdrive ${u.overdriveTurns}`,
+    ].filter(Boolean);
+  }
+
+  // Puts an ability's debuff on whoever it hit. Slow and stat-down tick through
+  // u.debuffs; a stun is a one-turn debuff enemyAct checks; push moves them now.
+  applyDebuff(attacker, target, ability) {
+    const debuff = ability.debuff;
+    if (!debuff || target.hp <= 0) return;
+    const { x, y } = this.gridToScreen(target.col, target.row);
+    if (debuff.type === 'slow') {
+      target.debuffs.push({ type: 'slow', moveReduction: debuff.moveReduction, turnsLeft: debuff.duration });
+      this.applySlow(target);
+      this.showDamage(x, y + TH2 - 22, 'SLOW', '#aaaaff');
+    } else if (debuff.type === 'statDown' || debuff.type === 'weaken') {
+      const { stat, amount, duration } = debuff;
+      const lowered = Math.min(amount, target[stat] - 1);
+      target[stat] -= lowered;
+      target.debuffs.push({ type: 'statDown', stat, amount: lowered, turnsLeft: duration });
+      this.showDamage(x, y + TH2 - 22, `${stat.toUpperCase()} DOWN`, '#ff88ff');
+    } else if (debuff.type === 'stun') {
+      target.debuffs.push({ type: 'stun', turnsLeft: debuff.duration });
+      this.showDamage(x, y + TH2 - 22, 'STUN', '#ffdd44');
+    } else if (debuff.type === 'push') {
+      this.pushUnit(attacker, target, debuff.amount);
+    }
+  }
+  applySlow(unit) {
+    const slowTotal = unit.debuffs.filter(d => d.type === 'slow').reduce((s, d) => s + d.moveReduction, 0);
+    unit.moveSpeed = Math.max(1, unit.baseMoveSpeed - slowTotal);
+  }
+  // Shoves a unit straight away from the attacker, stopping at the board edge or
+  // another unit. Big monsters don't budge. Landing in water soaks them.
+  pushUnit(attacker, target, tiles) {
+    if ((target.size ?? 1) > 1) return;
+    const dc = Math.sign(target.col - attacker.col), dr = Math.sign(target.row - attacker.row);
+    const step = Math.abs(target.col - attacker.col) >= Math.abs(target.row - attacker.row) ? [dc, 0] : [0, dr];
+    let { col, row } = target;
+    for (let i = 0; i < tiles; i++) {
+      const next = { col: col + step[0], row: row + step[1] };
+      if (!this.inBounds(next) || this.unitMap.has(`${next.col},${next.row}`)) break;
+      ({ col, row } = next);
+    }
+    if (col === target.col && row === target.row) return;
+    this.unregisterUnit(target);
+    target.col = col;
+    target.row = row;
+    this.registerUnit(target);
+    const { x, y } = this.gridToScreen(col, row);
+    target.sprite?.setPosition(x, y + TH2).setDepth((col + row) * 10 + 5);
+    target.portrait?.setPosition(x, y + TH2 + 10).setDepth((col + row) * 10 + 6);
+    if (this.inWater(target)) this.soak(target);
+    this.showDamage(x, y + TH2 - 22, 'PUSHED', '#ffffff');
+    this.redraw();
   }
 
   // Burn: BURN_DAMAGE of max HP at the start of each of the unit's next
@@ -4572,18 +4674,7 @@ export class BattleScene extends Phaser.Scene {
         this.time.delayedCall(200, () => { target.hitFlash = false; this.redraw(); });
       }
 
-      // Apply debuff
-      if (ability.debuff?.type === 'slow') {
-        target.debuffs.push({ type: 'slow', moveReduction: ability.debuff.moveReduction, turnsLeft: ability.debuff.duration });
-        const slowTotal = target.debuffs.filter(d => d.type === 'slow').reduce((s, d) => s + d.moveReduction, 0);
-        target.moveSpeed = Math.max(1, target.baseMoveSpeed - slowTotal);
-        this.showDamage(x, y + TH2 - 22, 'SLOW', '#aaaaff');
-      } else if (ability.debuff?.type === 'statDown') {
-        const { stat, amount, duration } = ability.debuff;
-        target[stat] = Math.max(1, target[stat] - amount);
-        target.debuffs.push({ type: 'statDown', stat, amount, turnsLeft: duration });
-        this.showDamage(x, y + TH2 - 22, `${stat.toUpperCase()} DOWN`, '#ff88ff');
-      }
+      this.applyDebuff(attacker, target, ability);
 
       if (target.hp > 0) this.triggerSetUpFollowUp(attacker, ability, target);
       if (target.hp <= 0) this.killUnit(target);
@@ -4724,18 +4815,13 @@ export class BattleScene extends Phaser.Scene {
         }
       }
     }
-    // Tick enemy debuffs — revert statDown stat reductions exactly on expiry
-    for (const e of this.enemyUnits) {
-      if (!e.debuffs?.length) continue;
-      for (const d of e.debuffs) d.turnsLeft--;
-      const stillActive = [];
-      for (const d of e.debuffs) {
-        if (d.turnsLeft > 0) stillActive.push(d);
-        else if (d.type === 'statDown') e[d.stat] += d.amount;
-      }
-      e.debuffs = stillActive;
-      const slowTotal = e.debuffs.filter(d => d.type === 'slow').reduce((s, d) => s + d.moveReduction, 0);
-      e.moveSpeed = Math.max(1, e.baseMoveSpeed - slowTotal);
+    // Tick debuffs, reverting stat-downs exactly on expiry
+    for (const u of [...this.playerUnits, ...this.enemyUnits]) {
+      if (!u.debuffs?.length) continue;
+      for (const d of u.debuffs) d.turnsLeft--;
+      for (const d of u.debuffs) if (d.turnsLeft <= 0 && d.type === 'statDown') u[d.stat] += d.amount;
+      u.debuffs = u.debuffs.filter(d => d.turnsLeft > 0);
+      this.applySlow(u);
     }
     for (const u of [...this.playerUnits, ...this.enemyUnits]) if (u.frozenTurns > 0) u.frozenTurns--;
     this.phase = 'player_turn';
@@ -4752,6 +4838,11 @@ export class BattleScene extends Phaser.Scene {
     // noAttack (Ester Academy's "Rock" quest, 2026-07-11) — a stationary
     // punching-bag target that never moves or fights back.
     if (wolf.noAttack || wolf.isDead) return;
+    if (wolf.debuffs?.some(d => d.type === 'stun')) {
+      const { x, y } = this.gridToScreen(wolf.col, wolf.row);
+      this.showDamage(x, y + TH2 - 22, 'STUNNED', '#ffdd44');
+      return;
+    }
     // isCorruptedOneBoss (FT, 2026-08-03) — the finale boss gets bespoke
     // turn logic instead of the generic path below; see
     // enemyActCorruptedOne's own comment for why.
@@ -4926,17 +5017,7 @@ export class BattleScene extends Phaser.Scene {
       this.time.delayedCall(200, () => { target.hitFlash = false; this.redraw(); });
     }
 
-    if (ability.debuff?.type === 'slow') {
-      target.debuffs.push({ type: 'slow', moveReduction: ability.debuff.moveReduction, turnsLeft: ability.debuff.duration });
-      const slowTotal = target.debuffs.filter(d => d.type === 'slow').reduce((s, d) => s + d.moveReduction, 0);
-      target.moveSpeed = Math.max(1, target.baseMoveSpeed - slowTotal);
-      this.showDamage(x, y + TH2 - 22, 'SLOW', '#aaaaff');
-    } else if (ability.debuff?.type === 'statDown') {
-      const { stat, amount, duration } = ability.debuff;
-      target[stat] = Math.max(1, target[stat] - amount);
-      target.debuffs.push({ type: 'statDown', stat, amount, turnsLeft: duration });
-      this.showDamage(x, y + TH2 - 22, `${stat.toUpperCase()} DOWN`, '#ff88ff');
-    }
+      this.applyDebuff(attacker, target, ability);
 
     if (target.hp <= 0) this.killUnit(target);
     else this.redraw();
@@ -5537,22 +5618,7 @@ export class BattleScene extends Phaser.Scene {
 
       u.label.setPosition(cx, cy).setAlpha(u.isDone ? 0.5 : 1);
 
-      // Buff/debuff icons — above the head, clear of the portrait/circle
-      // and the HP/SP bars (which sit below center). Fixed side-by-side
-      // slots (buff left, debuff right) so nothing jumps when one toggles.
-      if (hasActiveBuff(u)) {
-        u.buffIcon.setPosition(cx - 9, cy - 34).setAlpha(alpha).setVisible(true);
-      } else {
-        u.buffIcon.setVisible(false);
-      }
-      if (hasActiveDebuff(u)) {
-        u.debuffIcon.setPosition(cx + 9, cy - 34).setAlpha(alpha).setVisible(true);
-      } else {
-        u.debuffIcon.setVisible(false);
-      }
-      u.wetIcon.setPosition(cx + 25, cy - 34).setAlpha(alpha).setVisible(u.wetTurns > 0);
-      u.burnIcon.setPosition(cx - 25, cy - 34).setAlpha(alpha).setVisible(u.burnTurns > 0);
-      u.frozenIcon.setPosition(cx, cy - 48).setAlpha(alpha).setVisible(u.frozenTurns > 0);
+      this.placeStatusIcons(u, cx, cy - 34, alpha);
     }
 
     // Wolf HP bars + level labels
@@ -5567,10 +5633,7 @@ export class BattleScene extends Phaser.Scene {
       this.wolfHpGfx.fillStyle(0xdd3333, 1);
       this.wolfHpGfx.fillRect(bx, by, bw * (e.hp / e.maxHp), bh);
       if (e.lvLabel) e.lvLabel.setPosition(x, by - 12);
-      if (e.debuffIcon) e.debuffIcon.setPosition(x, by - 26).setVisible(hasActiveDebuff(e));
-      if (e.wetIcon) e.wetIcon.setPosition(x + 40, by + 2).setVisible(e.wetTurns > 0);
-      if (e.burnIcon) e.burnIcon.setPosition(x - 40, by + 2).setVisible(e.burnTurns > 0);
-      if (e.frozenIcon) e.frozenIcon.setPosition(x + 56, by + 2).setVisible(e.frozenTurns > 0);
+      this.placeStatusIcons(e, x, by + 16, 1);
       if (e.auraGfx) e.auraGfx.setPosition(x, y + TH2).setDepth(Math.max(0, (e.col + e.row) * 10 + 4));
     }
 
