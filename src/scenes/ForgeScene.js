@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { state, roleDisplayLabel, gearLayoutForUnit } from '../data/gameState.js';
+import { state, roleDisplayLabel, gearLayoutForUnit, wornItemValues } from '../data/gameState.js';
 import { FORGE_RECIPES, ORE_TIER_TO_RARITY, RARITY_GEAR_VALUE, rollGearItem, getItem } from '../data/items.js';
 import { playSfx, SFX } from '../audio/sound.js';
 import { playMusic } from '../audio/music.js';
@@ -66,7 +66,7 @@ export class ForgeScene extends Phaser.Scene {
     const lvl  = item.reinforceLevel ?? 0;
     const cost = REINFORCE_BASE * (lvl + 1);
     const canUp = lvl < MAX_REINFORCE && state.tytrate >= cost;
-    const stats = Object.entries(item.stats ?? {}).map(([stat, val]) =>
+    const stats = Object.entries(wornItemValues(unit, item).stats).map(([stat, val]) =>
       `<div class="ui-item-stat">+${val} ${esc(stat[0].toUpperCase() + stat.slice(1))}</div>`).join('');
     const targetStat = Object.keys(item.stats ?? {})[0] ?? null;
 

@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { state, roleDisplayLabel } from '../data/gameState.js';
+import { state, roleDisplayLabel, gearLayoutForUnit } from '../data/gameState.js';
 import { rarityColor, gearItemFrame, materialFrameName, ICON_SHEET_STRIP, registerGearFrames, MATERIAL_ICON_FRAME } from '../data/items.js';
 import { stripBackgroundByKey } from '../data/heroSprites.js';
 import { drawButton, drawBackButton, drawCurrency, currencyLabel } from '../ui/canvasButton.js';
@@ -331,6 +331,13 @@ export class InventoryScene extends Phaser.Scene {
       y += 8;
     }
 
+    if (item.classMult) {
+      this.detCon.add(this.add.text(cx, y, "Changes with wearer's class", {
+        fontSize: '15px', fontFamily: 'monospace', color: '#d6d6e4',
+      }).setOrigin(0.5));
+      y += 24;
+    }
+
     if (count > 1) {
       this.detCon.add(this.add.text(cx, y, `×${count} in inventory`, {
         fontSize: '15px', fontFamily: 'monospace', color: '#b0b0c8',
@@ -404,7 +411,9 @@ export class InventoryScene extends Phaser.Scene {
     backdrop.fillRect(0, 0, W, H);
     this.overlyCon.add(backdrop);
 
-    const bw = 340, bh = this.equipStep === 'pick_unit' ? 40 + state.party.length * 52 + 50 : 40 + 6 * 50 + 50;
+    // Only heroes whose class has this slot; a Dancer has no boots slot.
+    const wearers = state.party.filter(u => gearLayoutForUnit(u).slots.includes(this.selected?.item?.slot));
+    const bw = 340, bh = this.equipStep === 'pick_unit' ? 40 + Math.max(wearers.length, 1) * 52 + 50 : 40 + 6 * 50 + 50;
     const bx = (W - bw) / 2, by = (H - bh) / 2;
 
     const ovShadow = this.add.graphics();
@@ -426,7 +435,13 @@ export class InventoryScene extends Phaser.Scene {
         fontSize: '17px', fontFamily: 'monospace', color: '#aaaacc',
       }).setOrigin(0.5));
 
-      state.party.forEach((unit, i) => {
+      if (!wearers.length) {
+        this.overlyCon.add(this.add.text(bx + bw / 2, by + 62, 'No one here can wear this', {
+          fontSize: '16px', fontFamily: 'monospace', color: '#d6d6e4',
+        }).setOrigin(0.5));
+      }
+
+      wearers.forEach((unit, i) => {
         const uy = by + 38 + i * 52;
         const g = this.add.graphics();
         const draw = (h) => {

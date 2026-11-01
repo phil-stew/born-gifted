@@ -209,7 +209,8 @@ export class ShopScene extends Phaser.Scene {
       item.forClass ? `For ${item.forClass}` : null,
     ].filter(Boolean).map(esc).join(' &middot; ');
     const stats = Object.entries(item.stats ?? {}).map(([stat, val]) =>
-      `<div class="ui-item-stat">+${val} ${esc(stat[0].toUpperCase() + stat.slice(1))}</div>`).join('');
+      `<div class="ui-item-stat">+${val} ${esc(stat[0].toUpperCase() + stat.slice(1))}</div>`).join('')
+      + (item.classMult ? '<div class="ui-item-desc">Class Item: strength changes with the wearer\'s class</div>' : '');
     return `
       <div class="ui-item-head">
         ${this.iconHTML(item, 64)}

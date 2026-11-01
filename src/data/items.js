@@ -539,6 +539,7 @@ export function rollGearItem({ slot, rarity, talents = [], classItemMultiplier =
   };
   if (slot === 'weapon' && forClass) item.forClass = forClass;
   const mult = slot === 'weapon' ? classItemMultiplier : 1;
+  if (slot === 'weapon') item.classMult = mult; // read by wornItemValues
 
   const main = rollMainLine(slot, rarity);
   if (main.kind === 'flat-all') {

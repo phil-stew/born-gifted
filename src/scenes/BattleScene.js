@@ -2119,9 +2119,8 @@ export class BattleScene extends Phaser.Scene {
       }
 
     } else if (this.phase === 'ability_targeting') {
-      const u    = this.selectedUnit;
-      const dist = Math.abs(t.col - u.col) + Math.abs(t.row - u.row);
-      if (this.abilityRangeMatches(u, this.activeAbility, dist) && occupant?.team === this.activeAbility.targetType) {
+      const u = this.selectedUnit;
+      if (occupant?.team === this.activeAbility.targetType && this.abilityReachesUnit(u, this.activeAbility, occupant)) {
         const wasTutorialAttack = this.tutorialActive && this.tutorialStep === 'attack'
           && (this.activeAbility === ATTACK || this.activeAbility === THROW);
         this.executeAbility(this.activeAbility, u, occupant);
@@ -2130,6 +2129,7 @@ export class BattleScene extends Phaser.Scene {
         // Cancel targeting — reopen the menu
         this.activeAbility = null;
         this.showActionMenu(u);
+        this.redraw();
       }
     } else if (this.phase === 'directional_targeting') {
       const u = this.selectedUnit;
@@ -2146,6 +2146,7 @@ export class BattleScene extends Phaser.Scene {
         // Tap elsewhere cancels — reopen the menu
         this.activeAbility = null;
         this.showActionMenu(u);
+        this.redraw();
       }
     } else if (this.phase === 'duo_targeting') {
       // Waiting for the player to pick which free tile beside their partner
@@ -2463,6 +2464,11 @@ export class BattleScene extends Phaser.Scene {
   abilityRangeMatches(unit, ability, dist) {
     if (ability.exactRange != null) return dist === ability.exactRange + this.partnerRangeBonus(unit);
     return dist <= this.effectiveRange(unit, ability);
+  }
+  // A big monster is one target: in range on any of its tiles means in range.
+  abilityReachesUnit(unit, ability, target) {
+    return this.occupiedTiles(target).some(t =>
+      this.abilityRangeMatches(unit, ability, Math.abs(t.col - unit.col) + Math.abs(t.row - unit.row)));
   }
   // Gracefulness (Performance): "when adjacent same-sports, all effects are
   // doubled" — read literally per the user's own confirmation (a 20% heal
@@ -2901,7 +2907,8 @@ export class BattleScene extends Phaser.Scene {
     // rounded up on ties so nothing undershoots the ask.
     const IH = 45, PAD = 8;
     const ITEMS = this.buildMenuItems(unit, specials, skills);
-    const MW = 222, MH = ITEMS.length * IH + PAD * 2;
+    const HDR = 26; // the name header gets its own row above the first item
+    const MW = 222, MH = HDR + ITEMS.length * IH + PAD * 2;
 
     // Position beside unit: right if space, left otherwise
     const toRight = ux + 60 + MW < width - 4;
@@ -2950,7 +2957,7 @@ export class BattleScene extends Phaser.Scene {
     con.add(nameHdr);
 
     ITEMS.forEach(({ label, icon, sub, disabled, separator, action }, i) => {
-      const iy = PAD + i * IH;
+      const iy = PAD + HDR + i * IH;
 
       if (separator) {
         const sepG = this.add.graphics();
@@ -4847,7 +4854,15 @@ export class BattleScene extends Phaser.Scene {
       const d = Math.hypot(sx - x, sy - (y + TH2 - 15));
       if (d < bestDist) { bestDist = d; best = u; }
     }
-    return best ? { col: best.col, row: best.row } : rawTile;
+    if (best) return { col: best.col, row: best.row };
+    return this.bigUnitUnderTap(sx, sy, this.enemyUnits) ?? rawTile;
+  }
+
+  // A big monster's art stands well above and beside its own tiles, so a tap
+  // anywhere on the art counts as a tap on it.
+  bigUnitUnderTap(sx, sy, units) {
+    const hit = units.find(u => !u.isDead && (u.size ?? 1) > 1 && u.sprite?.getBounds().contains(sx, sy));
+    return hit ? { col: hit.col, row: hit.row } : null;
   }
 
   // Screen position of a tile's visible center (matches drawDiamond()).
@@ -4878,16 +4893,17 @@ export class BattleScene extends Phaser.Scene {
   snapToNearbyTarget(sx, sy, tile) {
     const u = this.selectedUnit, ability = this.activeAbility;
     const isValid = (o) => !!o && !o.isDead && o.team === ability.targetType
-      && this.abilityRangeMatches(u, ability, Math.abs(o.col - u.col) + Math.abs(o.row - u.row));
+      && this.abilityReachesUnit(u, ability, o);
     if (isValid(this.unitMap.get(`${tile.col},${tile.row}`))) return tile;
     let best = tile, bestDist = 40;
     for (const o of [...this.playerUnits, ...this.enemyUnits]) {
       if (!isValid(o)) continue;
-      const { x, y } = this.gridToScreen(o.col, o.row);
+      const { x, y } = this.footprintScreenPos(o);
       const d = Math.hypot(sx - x, sy - (y + TH2 - 15));
       if (d < bestDist) { bestDist = d; best = { col: o.col, row: o.row }; }
     }
-    return best;
+    if (best !== tile) return best;
+    return this.bigUnitUnderTap(sx, sy, this.enemyUnits.filter(isValid)) ?? tile;
   }
 
   // ── Draw ──────────────────────────────────────────────────────────────────
@@ -4989,9 +5005,12 @@ export class BattleScene extends Phaser.Scene {
       for (let col = 0; col < COLS; col++) {
         for (let row = 0; row < ROWS; row++) {
           const dist = Math.abs(col - uc) + Math.abs(row - ur);
-          if (dist < 1 || !this.abilityRangeMatches(this.selectedUnit, this.activeAbility, dist)) continue;
           const occ = this.unitMap.get(`${col},${row}`);
           const isTarget = occ?.team === this.activeAbility.targetType;
+          // Every tile of a reachable big monster lights up, not just the near ones.
+          const wholeBigTarget = isTarget && (occ.size ?? 1) > 1
+            && this.abilityReachesUnit(this.selectedUnit, this.activeAbility, occ);
+          if (!wholeBigTarget && (dist < 1 || !this.abilityRangeMatches(this.selectedUnit, this.activeAbility, dist))) continue;
           this.drawDiamond(col, row, isTarget ? 0xff2200 : 0xffaa33, isTarget ? 0.7 : 0.4, ATTACK_OUTLINE);
         }
       }
@@ -5024,7 +5043,7 @@ export class BattleScene extends Phaser.Scene {
     }
     for (const e of this.enemyUnits) {
       if (e.isDead) continue;
-      this.drawDiamond(e.col, e.row, 0x8b1a1a, 0.4);
+      for (const { col, row } of this.occupiedTiles(e)) this.drawDiamond(col, row, 0x8b1a1a, 0.4);
     }
 
     // Player unit circles + HP bars

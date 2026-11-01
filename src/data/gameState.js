@@ -792,16 +792,51 @@ export function effectiveStats(unit) {
     speed: unit.speed, strength: unit.strength, stamina: unit.stamina, endurance: unit.endurance,
     bonusHp: 0, bonusSp: 0,
   };
-  for (const item of Object.values(unit.equip)) {
-    if (!item) continue;
-    s.speed      += item.stats?.speed      ?? 0;
-    s.strength   += item.stats?.strength   ?? 0;
-    s.stamina    += item.stats?.stamina    ?? 0;
-    s.endurance  += item.stats?.endurance  ?? 0;
-    s.bonusHp    += item.stats?.hp         ?? 0;
-    s.bonusSp    += item.stats?.sp         ?? 0;
+  for (const item of wornItems(unit)) {
+    const { stats } = wornItemValues(unit, item);
+    s.speed      += stats.speed      ?? 0;
+    s.strength   += stats.strength   ?? 0;
+    s.stamina    += stats.stamina    ?? 0;
+    s.endurance  += stats.endurance  ?? 0;
+    s.bonusHp    += stats.hp         ?? 0;
+    s.bonusSp    += stats.sp         ?? 0;
   }
   return s;
+}
+
+// Gear that counts for this unit. Enemies have no class, so all of theirs
+// counts; a hero's gear only counts in a slot their class has.
+function wornItems(unit) {
+  if (!unit.t1Sport) return Object.values(unit.equip ?? {}).filter(Boolean);
+  return gearLayoutForUnit(unit).slots.map(slot => unit.equip[slot]).filter(Boolean);
+}
+
+// The classItemMultiplier an item's stored values were rolled with. Items from
+// before classMult was stamped only carry the forClass label.
+function rolledClassMult(item) {
+  if (item.classMult != null) return item.classMult;
+  const entry = Object.entries(SPORTS).find(([, s]) => s.roles?.some(r => r.name === item.forClass));
+  if (!entry) return 1;
+  const [sportId, sport] = entry;
+  const layoutKey = GEAR_LAYOUT_SPORT_OVERRIDE[sportId] ?? sport.class;
+  return (CLASS_GEAR_LAYOUT[layoutKey] ?? DEFAULT_GEAR_LAYOUT).classItemMultiplier;
+}
+
+// A Class Item's strength follows whoever wears it, so a 2-slot class always
+// gets its ×3 and a 5-slot class never does, whoever the item was rolled for.
+// God Tier items are a fixed template and enemies have no class, so neither scales.
+function classItemScale(unit, item) {
+  if (item.slot !== 'weapon' || item.rarity === 'god' || !unit.t1Sport) return 1;
+  return gearLayoutForUnit(unit).classItemMultiplier / rolledClassMult(item);
+}
+
+// An item's stats and multipliers as they apply to this unit.
+export function wornItemValues(unit, item) {
+  const scale = classItemScale(unit, item);
+  const stats = {}, multipliers = {};
+  for (const [k, v] of Object.entries(item.stats ?? {})) stats[k] = Math.round(v * scale);
+  for (const [k, v] of Object.entries(item.multipliers ?? {})) multipliers[k] = v * scale;
+  return { stats, multipliers };
 }
 
 export function maxHp(unit) {
@@ -818,11 +853,11 @@ export function maxHp(unit) {
 // without any gear-multiplier input. That's the follow-up wiring pass.
 export function equipMultipliers(unit) {
   const m = { damage: 0, affinity: 0, designation: 0 };
-  for (const item of Object.values(unit.equip)) {
-    if (!item) continue;
-    m.damage      += item.multipliers?.damage      ?? 0;
-    m.affinity    += item.multipliers?.affinity    ?? 0;
-    m.designation += item.multipliers?.designation ?? 0;
+  for (const item of wornItems(unit)) {
+    const { multipliers } = wornItemValues(unit, item);
+    m.damage      += multipliers.damage      ?? 0;
+    m.affinity    += multipliers.affinity    ?? 0;
+    m.designation += multipliers.designation ?? 0;
   }
   return m;
 }

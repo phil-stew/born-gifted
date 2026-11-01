@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import {
   state, FULL_ROSTER, effectiveStats, maxHp, xpToNext, classSkillSlotCount, elementIcon,
   roleDisplayLabel, currentRoleId, roleById, pendingPromotion, chainById,
-  sportById, t3SportOptions, promoteUnit, gearLayoutForUnit, equipItem, dismissUnit,
+  sportById, t3SportOptions, promoteUnit, gearLayoutForUnit, wornItemValues, equipItem, dismissUnit,
 } from '../data/gameState.js';
 import { rarityColor, gearItemFrame, registerGearFrames, ICON_SHEET_STRIP } from '../data/items.js';
 import { loadHeroSprites, stripHeroBackground, heroKey, firstFrame, spriteKeyForRole, stripBackgroundByKey } from '../data/heroSprites.js';
@@ -331,9 +331,10 @@ export class PartyScene extends Phaser.Scene {
       ? this.equipCandidates.map((item, idx) => {
           const rlvl = item.reinforceLevel ?? 0;
           const hex = '#' + rarityColor(item.rarity).toString(16).padStart(6, '0');
+          const worn = wornItemValues(unit, item);
           const statLine = [
-            ...Object.entries(item.stats ?? {}).map(([k, v]) => `+${v} ${k[0].toUpperCase() + k.slice(1)}`),
-            ...Object.entries(item.multipliers ?? {}).map(([k, v]) => `+${Math.round(v * 100)}% ${k[0].toUpperCase() + k.slice(1)}`),
+            ...Object.entries(worn.stats).map(([k, v]) => `+${v} ${k[0].toUpperCase() + k.slice(1)}`),
+            ...Object.entries(worn.multipliers).map(([k, v]) => `+${Math.round(v * 100)}% ${k[0].toUpperCase() + k.slice(1)}`),
           ].join('  ');
           return `
             <button class="ui-btn" data-equip-item="${idx}">
