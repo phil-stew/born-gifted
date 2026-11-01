@@ -34,11 +34,20 @@ function markM1TutorialDone() {
 const COLS = 10, ROWS = 10;
 const LAUNCH_WINDUP_MS = 280, VOLLEY_GAP_MS = 90, WET_TURNS = 3;
 const OBSTACLE_MOVE_COST = 2, COVER_MISS_CHANCE = 0.2;
-const WEATHER = {
+const WEATHER_FX = {
   rain:   { w: 2, h: 12, color: 0xaaccff, speedX: { min: -70, max: -50 }, speedY: { min: 520, max: 640 }, lifespan: 1300, alpha: { start: 0.7, end: 0.3 }, frequency: 12, tint: 0x101830 },
   embers: { w: 3, h: 3, color: 0xff8a33, speedX: { min: -30, max: 30 }, speedY: { min: -150, max: -60 }, lifespan: 6000, alpha: { start: 0.9, end: 0 }, frequency: 40, fromBottom: true },
   snow:   { w: 3, h: 3, color: 0xffffff, speedX: { min: -50, max: 10 }, speedY: { min: 60, max: 120 }, lifespan: 8000, alpha: { start: 0.9, end: 0.5 }, frequency: 30 },
+  wind:   { w: 14, h: 1, color: 0xe8f4ff, speedX: { min: -620, max: -420 }, speedY: { min: 170, max: 300 }, lifespan: 2800, alpha: { start: 0.5, end: 0.1 }, frequency: 16 },
+  sun:    { w: 2, h: 2, color: 0xffe68a, speedX: { min: -10, max: 10 }, speedY: { min: 20, max: 50 }, lifespan: 9000, alpha: { start: 0.7, end: 0 }, frequency: 80, tint: 0xffc23c, tintAlpha: 0.1 },
 };
+const DANCE_WEATHER = {
+  rain: { name: 'Rain', icon: '🌧', banner: 'RAIN', desc: 'Soaks everyone each round  ·  3 rounds' },
+  wind: { name: 'Wind', icon: '🌬', banner: 'WIND', desc: 'Fire attacks +50%  ·  3 rounds' },
+  snow: { name: 'Snow', icon: '❄', banner: 'SNOW', desc: 'Ranged attacks miss 20%  ·  3 rounds' },
+  sun:  { name: 'Sun',  icon: '☀', banner: 'SUN',  desc: 'Wet and Frozen -2 turns each round  ·  3 rounds' },
+};
+const DANCE_ROUNDS = 3, WIND_FIRE_BONUS = 1.5, SNOW_MISS_CHANCE = 0.2, SUN_DRY_TURNS = 2;
 const HAZARD_COUNT = { newbie: [1, 2], veteran: [2, 5], perilous: [6, 10] };
 const HAZARD_COUNT_REPLAY = { 1: [1, 2], 1.2: [2, 5], 1.5: [6, 10] }; // keyed by replay stat multiplier
 const FREEZE_TURNS = 2, FREEZE_MOVE_LOSS = 2, WET_FREEZE_EXTRA = 1;
@@ -949,13 +958,17 @@ function designationMultiplier(attacker, defender, ability) {
 // ── Elemental affinity cycle ────────────────────────────────────────────────
 // Fire > Wind > Earth > Lightning > Water > Fire. Beating the defender's
 // element deals 1.5x damage; being beaten by it reduces damage to 0.8x.
+// Weather Dance's current weather, read by the damage helpers here. Set by
+// setWeather and cleared at the start of each battle.
+let activeWeather = null;
 function elementMultiplier(attacker, defender, ability) {
   if (ability?.nonAffinity) return 1.0;
   // A fixed-element move stays that element whatever the hero's own element is.
   const a = ability?.fixedElement ?? attacker.element;
   // Water conducts Lightning and dampens Fire.
   const soaked = defender.wetTurns > 0 ? { Lightning: 2.0, Fire: 0.5 }[a] ?? 1.0 : 1.0;
-  return affinityMultiplier(a, defender) * soaked;
+  const wind = a === 'Fire' && activeWeather === 'wind' ? WIND_FIRE_BONUS : 1.0; // Weather Dance
+  return affinityMultiplier(a, defender) * soaked * wind;
 }
 function affinityMultiplier(a, defender) {
   if (defender.alwaysWeak) return 1.5; // see designationMultiplier's alwaysWeak note
@@ -1110,6 +1123,8 @@ export class BattleScene extends Phaser.Scene {
     // threading it through every call — 2026-07-11 ("Goblin King"/"Cave
     // Depths" quests, see spawnReinforcements/isVictory below).
     this.missionCfg = missionCfg;
+    activeWeather = null;
+    this.weather = null;
     this.startWeather(missionCfg);
     this.eruptionTiles = [];
     this.missionId = missionId;
@@ -3781,6 +3796,7 @@ export class BattleScene extends Phaser.Scene {
 
   executeSelfAbility(ability) {
     const unit = this.selectedUnit;
+    if (ability.effect === 'weatherDance') { this.showWeatherMenu(unit, ability); return; }
     this.consumeAbilityResource(unit, ability);
 
     if (ability.effect === 'moveBuff') {
@@ -3796,6 +3812,8 @@ export class BattleScene extends Phaser.Scene {
       unit.calmTurns = ability.duration;
       const { x, y } = this.gridToScreen(unit.col, unit.row);
       this.showEffect(x, y + TH2, 'CALM', '#88aaff');
+    } else if (ability.effect === 'setWeather') {
+      this.setWeather(ability.weather);
     } else if (ability.effect === 'tankForAdjacent') {
       unit.tankReady = true;
       const { x, y } = this.gridToScreen(unit.col, unit.row);
@@ -4058,6 +4076,118 @@ export class BattleScene extends Phaser.Scene {
     this.redraw();
   }
 
+  // The map's own weather, from its hazard. Weather Dance replaces it for a while.
+  startWeather(cfg) {
+    this.mapWeather = cfg.thunderStorm ? WEATHER_FX.rain : cfg.eruption ? WEATHER_FX.embers : cfg.blizzard ? WEATHER_FX.snow : null;
+    this.showWeather(this.mapWeather);
+  }
+  // Falling particles and a sky tint. Kept light for phones.
+  showWeather(style) {
+    this.weatherEmitter?.destroy();
+    this.weatherTint?.destroy();
+    this.weatherEmitter = this.weatherTint = null;
+    if (!style) return;
+    const key = `weather-${style.w}-${style.h}-${style.color}`;
+    if (!this.textures.exists(key)) {
+      const g = this.add.graphics();
+      g.fillStyle(style.color, 1);
+      g.fillRect(0, 0, style.w, style.h);
+      g.generateTexture(key, style.w, style.h);
+      g.destroy();
+    }
+    const { width, height } = this.scale;
+    if (style.tint) this.weatherTint = this.add.rectangle(width / 2, height / 2, width, height, style.tint, style.tintAlpha ?? 0.22).setDepth(2400);
+    this.weatherEmitter = this.add.particles(0, style.fromBottom ? height + 8 : -8, key, {
+      x: { min: -40, max: width + 40 },
+      speedX: style.speedX, speedY: style.speedY,
+      lifespan: style.lifespan, alpha: style.alpha, angle: 0,
+      frequency: style.frequency, quantity: 1,
+    }).setDepth(2500);
+  }
+
+  // Weather Dance: lasts DANCE_ROUNDS rounds, for both sides. Rain soaks everyone
+  // and Sun dries everyone at the start of each round; Wind and Snow apply in
+  // elementMultiplier and coverBlocks.
+  setWeather(type) {
+    activeWeather = type;
+    this.weather = { type, rounds: DANCE_ROUNDS };
+    this.showWeather(WEATHER_FX[type]);
+    this.showPhaseBanner(DANCE_WEATHER[type].banner);
+    this.applyWeather();
+    this.updateTurnText();
+  }
+  applyWeather() {
+    for (const u of [...this.playerUnits, ...this.enemyUnits]) {
+      if (u.isDead) continue;
+      if (this.weather.type === 'rain') this.soak(u);
+      if (this.weather.type === 'sun') {
+        u.wetTurns = Math.max(0, (u.wetTurns ?? 0) - SUN_DRY_TURNS);
+        u.frozenTurns = Math.max(0, (u.frozenTurns ?? 0) - SUN_DRY_TURNS);
+      }
+    }
+  }
+  tickWeather() {
+    if (!this.weather) return;
+    this.weather.rounds--;
+    if (this.weather.rounds > 0) { this.applyWeather(); return; }
+    this.weather = null;
+    activeWeather = null;
+    this.showWeather(this.mapWeather);
+  }
+  updateTurnText() {
+    const w = this.weather;
+    this.turnText.setText(`Turn ${this.turnCount}${w ? `  ${DANCE_WEATHER[w.type].icon} ${w.rounds}` : ''}`);
+  }
+  // The pick shown by Weather Dance. Each option is the same ability, so they
+  // share one cooldown.
+  showWeatherMenu(unit, dance) {
+    this.showAbilitySubmenu(unit, Object.entries(DANCE_WEATHER).map(([weather, w]) => ({
+      ...dance, name: w.name, icon: w.icon, desc: w.desc, effect: 'setWeather', weather,
+    })));
+  }
+
+  // Ice maps: each new round ice balls hit hazardTiles() for 1-10% of max HP
+  // and Freeze whoever they hit.
+  blizzardRound() {
+    for (const { col, row } of this.hazardTiles()) {
+      const unit = this.unitMap.get(`${col},${row}`);
+      if (!unit) { this.skyImpact(this.gridToScreen(col, row), 'orbWater'); continue; }
+      this.skyHit(unit, 1, 'orbWater', '#99ddff');
+      if (!unit.isDead) this.freeze(unit);
+    }
+    this.cameras.main.flash(120, 190, 225, 255);
+  }
+
+  // Where this round's falling hazards land. The Settings difficulty sets the
+  // base count and a replay's Normal/Hard/Elite adds its own on top. 1 to 2
+  // spots sit under random units so they stay a threat, the rest go anywhere.
+  hazardTiles() {
+    const replay = this.difficultyCfg ? 0 : rand(...HAZARD_COUNT_REPLAY[this.difficulty] ?? [1, 2]);
+    const count = rand(...HAZARD_COUNT[getDifficultyConfig().key]) + replay;
+    const tiles = new Map();
+    const alive = [...this.playerUnits, ...this.enemyUnits].filter(u => !u.isDead);
+    for (let i = Math.min(rand(1, 2), count); i > 0 && alive.length; i--) {
+      const { col, row } = alive[rand(0, alive.length - 1)];
+      tiles.set(`${col},${row}`, { col, row });
+    }
+    while (tiles.size < count) {
+      const col = rand(0, COLS - 1), row = rand(0, ROWS - 1);
+      tiles.set(`${col},${row}`, { col, row });
+    }
+    return [...tiles.values()];
+  }
+
+  // Frozen: 2 less move and no reactions (counters, dodges, Guard, Stopper,
+  // Endure) for FREEZE_TURNS rounds, one more if the unit is Wet.
+  freeze(unit) {
+    if (!(unit.frozenTurns > 0)) {
+      const { x, y } = this.gridToScreen(unit.col, unit.row);
+      this.showEffect(x, y + TH2 - 22, 'FROZEN', '#99ddff');
+    }
+    unit.frozenTurns = FREEZE_TURNS + (unit.wetTurns > 0 ? WET_FREEZE_EXTRA : 0);
+    this.redraw();
+  }
+
   // Falling rain, embers or snow over the map's hazards. Kept light for phones.
   startWeather(cfg) {
     const style = cfg.thunderStorm ? WEATHER.rain : cfg.eruption ? WEATHER.embers : cfg.blizzard ? WEATHER.snow : null;
@@ -4137,11 +4267,13 @@ export class BattleScene extends Phaser.Scene {
   }
 
   // They also give cover: ranged attacks at a unit on one miss 20% of the
-  // time. Shows MISS and returns true when it does.
+  // time, and Snow from Weather Dance adds its own 20% to every ranged attack.
+  // Shows MISS and returns true when it does.
   coverBlocks(attacker, target) {
     if (this.distanceToUnit(attacker.col, attacker.row, target) <= 1) return false;
-    if (!this.occupiedTiles(target).some(t => this.stageCfg.obstacle(t.col, t.row))) return false;
-    if (Math.random() >= COVER_MISS_CHANCE) return false;
+    const cover = this.occupiedTiles(target).some(t => this.stageCfg.obstacle(t.col, t.row));
+    const hitChance = (cover ? 1 - COVER_MISS_CHANCE : 1) * (activeWeather === 'snow' ? 1 - SNOW_MISS_CHANCE : 1);
+    if (Math.random() < hitChance) return false;
     const { x, y } = this.gridToScreen(target.col, target.row);
     this.showEffect(x, y + TH2 - 22, 'MISS', '#cccccc');
     return true;
@@ -4503,7 +4635,8 @@ export class BattleScene extends Phaser.Scene {
   startPlayerTurn() {
     if (this.phase === 'victory' || this.phase === 'defeat') return;
     this.turnCount++;
-    this.turnText.setText(`Turn ${this.turnCount}`);
+    this.tickWeather();
+    this.updateTurnText();
     // turnLimit (Ester Academy's "Rock" quest, 2026-07-11, "within 10
     // turns") — a hard turn-count loss, distinct from the normal
     // all-players-dead defeat. Checked here (not checkEndConditions, which

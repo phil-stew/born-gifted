@@ -264,6 +264,13 @@ export const ABILITIES = {
     desc: 'Restore SP to target ally  ·  range 3, 15%  ·  CD 2',
   },
 
+  // Pure Support only. Using it opens a pick of the four weathers below.
+  weather_dance: {
+    id: 'weather_dance', name: 'Weather Dance', icon: '🌦', category: 'skill',
+    cooldown: 5, targetType: 'self', selfActivate: true, effect: 'weatherDance', pureSupportOnly: true,
+    desc: 'Pick the weather for 3 rounds: Rain, Wind, Snow or Sun  ·  CD 5',
+  },
+
   // ── Higher talent skills, unlocked between and above the tiers above ──────
   dash_strike: {
     id: 'dash_strike', name: 'Dash Strike', icon: '💨', category: 'special',
@@ -758,6 +765,7 @@ export const DESIGNATION_SPECIALS = {
   Rg: [ { id: 'tri_throw',  minLevel: 1 }, { id: 'sharp_throw', minLevel: CLASS_TIER_LEVELS.t2 } ],
 };
 export const DESIGNATION_SKILL_POOL = {
+  S: [ { id: 'weather_dance', minLevel: 1 } ],
   D: [ { id: 'shield', minLevel: 1 } ],
 };
 export const DESIGNATION_PASSIVE_POOL = {
@@ -926,7 +934,7 @@ function martialArtsBracketGrant() {
 // ability id, the group it's filed under, `order` to sort within that group
 // (the level or stat needed), a short `tag`, the full `text`, and for skills
 // tied to one position, its `role`.
-export const SKILL_CLASS_GROUPS = ['Athletics', 'Ball', 'Bat & Ball', 'Racquet', 'Target', 'Martial Arts', 'Performance', 'Combat', 'Ranged', 'Defender'];
+export const SKILL_CLASS_GROUPS = ['Athletics', 'Ball', 'Bat & Ball', 'Racquet', 'Target', 'Martial Arts', 'Performance', 'Combat', 'Ranged', 'Defender', 'Support'];
 export const SKILL_STAT_GROUPS = ['Speed', 'Strength', 'Endurance', 'Stamina', 'Stamina + Endurance'];
 
 export function skillUnlockEntries() {
@@ -962,7 +970,7 @@ export function skillUnlockEntries() {
   for (const pool of [DESIGNATION_SPECIALS, DESIGNATION_SKILL_POOL, DESIGNATION_PASSIVE_POOL]) {
     for (const [designation, list] of Object.entries(pool)) {
       const name = DESIGNATION_NAMES[designation];
-      for (const e of list) add(e.id, name, e.minLevel, levelTag(e.minLevel), atLevel(`${name} heroes`, e.minLevel));
+      for (const e of list) add(e.id, name, e.minLevel, levelTag(e.minLevel), atLevel(`${ABILITIES[e.id]?.pureSupportOnly ? 'Pure ' : ''}${name} heroes`, e.minLevel));
     }
   }
   for (const pool of [CLASS_GROUPING_SPECIALS, CLASS_GROUPING_SKILL_POOL, CLASS_GROUPING_PASSIVE_POOL]) {
@@ -1074,7 +1082,8 @@ export function getUnitSkills(unit) {
   const designationPool = currentDesignations(unit)
     .flatMap(d => DESIGNATION_SKILL_POOL[d] ?? [])
     .filter(e => level >= e.minLevel)
-    .map(e => ABILITIES[e.id]);
+    .map(e => ABILITIES[e.id])
+    .filter(ab => !ab.pureSupportOnly || currentDesignations(unit).length === 1);
 
   const classPool = unlockedClassNames(unit)
     .flatMap(c => CLASS_GROUPING_SKILL_POOL[c] ?? [])
