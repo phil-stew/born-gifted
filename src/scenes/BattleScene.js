@@ -873,32 +873,6 @@ const MISSION_CONFIGS = {
 const enemyMaxHp = u => (u.endurance + u.stamina) * (2 + (u.level ?? 1));
 const calcAtk    = u => Math.round((u.strength + Math.round(u.speed * 0.5) + rand(0, 3)) * (u.atkBuff ?? 1.0));
 
-// Any temporary, turn-scoped boost — atk/move buffs (reset every player
-// turn, see startPlayerTurn), dodge/endure armed-but-unconsumed, or a
-// multi-turn effect still ticking (overdrive, damage reduction). Doesn't
-// include permanentBuffsApplied stat boosts (statBuffPermanent/costReduction/
-// maxHpBuff) — those are baked into the unit for the whole battle rather
-// than a status worth flagging turn to turn.
-const hasActiveBuff = u =>
-  (u.atkBuff ?? 1) > 1 ||
-  u.moveSpeed > u.baseMoveSpeed ||
-  !!u.dodgeReady ||
-  !!u.endureReady ||
-  !!u.counterReady ||
-  !!u.shieldHp ||
-  !!u.regen ||
-  u.nextHitMult != null ||
-  !!u.tankReady ||
-  (u.calmTurns ?? 0) > 0 ||
-  (u.overdriveTurns ?? 0) > 0 ||
-  !!u.damageReduction;
-
-// Slow/statDown debuffs (see ability.debuff handling in resolveHit and
-// enemySkillAttack) — tracked on u.debuffs for both teams, though today
-// only player abilities actually inflict one (no shipped monster skill
-// carries a `debuff` field yet).
-const hasActiveDebuff = u => (u.debuffs?.length ?? 0) > 0;
-
 // ── Designation combat triangle ─────────────────────────────────────────────
 // C beats Rg, Rg beats D, D beats C (Support sits outside the triangle).
 // Which of the attacker's designations is "live" for this hit follows the
@@ -1304,22 +1278,6 @@ export class BattleScene extends Phaser.Scene {
       u.label = this.add.text(0, 0, u.initials, {
         fontSize: '11px', fontFamily: 'monospace', fontStyle: 'bold', color: '#ffffff',
       }).setOrigin(0.5).setDepth(1000);
-      // Buff icon — shown above the head whenever hasActiveBuff() is true
-      // (atkBuff/moveBuff this turn, dodge/endure armed, overdrive or
-      // damage-reduction ticking down); hidden by default, toggled in redraw().
-      u.buffIcon = this.add.text(0, 0, '⬆', {
-        fontSize: '14px', fontFamily: 'monospace', fontStyle: 'bold', color: '#ffdd44',
-        stroke: '#000000', strokeThickness: 3,
-      }).setOrigin(0.5).setDepth(1001).setVisible(false);
-      // Debuff icon — same idea, shown whenever u.debuffs has anything
-      // active. Offset to the buff icon's side so both can show at once.
-      u.wetIcon = this.add.text(0, 0, '💧', { fontSize: '13px' }).setOrigin(0.5).setDepth(1001).setVisible(false);
-      u.burnIcon = this.add.text(0, 0, '🔥', { fontSize: '13px' }).setOrigin(0.5).setDepth(1001).setVisible(false);
-      u.frozenIcon = this.add.text(0, 0, '🥶', { fontSize: '13px' }).setOrigin(0.5).setDepth(1001).setVisible(false);
-      u.debuffIcon = this.add.text(0, 0, '⬇', {
-        fontSize: '14px', fontFamily: 'monospace', fontStyle: 'bold', color: '#ff6688',
-        stroke: '#000000', strokeThickness: 3,
-      }).setOrigin(0.5).setDepth(1001).setVisible(false);
       const className = spriteKeyForRole(u.roleId);
       const hKey = heroKey(className);
       const idleAnim = `${hKey}-idle`;
@@ -1761,17 +1719,6 @@ export class BattleScene extends Phaser.Scene {
       stroke: '#000000', strokeThickness: 3,
     }).setOrigin(0.5, 1).setDepth(660);
 
-    // Debuff icon — mirrors playerUnits' buffIcon; shown whenever
-    // e.debuffs has anything active (slow/statDown, applied by player
-    // abilities like Tackle Kick/Cross-Check — see debuff.type handling
-    // in resolveHit/enemySkillAttack).
-    e.wetIcon = this.add.text(x, y + TH2 - 74, '💧', { fontSize: '13px' }).setOrigin(0.5).setDepth(661).setVisible(false);
-    e.burnIcon = this.add.text(x, y + TH2 - 74, '🔥', { fontSize: '13px' }).setOrigin(0.5).setDepth(661).setVisible(false);
-    e.frozenIcon = this.add.text(x, y + TH2 - 74, '🥶', { fontSize: '13px' }).setOrigin(0.5).setDepth(661).setVisible(false);
-    e.debuffIcon = this.add.text(x, y + TH2 - 74, '⬇', {
-      fontSize: '14px', fontFamily: 'monospace', fontStyle: 'bold', color: '#ff6688',
-      stroke: '#000000', strokeThickness: 3,
-    }).setOrigin(0.5).setDepth(661).setVisible(false);
 
     // Corrupted aura (M6) — sits just behind the sprite's feet, pulsing so
     // it reads as an active effect rather than a flat decal.
@@ -2589,11 +2536,7 @@ export class BattleScene extends Phaser.Scene {
     this.unregisterUnit(unit);
     if (unit.gfx)     { unit.gfx.clear(); }
     if (unit.label)   { unit.label.setVisible(false); }
-    if (unit.buffIcon)  { unit.buffIcon.setVisible(false); }
-    if (unit.debuffIcon){ unit.debuffIcon.setVisible(false); }
-    if (unit.wetIcon)   { unit.wetIcon.setVisible(false); }
-    if (unit.burnIcon)  { unit.burnIcon.setVisible(false); }
-    if (unit.frozenIcon){ unit.frozenIcon.setVisible(false); }
+    unit.statusIcons?.forEach(icon => icon.setVisible(false));
     if (unit.portrait){ unit.portrait.setVisible(false); }
     if (unit.lvLabel) { unit.lvLabel.setVisible(false); }
     if (unit.auraGfx) { unit.auraGfx.destroy(); unit.auraGfx = null; }
@@ -3523,7 +3466,7 @@ export class BattleScene extends Phaser.Scene {
       { label: 'SPD', val: `${unit.speed}`,  color: '#44aaff' },
       { label: 'END', val: `${unit.endurance}`, color: '#44cccc' },
     ];
-    const statuses = this.statusLines(unit);
+    const statuses = this.statusList(unit).map(([icon, label]) => `${icon} ${label}`);
     const PH2 = 62 + rows.length * 24 + 8 + statuses.length * 22;
     con.y = Math.max(40, Math.min(py, height - PH2 - 36));
     if (PH2 !== PH) {
@@ -4019,42 +3962,50 @@ export class BattleScene extends Phaser.Scene {
     unit.sprite.once('animationcomplete', () => { if (idle) unit.sprite?.play(idle); });
   }
 
-  // One centred row of status icons, so nothing overlaps as they come and go.
-  placeStatusIcons(unit, x, y, alpha) {
-    const icons = [
-      [unit.buffIcon, hasActiveBuff(unit)], [unit.debuffIcon, hasActiveDebuff(unit)],
-      [unit.wetIcon, unit.wetTurns > 0], [unit.burnIcon, unit.burnTurns > 0], [unit.frozenIcon, unit.frozenTurns > 0],
-    ].filter(([icon]) => icon);
-    for (const [icon] of icons) icon.setVisible(false);
-    const shown = icons.filter(([, on]) => on).map(([icon]) => icon);
-    shown.forEach((icon, i) => icon.setPosition(x + (i - (shown.length - 1) / 2) * 18, y).setAlpha(alpha).setVisible(true));
-  }
-
-  // Every status on a unit, for the Status popup.
-  statusLines(u) {
+  // Every status on a unit as [icon, label], each with its own icon. Drives
+  // both the row over the unit and the Status popup.
+  statusList(u) {
     const debuffs = (type) => (u.debuffs ?? []).filter(d => d.type === type);
     const longest = (list) => Math.max(...list.map(d => d.turnsLeft));
     const slow = debuffs('slow'), stun = debuffs('stun');
     return [
-      u.wetTurns > 0 && `💧 Wet ${u.wetTurns}`,
-      u.burnTurns > 0 && `🔥 Burning ${u.burnTurns}`,
-      u.frozenTurns > 0 && `🥶 Frozen ${u.frozenTurns}`,
-      stun.length && `💫 Stunned ${longest(stun)}`,
-      slow.length && `⬇ Slowed ${longest(slow)}`,
-      ...debuffs('statDown').map(d => `⬇ ${d.stat[0].toUpperCase() + d.stat.slice(1)} -${d.amount} ${d.turnsLeft}`),
-      (u.atkBuff ?? 1) > 1 && '⬆ Attack up',
-      u.moveSpeed > u.baseMoveSpeed && '⬆ Move up',
-      u.regen && `💚 Regen ${u.regen.turnsLeft}`,
-      u.shieldHp && `🛡 Shield ${u.shieldHp}`,
-      u.nextHitMult != null && '🛡 Next hit guarded',
-      u.tankReady && '🛡 Guarding allies',
-      u.calmTurns > 0 && `🛡 Calm ${u.calmTurns}`,
-      u.damageReduction && `🛡 Iron Wall ${u.damageReduction.turnsLeft}`,
-      u.dodgeReady && '⬆ Dodge ready',
-      u.counterReady && '⬆ Counter ready',
-      u.endureReady && '⬆ Endure ready',
-      u.overdriveTurns > 0 && `⬆ Overdrive ${u.overdriveTurns}`,
+      u.wetTurns > 0 && ['💧', `Wet ${u.wetTurns}`],
+      u.burnTurns > 0 && ['🔥', `Burning ${u.burnTurns}`],
+      u.frozenTurns > 0 && ['🥶', `Frozen ${u.frozenTurns}`],
+      stun.length && ['💫', `Stunned ${longest(stun)}`],
+      slow.length && ['🐌', `Slowed ${longest(slow)}`],
+      ...debuffs('statDown').map(d => ['📉', `${d.stat[0].toUpperCase() + d.stat.slice(1)} -${d.amount} ${d.turnsLeft}`]),
+      u.assistReady && ['🤝', 'Next attack ×2'],
+      !u.assistReady && (u.atkBuff ?? 1) > 1 && ['💪', 'Attack up'],
+      u.moveSpeed > u.baseMoveSpeed && ['👟', 'Move up'],
+      u.regen && ['💚', `Regen ${u.regen.turnsLeft}`],
+      u.shieldHp && ['🛡', `Shield ${u.shieldHp}`],
+      u.nextHitMult != null && ['🔰', 'Next hit guarded'],
+      u.tankReady && ['🧱', 'Guarding allies'],
+      u.calmTurns > 0 && ['😌', `Calm ${u.calmTurns}`],
+      u.damageReduction && ['🏰', `Iron Wall ${u.damageReduction.turnsLeft}`],
+      u.dodgeReady && ['💨', 'Dodge ready'],
+      u.counterReady && ['🥊', 'Counter ready'],
+      u.endureReady && ['❤', 'Endure ready'],
+      u.overdriveTurns > 0 && ['⚡', `Overdrive ${u.overdriveTurns}`],
     ].filter(Boolean);
+  }
+
+  // A centred row of status icons, wrapping after 5 so they stay on the unit.
+  placeStatusIcons(unit, x, y, alpha) {
+    unit.statusIcons ??= [];
+    const list = this.statusList(unit);
+    const depth = unit.team === 'player' ? 1001 : 661;
+    while (unit.statusIcons.length < list.length) {
+      unit.statusIcons.push(this.add.text(0, 0, '', { fontSize: '13px' }).setOrigin(0.5).setDepth(depth));
+    }
+    const wrap = unit.team === 'player' ? -1 : 1; // heroes stack upward, monsters down
+    unit.statusIcons.forEach((text, i) => {
+      if (i >= list.length) { text.setVisible(false); return; }
+      const inRow = Math.min(5, list.length - i + (i % 5));
+      text.setText(list[i][0]).setAlpha(alpha).setVisible(true)
+        .setPosition(x + (i % 5 - (inRow - 1) / 2) * 17, y + wrap * Math.floor(i / 5) * 17);
+    });
   }
 
   // Puts an ability's debuff on whoever it hit. Slow and stat-down tick through
