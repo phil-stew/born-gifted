@@ -362,21 +362,24 @@ const LEVEL_BRACKETS = [
     { kind:'oreX2', chance:0.40 },
   ]},
   { min:15, max:19, outcomes: [
-    { kind:'gear', rarity:'rare',      chance:0.40 },
-    { kind:'gear', rarity:'epic',      chance:0.20 },
+    { kind:'gear', rarity:'rare',      chance:0.60 },
     { kind:'oreX2', chance:0.40 },
   ]},
   { min:20, max:29, outcomes: [
-    { kind:'gear', rarity:'epic',      chance:0.50 },
-    { kind:'gear', rarity:'legendary', chance:0.10 },
+    { kind:'gear', rarity:'rare',      chance:0.57 },
+    { kind:'gear', rarity:'epic',      chance:0.03 },
     { kind:'oreX2', chance:0.40 },
   ]},
   { min:30, max:Infinity, outcomes: [
-    { kind:'gear', rarity:'epic',      chance:0.10 },
-    { kind:'gear', rarity:'legendary', chance:0.30 },
+    { kind:'gear', rarity:'rare',      chance:0.30 },
+    { kind:'gear', rarity:'epic',      chance:0.08 },
+    { kind:'gear', rarity:'legendary', chance:0.02 },
     { kind:'oreX2', chance:0.60 },
   ]},
 ];
+// Epic and Legendary only drop once the God Trials open, however high the
+// hero's level. Before that those rolls come out Rare.
+const STORY_LOCKED_RARITY = new Set(['epic', 'legendary']);
 const BRACKET_GEAR_SLOTS = ['weapon', 'footwear', 'handwear', 'chest', 'headwear'];
 // "Rare ore or material" — silver_ore is the game's one rare-tier ore
 // (iron=uncommon, silver=rare, gold=epic, mystic=legendary per ORE_TIER_TO_RARITY).
@@ -386,7 +389,7 @@ const BRACKET_RARE_ORE_ID = 'silver_ore';
 // same material ×2 as separate entries so callers can display/stack them
 // the same way killDrops already does). Brackets now cover level 1+, so this
 // only returns null for a malformed/negative level.
-export function rollBracketedDrop(level, talents = [], forClass) {
+export function rollBracketedDrop(level, talents = [], forClass, trialsReached = false) {
   const bracket = LEVEL_BRACKETS.find(b => level >= b.min && level <= b.max);
   if (!bracket) return null;
 
@@ -400,7 +403,8 @@ export function rollBracketedDrop(level, talents = [], forClass) {
       return ore ? [{ ...ore }, { ...ore }] : null;
     }
     const slot = BRACKET_GEAR_SLOTS[Math.floor(Math.random() * BRACKET_GEAR_SLOTS.length)];
-    return [rollGearItem({ slot, rarity: outcome.rarity, talents, forClass, cost: RARITY_GEAR_VALUE[outcome.rarity] ?? 0 })];
+    const rarity = !trialsReached && STORY_LOCKED_RARITY.has(outcome.rarity) ? 'rare' : outcome.rarity;
+    return [rollGearItem({ slot, rarity, talents, forClass, cost: RARITY_GEAR_VALUE[rarity] ?? 0 })];
   }
   return null;
 }

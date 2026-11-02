@@ -255,7 +255,7 @@ export class VictoryScene extends Phaser.Scene {
     // "single roll" shape this system already had rather than the shop's
     // "additive tiers" shape.
     const leader = state.party[0];
-    const bracketDrops = rollBracketedDrop(leader?.level ?? 1, leader?.talents ?? [], leader ? roleDisplayLabel(leader) : undefined);
+    const bracketDrops = rollBracketedDrop(leader?.level ?? 1, leader?.talents ?? [], leader ? roleDisplayLabel(leader) : undefined, state.unlockedMissions.includes('T1'));
     if (bracketDrops) for (const item of bracketDrops) state.inventory.push(item);
     // Grouped for display same as killDropSummary — the ore outcome returns
     // the same material twice (its "×2" flavor) rather than one item with a
