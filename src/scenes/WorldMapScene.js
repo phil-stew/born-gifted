@@ -292,6 +292,7 @@ const NEW_AREA_INTRO = {
     lines: [
       { speaker: 'Narrator', color: '#888899', text: 'The roost sits high on a volcanic ridge overlooking Ester Academy — the air shimmers with heat, and something large is circling above.' },
       { speaker: 'Reno',     color: '#4488ff', text: '...A dragon. And it brought company.' },
+      { speaker: '__PARTY_2__', text: 'Then we split them up. Nobody takes the dragon alone.' },
     ],
   },
   // Altroes Trials + the next school's tournament (2026-07-11) — same
@@ -310,6 +311,7 @@ const NEW_AREA_INTRO = {
     lines: [
       { speaker: 'Narrator', color: '#888899', text: 'Word reaches the Capital: both academies have vouched for you. Altroes itself wants to see what you\'ve learned — and they\'re sending a real tournament team, decked out in gear far better than anything you\'ve faced yet.' },
       { speaker: 'Reno',     color: '#4488ff', text: '...The Trials. Let\'s show them.' },
+      { speaker: '__PARTY_2__', text: 'A real tournament team. About time someone took us seriously.' },
     ],
   },
   AT2: {
@@ -317,6 +319,7 @@ const NEW_AREA_INTRO = {
     backdrop: BACKDROPS.altroesArena,
     lines: [
       { speaker: 'Narrator', color: '#888899', text: 'One trial down. The second is harder — Altroes doesn\'t make this easy.' },
+      { speaker: '__PARTY_2__', text: 'Harder? Good. The first one felt like a warm-up.' },
     ],
   },
   // Alpha King Dragon (2026-07-11) — boss node NE of Artfall Academy.
@@ -326,6 +329,7 @@ const NEW_AREA_INTRO = {
     lines: [
       { speaker: 'Narrator', color: '#888899', text: 'Past Artfall, the mountains sharpen into jagged peaks — locals call it the Alpha King\'s hunting ground.' },
       { speaker: 'Reno',     color: '#4488ff', text: '...Let\'s see if the stories are true.' },
+      { speaker: '__PARTY_2__', text: 'Stories always grow in the telling. Let\'s hope this one did.' },
     ],
   },
   // Monster Hunt (2026-07-11) — repeatable score-attack quest NE of Zester.
@@ -335,6 +339,7 @@ const NEW_AREA_INTRO = {
     lines: [
       { speaker: 'Narrator', color: '#888899', text: 'East of Zester, the wilds are thick with monsters — the local hunters have a standing bounty for anyone who can thin them out.' },
       { speaker: 'Reno',     color: '#4488ff', text: '...Six turns to take down as many as we can. Let\'s go.' },
+      { speaker: '__PARTY_2__', text: 'Then no wasted moves. Every turn counts.' },
     ],
   },
   // Gale Tournament (2026-07-12) — capstone battle NW of Artfall.
@@ -346,6 +351,7 @@ const NEW_AREA_INTRO = {
     lines: [
       { speaker: 'Narrator', color: '#888899', text: 'Word gets around fast in Gale. You\'ve proven yourself three times over, and now the region\'s best team wants a real match — full gear, no excuses.' },
       { speaker: 'Reno',     color: '#4488ff', text: '...Let\'s show them what we\'ve learned.' },
+      { speaker: '__PARTY_3__', text: 'Full gear on both sides. Finally, a fair fight.' },
     ],
   },
   // M6 — Lametus's trial, ambushed by The Corrupted One's monsters
@@ -383,6 +389,7 @@ const NEW_AREA_INTRO = {
       { speaker: 'Narrator',          color: '#888899', text: 'The Grand Arena should be packed for the trial match. Instead it\'s dead silent — torn banners, empty seats, not a soul in sight.' },
       { speaker: 'The Corrupted One', color: '#aa44ff', text: 'Looking for someone? Your little tournament has been... cancelled. I\'m taking your spot.' },
       { speaker: 'Reno',              color: '#4488ff', text: '...So you finally show yourself.' },
+      { speaker: '__PARTY_2__', text: 'Stay close, everyone. Whatever he brings, we face it together.' },
       { speaker: 'The Corrupted One', color: '#aa44ff', text: 'You\'ve survived my monsters twice now. Let\'s see how you fare against my strongest.' },
       { speaker: 'Narrator',          color: '#888899', text: 'This is unlike anything you\'ve faced before.' },
     ],
@@ -398,6 +405,7 @@ const NEW_AREA_INTRO = {
     lines: [
       { speaker: 'Narrator', color: '#888899', text: 'The Deity\'s first trial tests raw speed and endurance — no shortcuts, no tricks, just outlasting whoever she sends.' },
       { speaker: 'Reno',     color: '#4488ff', text: '...One down, six to go. Let\'s move.' },
+      { speaker: '__PARTY_2__', text: 'Keep the pace steady. She wants to see how long we last.' },
     ],
   },
   T2: {
@@ -450,6 +458,7 @@ const NEW_AREA_INTRO = {
     lines: [
       { speaker: 'Narrator', color: '#888899', text: 'North of Wrenfield, the road narrows into a boulder-strewn pass — and the boulders are moving.' },
       { speaker: 'Reno',     color: '#4488ff', text: '...Golems. Guess this is our proof.' },
+      { speaker: '__PARTY_2__', text: 'Big, slow, and made of rock. Aim for the joints.' },
     ],
   },
   // The Final Tournament (2026-08-03) — TG's own victory cutscene routes
@@ -465,6 +474,7 @@ const NEW_AREA_INTRO = {
     lines: [
       { speaker: 'Narrator', color: '#888899', text: 'The Grand Arena, sand still scorched from last time. The Corrupted One and his strongest are waiting exactly where you left them.' },
       { speaker: 'Reno',     color: '#4488ff', text: '...Round two. Let\'s finish it.' },
+      { speaker: '__PARTY_2__', text: 'This time, he doesn\'t get to walk away.' },
     ],
   },
 };
@@ -1375,6 +1385,7 @@ export class WorldMapScene extends Phaser.Scene {
             lines: [
               { speaker: 'Narrator', color: '#888899', text: 'Your team is set. Now for your exam — meet the instructor at Arena Atlros, east of the Capital.' },
               { speaker: 'Reno',     color: '#4488ff', text: '...Let\'s go.' },
+              { speaker: '__PARTY_2__', text: 'Our first fight as a team. Let\'s make it count.' },
             ],
             nextScene: 'WorldMapScene', nextSceneData: {},
           });
@@ -1403,6 +1414,7 @@ export class WorldMapScene extends Phaser.Scene {
             lines: [
               { speaker: 'Narrator', color: '#888899', text: 'Word spreads fast. Two Trials await at Arena Atlros — Altroes doesn\'t care which you take first.' },
               { speaker: 'Reno',     color: '#4488ff', text: '...Let\'s find out what we\'re really made of.' },
+              { speaker: '__PARTY_2__', text: 'Two trials, one team. Let\'s take them both.' },
             ],
             nextScene: 'WorldMapScene', nextSceneData: {},
           });

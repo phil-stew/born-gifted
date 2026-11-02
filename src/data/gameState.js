@@ -515,7 +515,7 @@ export function maxBattlePartySize(state) {
 state.battlePartyIds = null;
 export function getBattleParty(state) {
   const cap = maxBattlePartySize(state);
-  if (state.battlePartyIds?.length) {3
+  if (state.battlePartyIds?.length) {
     const chosen = state.battlePartyIds
       .map(id => state.party.find(u => u.id === id))
       .filter(Boolean)

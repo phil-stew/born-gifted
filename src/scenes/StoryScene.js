@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { stripHeroBackground } from '../data/heroSprites.js';
-import { state } from '../data/gameState.js';
+import { state, resolvePartyLines } from '../data/gameState.js';
 
 // Generic dialogue scene. Receives { lines, nextScene, nextSceneData, backdrop } via init().
 // Each line: { speaker, text, color? }
@@ -31,7 +31,9 @@ export class StoryScene extends Phaser.Scene {
     this.renoName = protagonist ? protagonist.name.split(' ')[0] : 'Reno';
     const sub = (s) => typeof s === 'string' ? s.replace(/\bReno\b/g, this.renoName) : s;
 
-    this.lines         = (data.lines ?? []).map(line => ({ ...line, speaker: sub(line.speaker), text: sub(line.text) }));
+    // Teammate lines (__PARTY_2__/__PARTY_3__) resolve here for every scene;
+    // already-resolved lines pass through unchanged.
+    this.lines         = resolvePartyLines(data.lines ?? []).map(line => ({ ...line, speaker: sub(line.speaker), text: sub(line.text) }));
     this.nextScene     = data.nextScene     ?? 'WorldMapScene';
     this.nextSceneData = data.nextSceneData ?? {};
     this.location      = sub(data.location ?? 'SIRBLANC  ·  Reno\'s Home');

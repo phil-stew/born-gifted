@@ -47,6 +47,7 @@ const CUTSCENE_AFTER = {
       { speaker:'Narrator',  color:'#888899', text:'A rider arrives from the Capital before anyone can answer, out of breath, carrying a sealed letter.' },
       { speaker:'Messenger', color:'#cc9955', text:'By the King\'s word — Lametus, east of here, has agreed to test you. Complete their trial and every kingdom will know your names.' },
       { speaker:'Reno',      color:'#4488ff', text:'...Lametus. Guess our work in Gale is done. Let\'s go.' },
+      { speaker:'__PARTY_2__', text:'A new kingdom with new rules. Let\'s stay sharp.' },
     ],
   },
   // The Golem Trial → the Final Tournament (2026-08-03, "rush to the
@@ -68,6 +69,7 @@ const CUTSCENE_AFTER = {
     lines: [
       { speaker:'Narrator',          color:'#888899', text:'Stonewake Pass falls behind, the Golem trial\'s proof in hand. Ahead, the Grand Arena has been rebuilt for the Final Tournament — banners flying again, the crowd already roaring.' },
       { speaker:'Reno',              color:'#4488ff', text:'One trial cleared. One tournament left. Let\'s go.' },
+      { speaker:'__PARTY_2__', text:'And this time, we finish what we started.' },
       { speaker:'Official',          color:'#ddcc88', text:'Trial proof accepted — you\'re through to the finals. Though the bracket\'s already full. Last slot was filled this morning. Tokens presented and everything.' },
       { speaker:'Noble Deity',       color:'#ffdd66', text:'...Reno. Those tokens on the registration table. I\'d know that gleam anywhere — that\'s the Trials\' proof. Yours.' },
       { speaker:'Reno',              color:'#4488ff', text:'We never lost those. Someone took them.' },
