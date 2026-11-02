@@ -148,6 +148,7 @@ export function buildTerrain(stageId, themeName, size) {
   const rnd = seededRandom(stageId);
   const map = themeName === 'arena' ? arenaMap(size, rnd) : themedMap(size, THEMES[themeName], rnd);
   return {
+    theme: themeName,
     tiles: [...new Set([...Object.values(map.ground), ...Object.values(map.decor)])],
     layout: (col, row) => map.ground[`${col},${row}`],
     decor: (col, row) => map.decor[`${col},${row}`],

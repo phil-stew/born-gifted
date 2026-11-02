@@ -311,7 +311,7 @@ export const MISSION_MATERIALS = {
   // random common material from its single kill. Added a small guaranteed
   // wolf-themed haul (2026-07-07 feedback: "no loot obtain after beating
   // the wolf").
-  M0b: ['fur', 'bone', 'iron_ore', 'silver_ore', 'gold_ore', 'mystic_ore'],
+  M0b: ['fur', 'bone', 'iron_ore'],
   M3:  ['iron_ore', 'leather_strip'],
   M4:  ['cave_crystal', 'shadow_ore', 'silver_ore'],
 };
@@ -323,10 +323,14 @@ export const MISSION_MATERIALS = {
 // than a fixed drop per enemy name.
 export const MONSTER_DROP_MATERIALS = ['skin', 'fur', 'bone'];
 
-export function getKillDrops(killsByType) {
+// Materials are a small chance per kill, except in caves where every kill drops one.
+const KILL_DROP_CHANCE = 0.25;
+
+export function getKillDrops(killsByType, isCave = false) {
   const drops = [];
   for (const [name, count] of Object.entries(killsByType)) {
     for (let i = 0; i < count; i++) {
+      if (!isCave && Math.random() >= KILL_DROP_CHANCE) continue;
       const id = MONSTER_DROP_MATERIALS[Math.floor(Math.random() * MONSTER_DROP_MATERIALS.length)];
       const item = getItem(id);
       if (item) drops.push({ ...item });
@@ -343,10 +347,9 @@ export function getMissionMaterials(missionId) {
 
 // ── Level-bracketed drop table (M0-M4 redesign Phase 5; originally M0a-only,
 // now every mission's post-battle equipment drop — see VictoryScene) ───────
-// Each bracket's outcomes sum to exactly 1.0 — a single weighted roll picks
-// ONE of the three listed outcomes (gear tier A, gear tier B, or a doubled
-// rare-ore/material drop), not three independent chances, matching how the
-// sheet's own per-bracket percentages always add up to 100%. The sheet's own
+// A single weighted roll picks at most ONE gear outcome per bracket; whatever
+// is left over means no gear this battle. Ore rolls separately, see
+// ORE_BRACKETS below. The sheet's own
 // brackets started at Lv10-14; a 1-9 starter bracket was added so early
 // missions (which unlock long before a realistic party hits level 10) still
 // drop something instead of nothing.
@@ -354,59 +357,76 @@ const LEVEL_BRACKETS = [
   { min:1, max:9, outcomes: [
     { kind:'gear', rarity:'common',   chance:0.30 },
     { kind:'gear', rarity:'uncommon', chance:0.30 },
-    { kind:'oreX2', chance:0.40 },
   ]},
   { min:10, max:14, outcomes: [
     { kind:'gear', rarity:'rare',      chance:0.20 },
     { kind:'gear', rarity:'uncommon',  chance:0.40 },
-    { kind:'oreX2', chance:0.40 },
   ]},
   { min:15, max:19, outcomes: [
     { kind:'gear', rarity:'rare',      chance:0.60 },
-    { kind:'oreX2', chance:0.40 },
   ]},
   { min:20, max:29, outcomes: [
     { kind:'gear', rarity:'rare',      chance:0.57 },
     { kind:'gear', rarity:'epic',      chance:0.03 },
-    { kind:'oreX2', chance:0.40 },
   ]},
   { min:30, max:Infinity, outcomes: [
     { kind:'gear', rarity:'rare',      chance:0.30 },
     { kind:'gear', rarity:'epic',      chance:0.08 },
     { kind:'gear', rarity:'legendary', chance:0.02 },
-    { kind:'oreX2', chance:0.60 },
   ]},
 ];
 // Epic and Legendary only drop once the God Trials open, however high the
 // hero's level. Before that those rolls come out Rare.
 const STORY_LOCKED_RARITY = new Set(['epic', 'legendary']);
 const BRACKET_GEAR_SLOTS = ['weapon', 'footwear', 'handwear', 'chest', 'headwear'];
-// "Rare ore or material" — silver_ore is the game's one rare-tier ore
-// (iron=uncommon, silver=rare, gold=epic, mystic=legendary per ORE_TIER_TO_RARITY).
-const BRACKET_RARE_ORE_ID = 'silver_ore';
+// Ore follows the same ladder as gear: Gold and Mystic stay locked until the
+// God Trials open. Caves always give a pair, anywhere else it's a small chance.
+const CAVE_ORE_COUNT = 2;
+const OPEN_ORE_CHANCE = 0.05;
+const ORE_BRACKETS = [
+  { min:1,  max:9,        ores: [['iron_ore', 1]] },
+  { min:10, max:19,       ores: [['iron_ore', 0.6], ['silver_ore', 0.4]] },
+  { min:20, max:29,       ores: [['silver_ore', 0.97], ['gold_ore', 0.03]] },
+  { min:30, max:Infinity, ores: [['silver_ore', 0.9], ['gold_ore', 0.08], ['mystic_ore', 0.02]] },
+];
+const STORY_LOCKED_ORE = new Set(['gold_ore', 'mystic_ore']);
 
-// Returns an array of 0-2 item objects (gear roll = 1 item, ore roll = the
-// same material ×2 as separate entries so callers can display/stack them
-// the same way killDrops already does). Brackets now cover level 1+, so this
-// only returns null for a malformed/negative level.
-export function rollBracketedDrop(level, talents = [], forClass, trialsReached = false) {
+function rollOreId(level, trialsReached) {
+  const { ores } = ORE_BRACKETS.find(b => level >= b.min && level <= b.max);
+  let roll = Math.random();
+  for (const [id, chance] of ores) {
+    roll -= chance;
+    if (roll >= 0) continue;
+    return !trialsReached && STORY_LOCKED_ORE.has(id) ? 'silver_ore' : id;
+  }
+  return ores[0][0];
+}
+
+function rollOreDrops(level, isCave, trialsReached) {
+  if (!isCave && Math.random() >= OPEN_ORE_CHANCE) return [];
+  const ore = getItem(rollOreId(level, trialsReached));
+  return ore ? Array.from({ length: isCave ? CAVE_ORE_COUNT : 1 }, () => ({ ...ore })) : [];
+}
+
+// Returns an array of 0-3 item objects: up to one piece of gear plus any ore.
+// Ore comes back as separate entries so callers can display/stack them the
+// same way killDrops already does.
+export function rollBracketedDrop(level, talents = [], forClass, { trialsReached = false, isCave = false } = {}) {
   const bracket = LEVEL_BRACKETS.find(b => level >= b.min && level <= b.max);
   if (!bracket) return null;
 
+  const drops = rollOreDrops(level, isCave, trialsReached);
   const roll = Math.random();
   let acc = 0;
   for (const outcome of bracket.outcomes) {
     acc += outcome.chance;
     if (roll >= acc) continue;
-    if (outcome.kind === 'oreX2') {
-      const ore = getItem(BRACKET_RARE_ORE_ID);
-      return ore ? [{ ...ore }, { ...ore }] : null;
-    }
     const slot = BRACKET_GEAR_SLOTS[Math.floor(Math.random() * BRACKET_GEAR_SLOTS.length)];
     const rarity = !trialsReached && STORY_LOCKED_RARITY.has(outcome.rarity) ? 'rare' : outcome.rarity;
-    return [rollGearItem({ slot, rarity, talents, forClass, cost: RARITY_GEAR_VALUE[rarity] ?? 0 })];
+    drops.push(rollGearItem({ slot, rarity, talents, forClass, cost: RARITY_GEAR_VALUE[rarity] ?? 0 }));
+    break;
   }
-  return null;
+  return drops;
 }
 
 // ── Battle-usable consumables (July 2026) ───────────────────────────────────

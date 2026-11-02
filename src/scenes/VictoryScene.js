@@ -3,6 +3,7 @@ import { isTowerFloor, isRandomTowerFloor, towerFloorOf, towerReward, winTowerFl
 import { state, addXP, xpToNext, completeMission, roleDisplayLabel, TRIAL_CLASS, sportById, currentSport, resolvePartyLines } from '../data/gameState.js';
 import { getMissionMaterials, getKillDrops, rollHealHerbDrop, rollBracketedDrop, rollGodTierClassItem } from '../data/items.js';
 import { BACKDROPS } from '../data/storyBackdrops.js';
+import { isCaveMission } from './BattleScene.js';
 import { drawButton } from '../ui/canvasButton.js';
 
 const XP_PER_ENEMY = 40;
@@ -230,7 +231,8 @@ export class VictoryScene extends Phaser.Scene {
     }
 
     // Drop loot: per-kill drops → guaranteed materials → herb chance → level-bracketed equipment
-    const killDrops = getKillDrops(this.killsByType);
+    const isCave = isCaveMission(this.missionId);
+    const killDrops = getKillDrops(this.killsByType, isCave);
     for (const item of killDrops) state.inventory.push(item);
     const materials = getMissionMaterials(this.missionId);
     for (const mat of materials) state.inventory.push(mat);
@@ -255,7 +257,7 @@ export class VictoryScene extends Phaser.Scene {
     // "single roll" shape this system already had rather than the shop's
     // "additive tiers" shape.
     const leader = state.party[0];
-    const bracketDrops = rollBracketedDrop(leader?.level ?? 1, leader?.talents ?? [], leader ? roleDisplayLabel(leader) : undefined, state.unlockedMissions.includes('T1'));
+    const bracketDrops = rollBracketedDrop(leader?.level ?? 1, leader?.talents ?? [], leader ? roleDisplayLabel(leader) : undefined, { trialsReached: state.unlockedMissions.includes('T1'), isCave });
     if (bracketDrops) for (const item of bracketDrops) state.inventory.push(item);
     // Grouped for display same as killDropSummary — the ore outcome returns
     // the same material twice (its "×2" flavor) rather than one item with a

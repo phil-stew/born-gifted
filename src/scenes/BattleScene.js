@@ -912,6 +912,10 @@ for (const { key: track, floors } of TOWER_TRACKS) {
 
 // Rolls a Random floor from scratch just before it's entered: map, weather and
 // enemies are all fresh on every attempt.
+export function isCaveMission(id) {
+  return ['cave', 'deepCave'].includes(STAGE_CONFIGS[id]?.theme);
+}
+
 export function prepareRandomTowerFloor(floor) {
   const id = towerFloorId('random', floor);
   const { place, team } = rollRandomFloor(floor, TOURNAMENT_HERO_CLASSES);
