@@ -535,7 +535,9 @@ export function getBattleParty(state) {
 // Item ids kept as plain strings (not imported from items.js) to avoid a
 // circular import — items.js already imports from this module. The task
 // board's own scene resolves these ids to display names/icons via items.js.
-const TASK_ITEM_POOL = ['heal_herb', 'iron_scrap', 'leather_strip', 'skin', 'fur', 'bone', 'iron_ore', 'mint_sprig', 'lavender_bloom', 'wild_berries'];
+// Cut from the game, so old saves drop them on load.
+const REMOVED_ITEMS = new Set(['iron_scrap', 'leather_strip']);
+const TASK_ITEM_POOL = ['heal_herb', 'skin', 'fur', 'bone', 'iron_ore', 'mint_sprig', 'lavender_bloom', 'wild_berries'];
 const TASK_NPC_POOL = ['Coach Renna', 'Old Tomas', 'Quartermaster Iyla', 'Groundskeeper Bell', 'Nurse Wen'];
 export const TASK_SLOT_COUNT = 2;
 export const TASK_REFRESH_MS = 20 * 60 * 1000;
@@ -1230,7 +1232,7 @@ export function loadGame(slot) {
         hasActed:  false, hasMoved: false,
       };
     });
-    state.inventory         = (data.inventory ?? []).map(toBaseClassItem);
+    state.inventory         = (data.inventory ?? []).filter(i => !REMOVED_ITEMS.has(i.id)).map(toBaseClassItem);
     for (const u of state.party) Object.values(u.equip).forEach(toBaseClassItem);
     state.tytrate           = data.tytrate           ?? 150;
     state.completedMissions = data.completedMissions ?? [];
@@ -1259,8 +1261,8 @@ export function loadGame(slot) {
     state.m0aTurnedIn       = data.m0aTurnedIn        ?? false;
     state.repeatCounts      = { ...(data.repeatCounts ?? {}) };
     state.academyTasks      = {
-      A1: data.academyTasks?.A1 ?? [null, null],
-      A2: data.academyTasks?.A2 ?? [null, null],
+      A1: (data.academyTasks?.A1 ?? [null, null]).map(t => REMOVED_ITEMS.has(t?.itemId) ? null : t),
+      A2: (data.academyTasks?.A2 ?? [null, null]).map(t => REMOVED_ITEMS.has(t?.itemId) ? null : t),
     };
     // Fixed content, not player-customizable — always set to the current
     // roster rather than trusting a possibly-stale stored value, so an

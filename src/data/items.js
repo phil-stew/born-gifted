@@ -9,8 +9,6 @@ export const ITEMS = [
 
   // ── Materials ─────────────────────────────────────────────────────────────
   { id:'heal_herb',    name:'Heal Herb',    type:'material', slot:null, rarity:'common',   cost:15,  stats:{}, healPct:0.20, desc:'A medicinal herb found in forest clearings. Restores 20% of max HP.' },
-  { id:'iron_scrap',   name:'Iron Scrap',   type:'material', slot:null, rarity:'common',   cost:20,  stats:{}, desc:'Salvaged metal, useful for forging.' },
-  { id:'leather_strip',name:'Leather Strip',type:'material', slot:null, rarity:'common',   cost:25,  stats:{}, desc:'Cured hide strips. Flexible and durable.' },
   // M4 upgrade materials (feed the existing Forge reinforcement mechanic —
   // kept as-is, see FORGE_RECIPES below for the separate new crafting system)
   { id:'cave_crystal', name:'Cave Crystal', type:'material', slot:null, rarity:'epic',      oreTier:4, cost:450, stats:{}, desc:'A luminous crystal formed deep in the caves. Crafts Epic gear.' },
@@ -281,8 +279,6 @@ export const MATERIAL_ICON_FRAME = {
   // No art of their own either, so each borrows its closest match.
   cave_crystal:   [782, 359, 303, 284],  // Mystic Ore
   shadow_ore:     [132, 359, 276, 284],  // Silver Ore, the darkest blue
-  iron_scrap:     [1118, 60, 268, 267],  // Iron Ore
-  leather_strip:  [144, 60,  274, 267],  // Skin
   lavender_bloom: [137, 655, 217, 298],
   wild_berries:   [397, 655, 236, 298],
   health_potion:  [694, 655, 199, 298],
@@ -313,7 +309,6 @@ export const MISSION_MATERIALS = {
   // wolf-themed haul (2026-07-07 feedback: "no loot obtain after beating
   // the wolf").
   M0b: ['fur', 'bone', 'iron_ore'],
-  M3:  ['iron_ore', 'leather_strip'],
   M4:  ['silver_ore', 'gold_ore'],
 };
 

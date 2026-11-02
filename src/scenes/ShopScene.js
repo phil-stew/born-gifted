@@ -37,7 +37,7 @@ const SHOP_INVENTORY = {
 
   academy_hilbert: [
     // Materials
-    'heal_herb', 'iron_scrap', 'health_potion', 'focus_potion', 'vitality_potion',
+    'heal_herb', 'health_potion', 'focus_potion', 'vitality_potion',
     // Universal uncommon
     'swift_helm', 'power_wraps', 'chain_vest',
     // Soccer pro
