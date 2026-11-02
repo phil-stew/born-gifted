@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { rarityColor } from '../data/items.js';
+import { STACK_CAP } from '../data/gameState.js';
 import { mount, unmount, onClick, esc } from '../ui/domUI.js';
 
 // Split out of VictoryScene (2026-07-08 feedback: a big haul routinely ran
@@ -15,6 +16,7 @@ export class LootScene extends Phaser.Scene {
 
   init(data) {
     this.allDrops      = data.allDrops      ?? [];
+    this.soldT          = data.soldT          ?? 0;
     this.nextScene      = data.nextScene      ?? 'WorldMapScene';
     this.nextSceneData  = data.nextSceneData  ?? {};
   }
@@ -37,6 +39,7 @@ export class LootScene extends Phaser.Scene {
         <div class="ui-quest-list" data-scroll-id="loot">
           ${cardsHTML || '<div class="ui-empty-note">No loot this time.</div>'}
         </div>
+        ${this.soldT ? `<div class="ui-empty-note">Full stacks (${STACK_CAP}): extras sold for ${this.soldT} T</div>` : ''}
         <div class="ui-footer"><button class="ui-action-btn" data-continue="1">Continue ▶</button></div>
       </div>
     `);

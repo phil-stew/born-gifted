@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { state, roleDisplayLabel } from '../data/gameState.js';
+import { state, roleDisplayLabel, isStackFull, STACK_CAP } from '../data/gameState.js';
 import { getItem, gearItemFrame, materialFrameName, rollGearItem, ICON_SHEET_STRIP, registerGearFrames, MATERIAL_ICON_FRAME } from '../data/items.js';
 import { stripBackgroundByKey } from '../data/heroSprites.js';
 import { playSfx, SFX } from '../audio/sound.js';
@@ -199,8 +199,9 @@ export class ShopScene extends Phaser.Scene {
   detailHTML(item) {
     if (!item) return '<div class="ui-empty-note">Select an item</div>';
     const price = this.priceOf(item);
+    const full = this.tab === 'buy' && isStackFull(item);
     const canAct = this.tab === 'buy'
-      ? state.tytrate >= price
+      ? state.tytrate >= price && !full
       : state.inventory.some(it => it.id === item.id);
     const tags = [
       item.slot ? (SLOT_LABEL[item.slot] ?? item.slot) : 'Material',
@@ -222,7 +223,7 @@ export class ShopScene extends Phaser.Scene {
       <div class="ui-item-desc">${esc(item.desc ?? '')}</div>
       ${stats}
       <button class="ui-action-btn" data-transact="1" ${canAct ? '' : 'disabled'}>
-        ${this.tab === 'buy' ? 'Buy' : 'Sell'} for ${price} Tytrate
+        ${full ? `Stack full (${STACK_CAP})` : `${this.tab === 'buy' ? 'Buy' : 'Sell'} for ${price} Tytrate`}
       </button>`;
   }
 
@@ -263,7 +264,7 @@ export class ShopScene extends Phaser.Scene {
 
   transact(item, price) {
     if (this.tab === 'buy') {
-      if (state.tytrate < price) return;
+      if (state.tytrate < price || isStackFull(item)) return;
       state.tytrate -= price;
       state.inventory.push({ ...item });
     } else {

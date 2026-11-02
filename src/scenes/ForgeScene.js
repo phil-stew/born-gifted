@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { state, roleDisplayLabel, gearLayoutForUnit, wornItemValues, classItemScale } from '../data/gameState.js';
+import { state, addItem, isStackFull, STACK_CAP, roleDisplayLabel, gearLayoutForUnit, wornItemValues, classItemScale } from '../data/gameState.js';
 import { FORGE_RECIPES, RARITY_GEAR_VALUE, rollGearItem, getItem, materialOptions, craftedRarity, materialAverage, tieredId } from '../data/items.js';
 import { playSfx, SFX } from '../audio/sound.js';
 import { playMusic } from '../audio/music.js';
@@ -150,6 +150,7 @@ export class ForgeScene extends Phaser.Scene {
 
     const chosen = this.chosenMaterials(recipe);
     const ready = this.recipeAvailable(recipe);
+    const full = ready && recipe.resultItem && isStackFull(getItem(tieredId(recipe.resultItem, craftedRarity(chosen))));
     const preview = ready ? `${rarityBadgeHTML(craftedRarity(chosen))} average ${materialAverage(chosen).toFixed(1).replace('.0', '')}` : 'Missing materials';
 
     return `
@@ -159,7 +160,7 @@ export class ForgeScene extends Phaser.Scene {
       <div class="ui-section-label">Materials needed</div>
       ${materials}
       <div class="ui-item-tags">Result: ${preview}</div>
-      <button class="ui-action-btn" data-craft="1" ${ready ? '' : 'disabled'}>Craft</button>`;
+      <button class="ui-action-btn" data-craft="1" ${ready && !full ? '' : 'disabled'}>${full ? `Stack full (${STACK_CAP})` : 'Craft'}</button>`;
   }
 
   rebuild() {
@@ -250,7 +251,7 @@ export class ForgeScene extends Phaser.Scene {
     }
 
     if (recipe.resultItem) {
-      state.inventory.push({ ...getItem(tieredId(recipe.resultItem, rarity)) });
+      addItem({ ...getItem(tieredId(recipe.resultItem, rarity)) });
       this.selectedRecipe = null;
       this.selectedMats = {};
       playSfx(this, SFX.craft);

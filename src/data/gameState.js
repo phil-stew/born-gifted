@@ -870,6 +870,30 @@ export function equipMultipliers(unit) {
   return m;
 }
 
+// Materials and potions stack to STACK_CAP per item id (2026-11-02). A pickup
+// past a full stack is sold on the spot for the shop's sell price (half
+// cost) and the Tytrate is returned so the caller can report it. Gear is
+// never capped.
+export const STACK_CAP = 30;
+
+export function stackCount(id) {
+  return state.inventory.reduce((n, i) => n + (i.id === id ? 1 : 0), 0);
+}
+
+export function isStackFull(item) {
+  return item.type === 'material' && stackCount(item.id) >= STACK_CAP;
+}
+
+export function addItem(item) {
+  if (isStackFull(item)) {
+    const price = Math.floor((item.cost ?? 0) / 2);
+    state.tytrate += price;
+    return price;
+  }
+  state.inventory.push(item);
+  return 0;
+}
+
 // Equip an item (from inventory) into a unit's slot.
 // Returns the unequipped item (or null) which goes back to inventory.
 export function equipItem(unit, item) {

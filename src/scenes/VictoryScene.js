@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { isTowerFloor, isRandomTowerFloor, towerFloorOf, towerReward, winTowerFloor } from '../data/tower.js';
-import { state, addXP, xpToNext, completeMission, roleDisplayLabel, TRIAL_CLASS, sportById, currentSport, resolvePartyLines } from '../data/gameState.js';
+import { state, addItem, addXP, xpToNext, completeMission, roleDisplayLabel, TRIAL_CLASS, sportById, currentSport, resolvePartyLines } from '../data/gameState.js';
 import { getMissionMaterials, getKillDrops, rollHealHerbDrop, rollGreenHerbDrop, rollBracketedDrop, rollGodTierClassItem } from '../data/items.js';
 import { BACKDROPS } from '../data/storyBackdrops.js';
 import { isCaveMission, isGreenMission } from './BattleScene.js';
@@ -99,7 +99,7 @@ const CUTSCENE_AFTER = {
       { speaker:'Official',    color:'#ddcc88', text:'By right of combat, before every kingdom watching — I declare this team CHAMPION of the Final Tournament!' },
       { speaker:'Narrator',    color:'#888899', text:'The roar that follows shakes the banners loose. Then, all at once, it dies — because the Noble Deity is no longer just a voice at your shoulder. She is standing on the sand with you, for everyone to see.' },
       { speaker:'Noble Deity', color:'#ffdd66', text:'Three kingdoms, one trial, one tournament, and still you\'re the ones left standing. That earns more than a title.' },
-      { speaker:'Noble Deity', color:'#ffdd66', text:'By the victor\'s right, Altroes sets the terms this age. Use it well.' },
+      { speaker:'Noble Deity', color:'#ffdd66', text:'By the victor\'s right, Altroes sets the terms for this age. Use it well.' },
       { speaker:'Reno',        color:'#4488ff', text:'Then here\'s the term: no more kingdoms hoarding what the others need. Altroes, Gale, Lametus — we share what keeps each other standing, starting now.' },
       { speaker:'__PARTY_2__', text:'...And we stop looking away when something like him starts growing in the dark. All three kingdoms. Together, this time.' },
       { speaker:'Noble Deity', color:'#ffdd66', text:'Spoken like people who\'ve earned the right to say it.' },
@@ -233,18 +233,19 @@ export class VictoryScene extends Phaser.Scene {
     // Drop loot: per-kill drops → guaranteed materials → herb chance → level-bracketed equipment
     const isCave = isCaveMission(this.missionId);
     const killDrops = getKillDrops(this.killLevels, isCave);
-    for (const item of killDrops) state.inventory.push(item);
+    let soldT = 0;
+    for (const item of killDrops) soldT += addItem(item);
     const materials = getMissionMaterials(this.missionId);
-    for (const mat of materials) state.inventory.push(mat);
+    for (const mat of materials) soldT += addItem(mat);
     const towerFirstClear = isTowerFloor(this.missionId) && this.isFirstClear;
     const tytrateReward = towerFirstClear ? towerReward(towerFloorOf(this.missionId)) : (MISSION_TYTRATE[this.missionId] ?? 0);
     if (tytrateReward) state.tytrate += tytrateReward;
     // Heal Herb: 25% chance per battle, independent of the guaranteed
     // MISSION_MATERIALS table above (which still separately guarantees one on M1).
     const herbDrop = rollHealHerbDrop();
-    if (herbDrop) state.inventory.push(herbDrop);
+    if (herbDrop) soldT += addItem(herbDrop);
     const greenHerb = isGreenMission(this.missionId) ? rollGreenHerbDrop(Math.max(1, ...this.killLevels)) : null;
-    if (greenHerb) state.inventory.push(greenHerb);
+    if (greenHerb) soldT += addItem(greenHerb);
 
     // Level-bracketed equipment drop, rolled against the protagonist's
     // level (2026-07-08 feedback: a level 20 party was still getting common
@@ -260,7 +261,7 @@ export class VictoryScene extends Phaser.Scene {
     // "additive tiers" shape.
     const leader = state.party[0];
     const bracketDrops = rollBracketedDrop(leader?.level ?? 1, leader?.talents ?? [], leader ? roleDisplayLabel(leader) : undefined, { trialsReached: state.unlockedMissions.includes('T1'), isCave });
-    if (bracketDrops) for (const item of bracketDrops) state.inventory.push(item);
+    if (bracketDrops) for (const item of bracketDrops) soldT += addItem(item);
     // Grouped for display same as killDropSummary — the ore outcome returns
     // the same material twice (its "×2" flavor) rather than one item with a
     // count field, so it needs the same id-grouping treatment.
@@ -282,7 +283,8 @@ export class VictoryScene extends Phaser.Scene {
     const godTierDrops = (trialClass && this.isFirstClear)
       ? state.party.filter(u => sportById(currentSport(u))?.class === trialClass).map(u => rollGodTierClassItem(u))
       : [];
-    for (const item of godTierDrops) state.inventory.push(item);
+    for (const item of godTierDrops) soldT += addItem(item);
+    this.soldT = soldT;
 
     // Group kill drops by item id for display (e.g. Bone × 3) — kills no
     // longer map to a fixed material per enemy name (see getKillDrops:
@@ -397,7 +399,7 @@ export class VictoryScene extends Phaser.Scene {
       ? { scene: 'LevelUpScene', data: { levelUps: this.levelUps, nextScene: afterLevelUp.scene, nextSceneData: afterLevelUp.data } }
       : afterLevelUp;
     const firstStep = this.allDrops.length > 0
-      ? { scene: 'LootScene', data: { allDrops: this.allDrops, nextScene: afterLoot.scene, nextSceneData: afterLoot.data } }
+      ? { scene: 'LootScene', data: { allDrops: this.allDrops, soldT: this.soldT, nextScene: afterLoot.scene, nextSceneData: afterLoot.data } }
       : afterLoot;
 
     const btnLabel = this.allDrops.length > 0 ? 'LOOT  ▶'

@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { towerUnlocked, isTowerFloor } from '../data/tower.js';
-import { state, saveGame, allAcademyQuestsDone, allGaleQuestsDone, resolvePartyLines, TOTAL_MISSIONS } from '../data/gameState.js';
+import { state, addItem, saveGame, allAcademyQuestsDone, allGaleQuestsDone, resolvePartyLines, TOTAL_MISSIONS } from '../data/gameState.js';
 import { stripBackgroundByKey } from '../data/heroSprites.js';
 import { BACKDROPS } from '../data/storyBackdrops.js';
 import { drawButton, drawCurrency } from '../ui/canvasButton.js';
@@ -334,7 +334,7 @@ const NEW_AREA_INTRO = {
     backdrop: BACKDROPS.galeWilds,
     lines: [
       { speaker: 'Narrator', color: '#888899', text: 'East of Zester, the wilds are thick with monsters — the local hunters have a standing bounty for anyone who can thin them out.' },
-      { speaker: 'Reno',     color: '#4488ff', text: '...Six turns, as many as we can. Let\'s go.' },
+      { speaker: 'Reno',     color: '#4488ff', text: '...Six turns to take down as many as we can. Let\'s go.' },
     ],
   },
   // Gale Tournament (2026-07-12) — capstone battle NW of Artfall.
@@ -344,7 +344,7 @@ const NEW_AREA_INTRO = {
     location: 'GALE  ·  The Tournament',
     backdrop: BACKDROPS.galeArena,
     lines: [
-      { speaker: 'Narrator', color: '#888899', text: 'Word gets around fast in Gale. Having proven yourself three times over, the region\'s best team wants a real match — full gear, no excuses.' },
+      { speaker: 'Narrator', color: '#888899', text: 'Word gets around fast in Gale. You\'ve proven yourself three times over, and now the region\'s best team wants a real match — full gear, no excuses.' },
       { speaker: 'Reno',     color: '#4488ff', text: '...Let\'s show them what we\'ve learned.' },
     ],
   },
@@ -365,7 +365,7 @@ const NEW_AREA_INTRO = {
       { speaker: '__PARTY_2__', text: '...This is where we\'re supposed to prove ourselves?' },
       { speaker: 'Reno',     color: '#4488ff', text: 'Something\'s not right with those monsters up ahead. Look how still they\'re standing. That glow around them isn\'t natural.' },
       { speaker: '__PARTY_3__', text: 'You think someone\'s controll—' },
-      { speaker: 'Narrator', color: '#888899', text: 'Before anyone can finish that thought, the monsters move as one — and the trial begins without them.' },
+      { speaker: 'Narrator', color: '#888899', text: 'Before anyone can finish that thought, the monsters move as one — and the trial begins before anyone is ready.' },
     ],
   },
   // M7 — the villain's reveal (2026-07-17, "the villian will show himself
@@ -384,7 +384,7 @@ const NEW_AREA_INTRO = {
       { speaker: 'The Corrupted One', color: '#aa44ff', text: 'Looking for someone? Your little tournament has been... cancelled. I\'m taking your spot.' },
       { speaker: 'Reno',              color: '#4488ff', text: '...So you finally show yourself.' },
       { speaker: 'The Corrupted One', color: '#aa44ff', text: 'You\'ve survived my monsters twice now. Let\'s see how you fare against my strongest.' },
-      { speaker: 'Narrator',          color: '#888899', text: 'This is unlike anything they\'ve faced before.' },
+      { speaker: 'Narrator',          color: '#888899', text: 'This is unlike anything you\'ve faced before.' },
     ],
   },
   // The Noble Deity's 7 Trials (2026-07-17) — brief, mostly-interchangeable
@@ -439,7 +439,7 @@ const NEW_AREA_INTRO = {
     location: 'LAMETUS  ·  Trial of Racquet',
     backdrop: BACKDROPS.lametusTrainingField,
     lines: [
-      { speaker: 'Narrator', color: '#888899', text: 'The last of the seven — reflexes sharp enough to return anything thrown back at you.' },
+      { speaker: 'Narrator', color: '#888899', text: 'The last of the seven — reflexes sharp enough to return anything thrown at you.' },
     ],
   },
   // The Golem Trial (2026-07-18) — north of Wrenfield, the party's
@@ -913,7 +913,7 @@ export class WorldMapScene extends Phaser.Scene {
       if (state.completedMissions.includes('M1') && !state.m1TurnedIn) {
         state.m1TurnedIn = true;
         const herb = getItem('heal_herb');
-        for (let i = 0; i < 10; i++) if (herb) state.inventory.push({ ...herb });
+        for (let i = 0; i < 10; i++) if (herb) addItem({ ...herb });
         state.tytrate += 200;
         this.scene.launch('RewardPopupScene', {
           title: 'Mission Complete',
@@ -1281,8 +1281,8 @@ export class WorldMapScene extends Phaser.Scene {
       if (!state.completedMissions.includes('M3a')) { this.scene.start('HubScene', { nodeId: 'M3' }); return; }
       state.tytrate += 100;
       const iron = getItem('iron_ore'), silver = getItem('silver_ore');
-      for (let i = 0; i < 10; i++) if (iron)   state.inventory.push({ ...iron });
-      for (let i = 0; i < 5;  i++) if (silver) state.inventory.push({ ...silver });
+      for (let i = 0; i < 10; i++) if (iron)   addItem({ ...iron });
+      for (let i = 0; i < 5;  i++) if (silver) addItem({ ...silver });
       this.scene.launch('RewardPopupScene', {
         title: 'Trial Complete',
         lines: [
@@ -1311,8 +1311,8 @@ export class WorldMapScene extends Phaser.Scene {
       if (!state.completedMissions.includes('M3b')) { this.scene.start('HubScene', { nodeId: 'M3' }); return; }
       state.tytrate += 100;
       const skin = getItem('skin'), bone = getItem('bone');
-      for (let i = 0; i < 10; i++) if (skin) state.inventory.push({ ...skin });
-      for (let i = 0; i < 10; i++) if (bone) state.inventory.push({ ...bone });
+      for (let i = 0; i < 10; i++) if (skin) addItem({ ...skin });
+      for (let i = 0; i < 10; i++) if (bone) addItem({ ...bone });
       this.scene.launch('RewardPopupScene', {
         title: 'Trial Complete',
         lines: [
@@ -1326,7 +1326,7 @@ export class WorldMapScene extends Phaser.Scene {
             location: 'THE CAPITAL  ·  Gates',
             backdrop: BACKDROPS.capital,
             lines: [
-              { speaker: 'Narrator', color: '#888899', text: 'Both trials cleared. Now go craft some armor — see the forger here in the Capital.' },
+              { speaker: 'Narrator', color: '#888899', text: 'Both trials cleared. Now go craft some armor at the Forge here in the Capital.' },
               { speaker: 'Reno',     color: '#4488ff', text: '...The forge. Let\'s see what we can make.' },
             ],
             nextScene: 'WorldMapScene', nextSceneData: {},
@@ -1350,7 +1350,7 @@ export class WorldMapScene extends Phaser.Scene {
         lines: [
           { speaker: 'Narrator', color: '#888899', text: 'The gear is solid work. You\'re almost ready for the exam.' },
           { speaker: 'Reno',     color: '#4488ff', text: '...One more thing, I take it.' },
-          { speaker: 'Narrator', color: '#888899', text: 'Visit Ester or Hilbert Academy and make a team to accompany you for the trial.' },
+          { speaker: 'Narrator', color: '#888899', text: 'Visit Ester or Hilbert Academy and form a team to join you for the exam.' },
         ],
         nextScene: 'WorldMapScene', nextSceneData: {},
       });
