@@ -21,9 +21,9 @@ const SHOP_INVENTORY = {
     'soccer_ball', 'soccer_cleats', 'soccer_jersey',
     // Football (Drace)
     'football', 'football_jersey',
-    // Basketball (Trice)
+    // Basketball
     'basketball', 'bball_shoes',
-    // Volleyball (Kael)
+    // Volleyball
     'volleyball', 'volleyball_shoes',
     // Boxing — universal combat gear
     'boxing_headgear', 'boxing_gloves',

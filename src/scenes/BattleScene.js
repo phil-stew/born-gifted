@@ -439,7 +439,7 @@ const MISSION_CONFIGS = {
   // diff-multiplier scaling already does for every mission.
   'M0a': {
     region: 'Altroes',
-    playerPos: { reno:[1,3], drace:[1,4], sela:[1,2], kael:[1,5], trice:[1,1] },
+    playerPos: { reno:[1,3], drace:[1,4], sela:[1,2] },
     enemies: [
       { col:7, row:2, ...buildMonster({ base: 'Goblin', tier: 1 }) },
       { col:8, row:6, ...buildMonster({ base: 'Goblin', tier: 1 }) },
@@ -455,7 +455,7 @@ const MISSION_CONFIGS = {
   // (2026-07-08 feedback), same tier-1 buildMonster() pattern M0a's Goblins use.
   'M0b': {
     region: 'Altroes',
-    playerPos: { reno:[1,3], drace:[1,4], sela:[1,2], kael:[1,5], trice:[1,1] },
+    playerPos: { reno:[1,3], drace:[1,4], sela:[1,2] },
     enemies: [
       // size:2 — King Wolf occupies a 2x2 block anchored here: (5,5),(6,5),
       // (5,6),(6,6) (see occupiedTiles/registerUnit in BattleScene.js). The
@@ -467,7 +467,7 @@ const MISSION_CONFIGS = {
   },
   'M1': {
     region: 'Altroes',
-    playerPos: { reno:[1,2], drace:[1,3], sela:[1,4], kael:[1,5], trice:[1,6] },
+    playerPos: { reno:[1,2], drace:[1,3], sela:[1,4] },
     // Held at 2 (was 3, 2026-08-03 "keep enemy spawn rate at 2 for the
     // first few missions until player is able to recruit more units") —
     // M1 is fought solo (Reno only; the first recruit doesn't happen
@@ -481,7 +481,7 @@ const MISSION_CONFIGS = {
   'M2': {
     region: 'Altroes',
     thunderStorm: true,
-    playerPos: { reno:[1,3], drace:[1,4], sela:[1,2], kael:[1,5], trice:[1,1] },
+    playerPos: { reno:[1,3], drace:[1,4], sela:[1,2] },
     enemies: [
       { col:7, row:2, name:'Boar', spriteKey:'boar-idle', animKey:'boar-idle', spriteScale:0.35, moveSpeed:5, speed:4, strength:12, stamina:8, endurance:9, level:2, designation:'C' },
       { col:8, row:7, name:'Boar', spriteKey:'boar-idle', animKey:'boar-idle', spriteScale:0.35, moveSpeed:5, speed:4, strength:12, stamina:8, endurance:9, level:2, designation:'C' },
@@ -497,7 +497,7 @@ const MISSION_CONFIGS = {
     // still solo-Reno here too (recruit_pending comes after both Capital
     // test battles, see capitalQuest's stage order in WorldMapScene.js).
     region: 'Altroes',
-    playerPos: { reno:[1,3], drace:[1,4], sela:[1,2], kael:[1,5], trice:[1,1] },
+    playerPos: { reno:[1,3], drace:[1,4], sela:[1,2] },
     enemies: [
       { col:7, row:2, ...buildMonster({ base: 'Goblin', tier: 1 }) },
       { col:8, row:5, ...buildMonster({ base: 'Goblin', tier: 1 }) },
@@ -507,7 +507,7 @@ const MISSION_CONFIGS = {
     // Hilbert Low Lands — test 2: 2 Lions, tier 2 (slightly stronger than
     // the first test, matching the escalating-trial pacing).
     region: 'Altroes',
-    playerPos: { reno:[1,3], drace:[1,4], sela:[1,2], kael:[1,5], trice:[1,1] },
+    playerPos: { reno:[1,3], drace:[1,4], sela:[1,2] },
     enemies: [
       { col:7, row:3, ...buildMonster({ base: 'Lion', tier: 2 }) },
       { col:8, row:6, ...buildMonster({ base: 'Lion', tier: 2 }) },
@@ -524,7 +524,7 @@ const MISSION_CONFIGS = {
     // M3b's own Lion tier — a reasonable "same difficulty class" default,
     // not specified by the sheet). Standard win condition (all dead).
     region: 'Altroes',
-    playerPos: { reno:[1,3], drace:[1,4], sela:[1,2], kael:[1,5], trice:[1,1] },
+    playerPos: { reno:[1,3], drace:[1,4], sela:[1,2] },
     enemies: [
       { col:6, row:4, ...buildMonster({ base: 'Lion', kind: 'unique', name: 'King Lion' }) },
       { col:8, row:2, ...buildMonster({ base: 'Lion', tier: 2 }) },
@@ -540,7 +540,7 @@ const MISSION_CONFIGS = {
     // winCondition is boss-only: the regular Goblins (starting AND
     // wave-spawned) never need to be cleared, only the King.
     region: 'Altroes',
-    playerPos: { reno:[1,3], drace:[1,4], sela:[1,2], kael:[1,5], trice:[1,1] },
+    playerPos: { reno:[1,3], drace:[1,4], sela:[1,2] },
     enemies: [
       { col:7, row:4, ...buildMonster({ base: 'Goblin', kind: 'unique', name: 'Goblin King' }) },
       { col:8, row:2, ...buildMonster({ base: 'Goblin', tier: 1 }) },
@@ -561,7 +561,7 @@ const MISSION_CONFIGS = {
     // Wyvern/Hawk have no sprite loaded by default in this scene
     // (monsterSpriteInfos only preloads Wolf/Boar/Deer/Goblin/Lion).
     region: 'Altroes',
-    playerPos: { reno:[1,3], drace:[1,4], sela:[1,2], kael:[1,5], trice:[1,1] },
+    playerPos: { reno:[1,3], drace:[1,4], sela:[1,2] },
     enemies: () => {
       const [s1, s2, s3] = pickRandomSpecies(3);
       return [
@@ -585,7 +585,7 @@ const MISSION_CONFIGS = {
     // "1 elevated + N regular" shape as A2a's King Lion. Standard win
     // condition (all three dead).
     region: 'Altroes',
-    playerPos: { reno:[1,3], drace:[1,4], sela:[1,2], kael:[1,5], trice:[1,1] },
+    playerPos: { reno:[1,3], drace:[1,4], sela:[1,2] },
     enemies: [
       { col:6, row:4, ...buildMonster({ base: 'Dragon', kind: 'boss' }) },
       { col:8, row:2, ...buildMonster({ base: 'Wyvern', tier: 2 }) },
@@ -606,7 +606,7 @@ const MISSION_CONFIGS = {
     // "Rock" species in MONSTER_BASE_STATS) with a procedurally-generated
     // placeholder texture (see spawnEnemyVisual's ensureRockTexture).
     region: 'Altroes',
-    playerPos: { reno:[1,3], drace:[1,4], sela:[1,2], kael:[1,5], trice:[1,1] },
+    playerPos: { reno:[1,3], drace:[1,4], sela:[1,2] },
     turnLimit: 10,
     enemies: [
       {
@@ -631,7 +631,7 @@ const MISSION_CONFIGS = {
   // stat table.
   'M4': {
     region: 'Altroes',
-    playerPos: { reno:[1,3], drace:[1,4], sela:[1,2], kael:[1,5], trice:[1,1] },
+    playerPos: { reno:[1,3], drace:[1,4], sela:[1,2] },
     enemyHeroClasses: ['Hockey Player'],
     enemies: () => [
       tournamentEnemyDef(5, 5, 'Hockey Player', 10, { speed:12, strength:15, stamina:44, endurance:40 }, 'common'),
@@ -662,7 +662,7 @@ const MISSION_CONFIGS = {
   // quality changed).
   'AT1': {
     region: 'Altroes',
-    playerPos: { reno:[1,3], drace:[1,4], sela:[1,2], kael:[1,5], trice:[1,1], zora:[1,0] },
+    playerPos: { reno:[1,3], drace:[1,4], sela:[1,2], zora:[1,0] },
     enemyHeroClasses: TOURNAMENT_HERO_CLASSES,
     enemies: () => {
       const classes = pickRandomHeroClasses(4);
@@ -673,7 +673,7 @@ const MISSION_CONFIGS = {
   },
   'AT2': {
     region: 'Altroes',
-    playerPos: { reno:[1,3], drace:[1,4], sela:[1,2], kael:[1,5], trice:[1,1], zora:[1,0] },
+    playerPos: { reno:[1,3], drace:[1,4], sela:[1,2], zora:[1,0] },
     enemyHeroClasses: TOURNAMENT_HERO_CLASSES,
     enemies: () => {
       const classes = pickRandomHeroClasses(4);
@@ -700,7 +700,7 @@ const MISSION_CONFIGS = {
   'DK': {
     blizzard: true,
     region: 'Gale',
-    playerPos: { reno:[1,3], drace:[1,4], sela:[1,2], kael:[1,5], trice:[1,1], zora:[1,0] },
+    playerPos: { reno:[1,3], drace:[1,4], sela:[1,2], zora:[1,0] },
     enemies: [
       { col:5, row:5, ...buildMonster({ base: 'Dragon', kind: 'boss', name: 'Alpha King Dragon' }), level: 16 },
     ],
@@ -722,7 +722,7 @@ const MISSION_CONFIGS = {
   'MH': {
     blizzard: true,
     region: 'Gale',
-    playerPos: { reno:[1,3], drace:[1,4], sela:[1,2], kael:[1,5], trice:[1,1], zora:[1,0] },
+    playerPos: { reno:[1,3], drace:[1,4], sela:[1,2], zora:[1,0] },
     turnLimit: 6,
     turnLimitVictory: true,
     enemies: () => {
@@ -742,7 +742,7 @@ const MISSION_CONFIGS = {
   // the actual endgame-so-far fight.
   'GT': {
     region: 'Gale',
-    playerPos: { reno:[1,3], drace:[1,4], sela:[1,2], kael:[1,5], trice:[1,1], zora:[1,0] },
+    playerPos: { reno:[1,3], drace:[1,4], sela:[1,2], zora:[1,0] },
     enemyHeroClasses: TOURNAMENT_HERO_CLASSES,
     enemies: () => {
       const classes = pickRandomHeroClasses(4);
@@ -773,7 +773,7 @@ const MISSION_CONFIGS = {
   'M6': {
     region: 'Lametus',
     enemyFirst: true,
-    playerPos: { reno:[1,3], drace:[1,4], sela:[1,2], kael:[1,5], trice:[1,1], zora:[1,0] },
+    playerPos: { reno:[1,3], drace:[1,4], sela:[1,2], zora:[1,0] },
     enemies: [
       { col:5, row:5, ...buildMonster({ base: 'Dragon', kind: 'boss', name: 'Ashveil, the Corrupted' }), level: 16, corrupted: true },
       { col:7, row:2, ...buildMonster({ base: 'Wyvern', tier: 3 }), corrupted: true },
@@ -800,7 +800,7 @@ const MISSION_CONFIGS = {
   'M7': {
     region: 'Lametus',
     scriptedDefeat: true,
-    playerPos: { reno:[1,3], drace:[1,4], sela:[1,2], kael:[1,5], trice:[1,1], zora:[1,0] },
+    playerPos: { reno:[1,3], drace:[1,4], sela:[1,2], zora:[1,0] },
     enemies: [
       { col:5, row:4, ...buildMonster({ base: 'Dragon', kind: 'boss', name: "The Corrupted One's Champion" }), level: 20, corrupted: true, oneShotKill: true, fixedMaxHp: 999999 },
       { col:5, row:6, ...buildMonster({ base: 'Wyvern', kind: 'boss', name: "The Corrupted One's Herald" }), level: 20, corrupted: true, oneShotKill: true, fixedMaxHp: 999999 },
@@ -823,13 +823,13 @@ const MISSION_CONFIGS = {
   // — checks the PLAYER's own classGrouping, entirely independent of what
   // enemy is fought), so this swap doesn't touch the God Tier drop logic
   // at all. No epic gear — the point of the trial is the fight itself.
-  'T1': { region: 'Lametus', playerPos: { reno:[1,3], drace:[1,4], sela:[1,2], kael:[1,5], trice:[1,1], zora:[1,0] }, enemies: [{ col:7, row:5, ...buildMonster({ base: 'Deer',   kind: 'boss', statMult: { speed:13,  strength:13,  stamina:13,  endurance:13  } }), level: 30 }] },
-  'T2': { region: 'Lametus', playerPos: { reno:[1,3], drace:[1,4], sela:[1,2], kael:[1,5], trice:[1,1], zora:[1,0] }, enemies: [{ col:7, row:5, ...buildMonster({ base: 'Lion',   kind: 'boss', statMult: { speed:9.6,  strength:9.6,  stamina:9.6,  endurance:9.6  } }), level: 30 }] },
-  'T3': { region: 'Lametus', playerPos: { reno:[1,3], drace:[1,4], sela:[1,2], kael:[1,5], trice:[1,1], zora:[1,0] }, enemies: [{ col:7, row:5, ...buildMonster({ base: 'Wyvern', kind: 'boss', statMult: { speed:9.1,  strength:9.1,  stamina:9.1,  endurance:9.1  } }), level: 30 }] },
-  'T4': { region: 'Lametus', playerPos: { reno:[1,3], drace:[1,4], sela:[1,2], kael:[1,5], trice:[1,1], zora:[1,0] }, enemies: [{ col:7, row:5, ...buildMonster({ base: 'Wolf',   kind: 'boss', statMult: { speed:12,  strength:12,  stamina:12,  endurance:12  } }), level: 30 }] },
-  'T5': { region: 'Lametus', playerPos: { reno:[1,3], drace:[1,4], sela:[1,2], kael:[1,5], trice:[1,1], zora:[1,0] }, enemies: [{ col:7, row:5, ...buildMonster({ base: 'Boar',   kind: 'boss', statMult: { speed:8.7,  strength:8.7,  stamina:8.7,  endurance:8.7  } }), level: 30 }] },
-  'T6': { region: 'Lametus', playerPos: { reno:[1,3], drace:[1,4], sela:[1,2], kael:[1,5], trice:[1,1], zora:[1,0] }, enemies: [{ col:7, row:5, ...buildMonster({ base: 'Goblin', kind: 'boss', statMult: { speed:13,  strength:13,  stamina:13,  endurance:13  } }), level: 30 }] },
-  'T7': { region: 'Lametus', playerPos: { reno:[1,3], drace:[1,4], sela:[1,2], kael:[1,5], trice:[1,1], zora:[1,0] }, enemies: [{ col:7, row:5, ...buildMonster({ base: 'Dragon', kind: 'boss', statMult: { speed:7.1,  strength:7.1,  stamina:7.1,  endurance:7.1  } }), level: 30 }] },
+  'T1': { region: 'Lametus', playerPos: { reno:[1,3], drace:[1,4], sela:[1,2], zora:[1,0] }, enemies: [{ col:7, row:5, ...buildMonster({ base: 'Deer',   kind: 'boss', statMult: { speed:13,  strength:13,  stamina:13,  endurance:13  } }), level: 30 }] },
+  'T2': { region: 'Lametus', playerPos: { reno:[1,3], drace:[1,4], sela:[1,2], zora:[1,0] }, enemies: [{ col:7, row:5, ...buildMonster({ base: 'Lion',   kind: 'boss', statMult: { speed:9.6,  strength:9.6,  stamina:9.6,  endurance:9.6  } }), level: 30 }] },
+  'T3': { region: 'Lametus', playerPos: { reno:[1,3], drace:[1,4], sela:[1,2], zora:[1,0] }, enemies: [{ col:7, row:5, ...buildMonster({ base: 'Wyvern', kind: 'boss', statMult: { speed:9.1,  strength:9.1,  stamina:9.1,  endurance:9.1  } }), level: 30 }] },
+  'T4': { region: 'Lametus', playerPos: { reno:[1,3], drace:[1,4], sela:[1,2], zora:[1,0] }, enemies: [{ col:7, row:5, ...buildMonster({ base: 'Wolf',   kind: 'boss', statMult: { speed:12,  strength:12,  stamina:12,  endurance:12  } }), level: 30 }] },
+  'T5': { region: 'Lametus', playerPos: { reno:[1,3], drace:[1,4], sela:[1,2], zora:[1,0] }, enemies: [{ col:7, row:5, ...buildMonster({ base: 'Boar',   kind: 'boss', statMult: { speed:8.7,  strength:8.7,  stamina:8.7,  endurance:8.7  } }), level: 30 }] },
+  'T6': { region: 'Lametus', playerPos: { reno:[1,3], drace:[1,4], sela:[1,2], zora:[1,0] }, enemies: [{ col:7, row:5, ...buildMonster({ base: 'Goblin', kind: 'boss', statMult: { speed:13,  strength:13,  stamina:13,  endurance:13  } }), level: 30 }] },
+  'T7': { region: 'Lametus', playerPos: { reno:[1,3], drace:[1,4], sela:[1,2], zora:[1,0] }, enemies: [{ col:7, row:5, ...buildMonster({ base: 'Dragon', kind: 'boss', statMult: { speed:7.1,  strength:7.1,  stamina:7.1,  endurance:7.1  } }), level: 30 }] },
 
   // The Golem Trial (2026-07-18, "North of A3 they will fight the Golems
   // as there last trial") — a real, winnable fight (unlike M7), north of
@@ -842,7 +842,7 @@ const MISSION_CONFIGS = {
   'TG': {
     eruption: true,
     region: 'Lametus',
-    playerPos: { reno:[1,3], drace:[1,4], sela:[1,2], kael:[1,5], trice:[1,1], zora:[1,0] },
+    playerPos: { reno:[1,3], drace:[1,4], sela:[1,2], zora:[1,0] },
     enemies: [
       { col:5, row:5, ...buildMonster({ base: 'Golem', kind: 'boss', statMult: { speed: 4, strength: 16, stamina: 4.4, endurance: 4.4 } }), level: 30 },
       { col:7, row:3, ...buildMonster({ base: 'Golem', tier: 3, statMult: { speed: 4, strength: 12, stamina: 4.4, endurance: 4.4 } }), level: 30 },
@@ -869,7 +869,7 @@ const MISSION_CONFIGS = {
   // procedural texture) — Bear/Hawk still have neither, see monsters.js.
   'FT': {
     region: 'Lametus',
-    playerPos: { reno:[1,3], drace:[1,4], sela:[1,2], kael:[1,5], trice:[1,1], zora:[1,0] },
+    playerPos: { reno:[1,3], drace:[1,4], sela:[1,2], zora:[1,0] },
     enemies: [
       { col:5, row:5, ...buildMonster({ base: 'Dragon', kind: 'boss', name: 'The Corrupted One', statMult: { speed: 6.2, strength: 9, stamina: 6.2, endurance: 6.2 } }), level: 30, corrupted: true, isCorruptedOneBoss: true },
       { col:7, row:2, ...buildMonster({ base: 'Wyvern', kind: 'boss', statMult: { speed: 5.5, strength: 8, stamina: 5.5, endurance: 5.5 } }), level: 30, corrupted: true },
@@ -885,7 +885,7 @@ const MISSION_CONFIGS = {
   // above, 2026-07-17 — unrelated to the one removed here.)
 };
 
-const towerPlayerPos = { reno:[1,3], drace:[1,4], sela:[1,2], kael:[1,5], trice:[1,1], zora:[1,0] };
+const towerPlayerPos = { reno:[1,3], drace:[1,4], sela:[1,2], zora:[1,0] };
 const towerHuman = (col, row, heroClass, floor, element) => ({
   ...tournamentEnemyDef(col, row, heroClass, towerFloorLevel(floor), towerHumanStats(floor), towerHumanGear(floor)), element,
 });
@@ -1275,8 +1275,8 @@ export class BattleScene extends Phaser.Scene {
 
     // ── Player units — read live stats from gameState ─────────────────────
 
-    // missionCfg.playerPos only has entries for the 6 fixed FULL_ROSTER ids
-    // (reno/drace/sela/kael/trice/zora) — a generic recruit (recruitNewUnit,
+    // missionCfg.playerPos only has entries for the fixed FULL_ROSTER ids
+    // (reno/drace/sela/zora) — a generic recruit (recruitNewUnit,
     // 2026-07-08 feedback) has an id like "recruit_3" that's never in that
     // map, so every one of them would fall back to the exact same [1, 1] and
     // stack invisibly on top of each other. usedStartTiles bumps any

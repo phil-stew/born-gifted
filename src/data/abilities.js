@@ -123,7 +123,7 @@ export const ABILITIES = {
     desc: '1.6× dmg  ·  pierce 2  ·  pushes back 1  ·  CD 3',
   },
 
-  // ── Spiker (Kael) ──────────────────────────────────────────────────────────
+  // ── Spiker ──────────────────────────────────────────────────────────
   spike: {
     id: 'spike', name: 'Spike', icon: '⬇', category: 'special',
     cost: 3, range: 3, targetType: 'enemy', multiplier: 2.0,
@@ -142,7 +142,7 @@ export const ABILITIES = {
     desc: '+20% ATK this turn  ·  CD 3',
   },
 
-  // ── Center (Trice) ─────────────────────────────────────────────────────────
+  // ── Center ─────────────────────────────────────────────────────────
   post_up: {
     id: 'post_up', name: 'Post Up', icon: '🏀', category: 'special',
     cost: 3, range: 1, targetType: 'enemy', multiplier: 2.6,

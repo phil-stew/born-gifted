@@ -11,7 +11,7 @@ import {
 import { mount, unmount, onClick, esc } from '../ui/domUI.js';
 import { DIFFICULTIES } from '../data/difficulty.js';
 
-// A few story characters (Drace/Sela/Trice) use one fixed, single-tier class
+// A few story characters (Drace/Sela) use one fixed, single-tier class
 // instead of a promotion chain — see FULL_ROSTER's chainId:null entries in
 // gameState.js. Named here just for the reference note in the Classes tab.
 const STANDALONE_CLASSES = [

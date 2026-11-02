@@ -53,7 +53,7 @@ export const ITEMS = [
   { id:'soccer_ball_pro',    sport:'Soccer', name:'Pro Match Ball',      slot:'weapon',   rarity:'uncommon', cost:140, stats:{ strength:2, speed:1 },      desc:'Tournament-grade ball with tight spin control.' },
 
   // ══════════════════════════════════════════════════════════════════════════
-  // BASKETBALL  (Trice)
+  // BASKETBALL
   // ══════════════════════════════════════════════════════════════════════════
   { id:'bball_jersey',      sport:'Basketball', name:'Basketball Jersey',     slot:'chest',    rarity:'common',   cost:60,  stats:{ stamina:2 },                desc:'Loose-fit jersey for fast court play.' },
   { id:'bball_jersey_pro',  sport:'Basketball', name:'Pro Basketball Jersey', slot:'chest',    rarity:'uncommon', cost:155, stats:{ stamina:3, endurance:1 },  desc:'Reinforced jersey used in the championship league.' },
@@ -73,7 +73,7 @@ export const ITEMS = [
   { id:'football_pro',         sport:'Football', name:'Pro Football',          slot:'weapon',   rarity:'uncommon', cost:150, stats:{ strength:3, endurance:1 },  desc:'Tournament-grade pigskin with fire stitch.' },
 
   // ══════════════════════════════════════════════════════════════════════════
-  // VOLLEYBALL  (Kael)
+  // VOLLEYBALL
   // ══════════════════════════════════════════════════════════════════════════
   { id:'volleyball_jersey',     sport:'Volleyball', name:'Volleyball Jersey',     slot:'chest',    rarity:'common',   cost:58,  stats:{ speed:1, stamina:1 },      desc:'Sleeveless jersey for quick arm swings.' },
   { id:'volleyball_jersey_pro', sport:'Volleyball', name:'Pro Volleyball Jersey', slot:'chest',    rarity:'uncommon', cost:150, stats:{ speed:2, stamina:2 },      desc:'Wind-element infused jersey for spikers.' },

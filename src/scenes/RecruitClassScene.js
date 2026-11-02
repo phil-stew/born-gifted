@@ -10,7 +10,7 @@ import { drawBackButton } from '../ui/canvasButton.js';
 
 // Recruit flow: same sport → role → element → talent1 → talent2 choice
 // machine as CharacterCreationScene (the protagonist's own new-game flow),
-// reused here for roster characters (Drace/Sela/Kael/Trice/Zora) so the
+// reused here for roster characters (Drace/Sela/Zora) so the
 // player picks their class too instead of it being preset — followed by a
 // deliberately loud "joined the team" announcement (camera flash + big
 // banner + portrait) before moving on. `recruitIds` is a queue: this scene

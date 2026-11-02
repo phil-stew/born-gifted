@@ -398,7 +398,7 @@ export function promoteUnit(unit, tier, roleId, sportId) {
 // Full character roster — characters join the party as the story progresses.
 // Reno/Zora run the full runner_striker chain (Runner → Striker → Ace
 // Attacker, per the redesign's own note confirming Reno's T3 Rugby role).
-// Sela/Drace/Trice were standalone single-tier classes (Goalkeeper/
+// Sela/Drace were standalone single-tier classes (Goalkeeper/
 // Linebacker/Center, no T2/T3) — folded into their new sport+role per the
 // Implementation Checklist, with no chainId so they never see a promotion
 // prompt (matching their old "no further tier" behavior exactly).
@@ -412,12 +412,6 @@ export const FULL_ROSTER = [
   { id:'sela',  name:'Sela Vorne',     initials:'SE', color:0x44cccc, element:'Water',
     chainId:null, t1Sport:'football_soccer', t1Role:'goalkeeper_soccer', t2Sport:null, t2Role:null, t3Sport:null, t3Role:null,
     level:1, xp:0, speed:9,  strength:8,  stamina:12, endurance:13, moveSpeed:3, talents:['Endurance','Stamina'] },
-  { id:'kael',  name:'Kael Druno',     initials:'KA', color:0xff8844, element:'Wind',
-    chainId:'netballer', t1Sport:'netball', t1Role:'goal_attack', t2Sport:'volleyball', t2Role:'spiker', t3Sport:'basketball', t3Role:'ace_attack_bball',
-    level:1, xp:0, speed:10, strength:9,  stamina:11, endurance:9,  moveSpeed:4, talents:['Stamina','Endurance'] },
-  { id:'trice', name:'Trice Ballow',   initials:'TR', color:0xaa44ff, element:'Earth',
-    chainId:null, t1Sport:'basketball', t1Role:'ace_defence_bball', t2Sport:null, t2Role:null, t3Sport:null, t3Role:null,
-    level:1, xp:0, speed:10, strength:9,  stamina:10, endurance:10, moveSpeed:5, talents:['Strength','Endurance'] },
   { id:'zora',  name:'Zora Fen',       initials:'ZO', color:0xff44aa, element:'Lightning',
     chainId:'runner_striker', t1Sport:'running', t1Role:'runner', t2Sport:'football_soccer', t2Role:'striker', t3Sport:'rugby', t3Role:'ace_attacker_rugby',
     level:1, xp:0, speed:15, strength:7,  stamina:8,  endurance:7,  moveSpeed:6, talents:['Speed','Speed'] },
@@ -938,7 +932,7 @@ export const MAX_ROSTER_SIZE = 20;
 
 let genericRecruitCounter = 1;
 // Recruit a brand-new, player-named unit (as opposed to recruitWithChoice,
-// which reactivates one of the 6 fixed FULL_ROSTER story characters) —
+// which reactivates one of the fixed FULL_ROSTER story characters) —
 // generated id/initials/color, everything else chosen the same way a
 // FULL_ROSTER recruit or the protagonist is (sport/role/talents/element).
 // Returns null (no-op) if the roster is already at MAX_ROSTER_SIZE.
@@ -994,13 +988,9 @@ export function equipPassive(unit, slotIndex, passiveId) {
   unit.classSkills[slotIndex] = passiveId;
 }
 
-// Kael/Trice never got a working recruit path after M5/M6 were removed
-// (2026-07-11, "going to rewrite"), but a few story cutscenes still had
-// lines hard-attributed to them by name — reading as a stranger speaking
-// on the player's behalf for anyone who never had either in the party
-// (2026-08-04 fix). Drace has the same problem despite being recruitable:
-// recruiting Drace is optional, and PartyScene allows dismissing anyone
-// after. Resolved dynamically instead of hardcoded — a cutscene's `lines`
+// A few story cutscenes have lines spoken by a party member who may not be
+// there, since recruiting is optional and PartyScene allows dismissing
+// anyone. Resolved dynamically instead of hardcoded — a cutscene's `lines`
 // mark a placeholder speaker as `__PARTY_2__`/`__PARTY_3__` (1-indexed,
 // matching "2nd/3rd party member"), and this swaps in whoever's ACTUALLY
 // in that roster slot at cutscene time, or drops the line entirely if the
