@@ -1064,18 +1064,21 @@ button.ui-quest-card { color: inherit; font: inherit; text-align: left; cursor: 
   --ui-accent: #8a3d12;
   --ui-accent-soft: rgba(138, 61, 18, 0.12);
   --ui-border: rgba(90, 60, 30, 0.35);
-  background: linear-gradient(#2c1c10, #1c110a);
+  background:
+    linear-gradient(rgba(44, 28, 16, 0.55), rgba(28, 17, 10, 0.55)),
+    url('/world/title/mapbackg.webp') center / cover no-repeat,
+    #1c110a;
   font-family: Georgia, 'Times New Roman', serif;
 }
-.ui-forge-paper .ui-topbar { color: #f0dfba; border-color: rgba(240, 223, 186, 0.2); }
+.ui-forge-paper .ui-topbar { color: #f0dfba; border-color: rgba(240, 223, 186, 0.2); background: rgba(28, 17, 10, 0.6); }
 .ui-forge-paper .ui-title { color: #f0dfba; }
 .ui-forge-paper .ui-currency { color: #f0c870; }
 .ui-forge-paper .ui-navbtn { color: #f0dfba; border-color: rgba(240, 223, 186, 0.35); background: transparent; }
 .ui-forge-paper .ui-panel {
   color: var(--ui-text);
   background:
-    radial-gradient(ellipse at center, rgba(255, 245, 215, 0.55), rgba(150, 105, 55, 0.28) 100%),
-    #e6d3a8;
+    radial-gradient(ellipse at center, rgba(255, 245, 215, 0.45), rgba(150, 105, 55, 0.22) 100%),
+    rgba(230, 211, 168, 0.8);
   border: 1px solid #8a6a3f;
   box-shadow: inset 0 0 22px rgba(95, 60, 20, 0.35);
 }
