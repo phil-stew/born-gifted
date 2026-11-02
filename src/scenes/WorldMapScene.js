@@ -15,7 +15,7 @@ import { currentObjective } from '../data/objective.js';
 // source image, always drawn "cover"-fit against whatever the live canvas
 // size turns out to be (see computeGameWidth in main.js — the canvas widens
 // per-device to cut down on FIT-mode letterboxing). Every map-relative
-// coordinate below (NODES, ARC_LABEL_POS, drawScenery's placements, the 3
+// coordinate below (NODES, drawScenery's placements, the 3
 // kingdom-name labels in drawBackground) is defined in that image's own
 // fixed pixel space, NOT screen pixels — mapPt() converts to the live
 // screen position at draw time. This is what makes them resolution-
@@ -469,19 +469,6 @@ const NEW_AREA_INTRO = {
   },
 };
 
-// Also 1024×1024 image-space (see the mapPt comment above NODES).
-const ARC_LABEL_POS = {
-  Home:       { x: 77,  y: 512 },
-  Tutorial:   { x: 307, y: 294 },
-  Capital:    { x: 370, y: 267 },
-  Academy:    { x: 467, y: 518 },
-  Selection:  { x: 883, y: 294 },
-  Tournament: { x: 768, y: 790 },
-  Blight:     { x: 870, y: 557 },
-  // Shifted to dodge TG's node — see NODES.
-  Lametus:    { x: 698, y: 723 },
-};
-
 // tiles/mapasset/treesrock.png — 7 cols × 4 rows of decorative scenery icons
 // (trees / rock & ore piles / volcanoes / mountains). Only used here as
 // ambient corner dressing for the world map — named cells are just the
@@ -585,7 +572,6 @@ export class WorldMapScene extends Phaser.Scene {
     this.drawBackground(width, height);
     this.drawScenery();
     this.drawConnections();
-    this.drawArcLabels();
     this.drawNodes();
     this.drawUI(width, height);
     this.drawHeroMarker();
@@ -680,18 +666,6 @@ export class WorldMapScene extends Phaser.Scene {
     for (let pos = 0; pos < dist; pos += dashLen + gapLen) {
       const ex = Math.min(pos + dashLen, dist);
       gfx.lineBetween(x1 + ux * pos, y1 + uy * pos, x1 + ux * ex, y1 + uy * ex);
-    }
-  }
-
-  drawArcLabels() {
-    const { width, height } = this.scale;
-    for (const [arc, pos] of Object.entries(ARC_LABEL_POS)) {
-      const hex = '#' + ARC_COLORS[arc].toString(16).padStart(6, '0');
-      const { x, y } = mapPt(pos.x, pos.y, width, height);
-      this.add.text(x, y, arc.toUpperCase(), {
-        fontSize: '15px', fontFamily: 'monospace', fontStyle: 'bold', color: hex,
-        stroke: '#000000', strokeThickness: 4,
-      }).setOrigin(0.5);
     }
   }
 
