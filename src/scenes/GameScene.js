@@ -102,12 +102,20 @@ export class GameScene extends Phaser.Scene {
 
     // Dev splash — plays once on a true cold boot, never on skipCrawl (that's
     // the "return to title from world map" path, not a fresh launch).
-    this.splashText = this.add.text(cx, cy, 'New Dev By Philly Stew Presents', {
-      fontSize: '15px',
-      fontFamily: 'monospace',
-      color: '#888899',
-      align: 'center',
+    // Studio card (2026-11-02): name, a gold rule that draws outward, then
+    // "presents" and the founding year.
+    this.splashName = this.add.text(cx, cy - 22, 'F L U X J A M   S T U D I O', {
+      fontSize: '30px', fontFamily: 'Georgia, serif', fontStyle: 'bold', color: '#f2ead8',
+      shadow: { offsetX: 0, offsetY: 2, color: '#000000', blur: 12, fill: true },
     }).setOrigin(0.5).setAlpha(0);
+    this.splashRule = this.add.rectangle(cx, cy + 6, Math.min(360, width - 80), 2, 0xd4a94a).setScale(0, 1).setAlpha(0.9);
+    this.splashPresents = this.add.text(cx, cy + 32, 'presents', {
+      fontSize: '17px', fontFamily: 'Georgia, serif', fontStyle: 'italic', color: '#c9b991',
+    }).setOrigin(0.5).setAlpha(0);
+    this.splashFounded = this.add.text(cx, height - 40, 'FOUNDED  2026', {
+      fontSize: '13px', fontFamily: 'Georgia, serif', color: '#8f8873',
+    }).setOrigin(0.5).setAlpha(0);
+    this.splashParts = [this.splashName, this.splashRule, this.splashPresents, this.splashFounded];
 
     // Crawl line
     this.crawlText = this.add.text(cx, cy - 16, '', {
@@ -167,11 +175,11 @@ export class GameScene extends Phaser.Scene {
 
   showSplash() {
     this.canAdvance = false;
+    this.tweens.add({ targets: this.splashName, alpha: 1, duration: 900, ease: 'Power1' });
+    this.tweens.add({ targets: this.splashRule, scaleX: 1, duration: 800, delay: 500, ease: 'Cubic.easeOut' });
+    this.tweens.add({ targets: this.splashFounded, alpha: 1, duration: 700, delay: 900 });
     this.tweens.add({
-      targets: this.splashText,
-      alpha: 1,
-      duration: 700,
-      ease: 'Power1',
+      targets: this.splashPresents, alpha: 1, duration: 700, delay: 1200, ease: 'Power1',
       onComplete: () => {
         this.canAdvance = true;
         this.autoTimer = this.time.delayedCall(1800, () => this.advanceSplash());
@@ -184,7 +192,7 @@ export class GameScene extends Phaser.Scene {
     this.canAdvance = false;
     this.autoTimer?.destroy();
     this.tweens.add({
-      targets: this.splashText,
+      targets: this.splashParts,
       alpha: 0,
       duration: 500,
       ease: 'Power1',
