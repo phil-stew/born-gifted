@@ -278,6 +278,11 @@ export const MATERIAL_ICON_FRAME = {
   mystic_ore: [782, 359, 303, 284],
   mint_sprig:     [1132, 359, 254, 284],
   heal_herb:      [1132, 359, 254, 284], // no art of its own, shares the sprig
+  // No art of their own either, so each borrows its closest match.
+  cave_crystal:   [782, 359, 303, 284],  // Mystic Ore
+  shadow_ore:     [132, 359, 276, 284],  // Silver Ore, the darkest blue
+  iron_scrap:     [1118, 60, 268, 267],  // Iron Ore
+  leather_strip:  [144, 60,  274, 267],  // Skin
   lavender_bloom: [137, 655, 217, 298],
   wild_berries:   [397, 655, 236, 298],
   health_potion:  [694, 655, 199, 298],
