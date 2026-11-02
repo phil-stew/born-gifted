@@ -1287,8 +1287,8 @@ export class WorldMapScene extends Phaser.Scene {
         title: 'Trial Complete',
         lines: [
           { label: 'Tytrate', amount: 100, currency: true },
-          { label: 'Iron Ore', amount: 10, rarity: 'uncommon' },
-          { label: 'Silver Ore', amount: 5, rarity: 'rare' },
+          { label: 'Iron Ore', amount: 10, rarity: 'common' },
+          { label: 'Silver Ore', amount: 5, rarity: 'uncommon' },
         ],
         onClose: () => {
           state.unlockedMissions.push('M3b');

@@ -13,8 +13,8 @@ export const ITEMS = [
   { id:'leather_strip',name:'Leather Strip',type:'material', slot:null, rarity:'common',   cost:25,  stats:{}, desc:'Cured hide strips. Flexible and durable.' },
   // M4 upgrade materials (feed the existing Forge reinforcement mechanic —
   // kept as-is, see FORGE_RECIPES below for the separate new crafting system)
-  { id:'cave_crystal', name:'Cave Crystal', type:'material', slot:null, rarity:'uncommon', cost:75,  stats:{}, desc:'A luminous crystal formed deep in the caves. Enhances gear.' },
-  { id:'shadow_ore',   name:'Shadow Ore',   type:'material', slot:null, rarity:'uncommon', cost:80,  stats:{}, desc:'Dark alloy found only in hollow cave veins. Ideal for upgrades.' },
+  { id:'cave_crystal', name:'Cave Crystal', type:'material', slot:null, rarity:'epic',      oreTier:4, cost:450, stats:{}, desc:'A luminous crystal formed deep in the caves. Crafts Epic gear.' },
+  { id:'shadow_ore',   name:'Shadow Ore',   type:'material', slot:null, rarity:'legendary', oreTier:5, cost:700, stats:{}, desc:'Dark alloy found only in hollow cave veins. Crafts Legendary gear.' },
 
   // ── Monster drops (Gear & Forge, July 2026) ─────────────────────────────
   // Generalized, replacing the old per-monster wolf_pelt/boar_hide (every
@@ -26,10 +26,11 @@ export const ITEMS = [
   // ── Cave ore (Gear & Forge, July 2026) — Forge crafting materials, tiered
   // T1-T4. oreTier drives the rarity of whatever gear a recipe crafts with
   // it (see ORE_TIER_TO_RARITY / FORGE_RECIPES below).
-  { id:'iron_ore',   name:'Iron Ore',   type:'material', slot:null, rarity:'uncommon',  oreTier:1, cost:30,  stats:{}, desc:'Raw iron pulled from cave veins. Crafts Uncommon gear.' },
-  { id:'silver_ore', name:'Silver Ore', type:'material', slot:null, rarity:'rare',      oreTier:2, cost:90,  stats:{}, desc:'A vein of silver ore. Crafts Rare gear.' },
-  { id:'gold_ore',   name:'Gold Ore',   type:'material', slot:null, rarity:'epic',      oreTier:3, cost:250, stats:{}, desc:'A rich seam of gold ore. Crafts Epic gear.' },
-  { id:'mystic_ore', name:'Mystic Ore', type:'material', slot:null, rarity:'legendary', oreTier:4, cost:700, stats:{}, desc:'Ore humming with unexplained energy. Crafts Legendary gear.' },
+  { id:'iron_ore',   name:'Iron Ore',   type:'material', slot:null, rarity:'common',    oreTier:1, cost:30,  stats:{}, desc:'Raw iron pulled from cave veins. Crafts Common gear.' },
+  { id:'silver_ore', name:'Silver Ore', type:'material', slot:null, rarity:'uncommon',  oreTier:2, cost:90,  stats:{}, desc:'A vein of silver ore. Crafts Uncommon gear.' },
+  { id:'gold_ore',   name:'Gold Ore',   type:'material', slot:null, rarity:'rare',      oreTier:3, cost:250, stats:{}, desc:'A rich seam of gold ore. Crafts Rare gear.' },
+  // Reserved for God Tier Class Items, so it has no oreTier and no Forge recipe uses it.
+  { id:'mystic_ore', name:'Mystic Ore', type:'material', slot:null, rarity:'legendary', cost:700, stats:{}, desc:'Ore humming with unexplained energy. Reserved for God Tier Class Items.' },
 
   // ── Herbs & Tonics (July 2026 art) ───────────────────────────────────────
   // Battle-usable consumables (healPct/spPct restore a % of max HP/SP — see
@@ -186,7 +187,7 @@ export const RARITY_GEAR_VALUE = { common: 100, uncommon: 200, rare: 400, epic: 
 // Cave-ore tier → the rarity a Forge recipe crafts when that ore is used
 // (Gear & Forge: "Ore tier drives result rarity — e.g. Bone(T3) + Gold =
 // Epic Chest").
-export const ORE_TIER_TO_RARITY = { 1: 'uncommon', 2: 'rare', 3: 'epic', 4: 'legendary' };
+export const ORE_TIER_TO_RARITY = { 1: 'common', 2: 'uncommon', 3: 'rare', 4: 'epic', 5: 'legendary' };
 
 // Inventory stack cap for materials (Gear & Forge: "Stack cap: 25 per item").
 // NOTE: not yet enforced anywhere — the current inventory model stores N
@@ -313,7 +314,7 @@ export const MISSION_MATERIALS = {
   // the wolf").
   M0b: ['fur', 'bone', 'iron_ore'],
   M3:  ['iron_ore', 'leather_strip'],
-  M4:  ['cave_crystal', 'shadow_ore', 'silver_ore'],
+  M4:  ['silver_ore', 'gold_ore'],
 };
 
 // Generic monster-drop pool (Gear & Forge, July 2026 — replaces the old
@@ -379,17 +380,17 @@ const LEVEL_BRACKETS = [
 // hero's level. Before that those rolls come out Rare.
 const STORY_LOCKED_RARITY = new Set(['epic', 'legendary']);
 const BRACKET_GEAR_SLOTS = ['weapon', 'footwear', 'handwear', 'chest', 'headwear'];
-// Ore follows the same ladder as gear: Gold and Mystic stay locked until the
+// Ore follows the same ladder as gear: Cave Crystal and Shadow Ore stay locked until the
 // God Trials open. Caves always give a pair, anywhere else it's a small chance.
 const CAVE_ORE_COUNT = 2;
 const OPEN_ORE_CHANCE = 0.05;
 const ORE_BRACKETS = [
   { min:1,  max:9,        ores: [['iron_ore', 1]] },
-  { min:10, max:19,       ores: [['iron_ore', 0.6], ['silver_ore', 0.4]] },
-  { min:20, max:29,       ores: [['silver_ore', 0.97], ['gold_ore', 0.03]] },
-  { min:30, max:Infinity, ores: [['silver_ore', 0.9], ['gold_ore', 0.08], ['mystic_ore', 0.02]] },
+  { min:10, max:19,       ores: [['iron_ore', 0.5], ['silver_ore', 0.4], ['gold_ore', 0.1]] },
+  { min:20, max:29,       ores: [['silver_ore', 0.57], ['gold_ore', 0.4], ['cave_crystal', 0.03]] },
+  { min:30, max:Infinity, ores: [['silver_ore', 0.4], ['gold_ore', 0.5], ['cave_crystal', 0.08], ['shadow_ore', 0.02]] },
 ];
-const STORY_LOCKED_ORE = new Set(['gold_ore', 'mystic_ore']);
+const STORY_LOCKED_ORE = new Set(['cave_crystal', 'shadow_ore']);
 
 function rollOreId(level, trialsReached) {
   const { ores } = ORE_BRACKETS.find(b => level >= b.min && level <= b.max);
@@ -397,7 +398,7 @@ function rollOreId(level, trialsReached) {
   for (const [id, chance] of ores) {
     roll -= chance;
     if (roll >= 0) continue;
-    return !trialsReached && STORY_LOCKED_ORE.has(id) ? 'silver_ore' : id;
+    return !trialsReached && STORY_LOCKED_ORE.has(id) ? 'gold_ore' : id;
   }
   return ores[0][0];
 }

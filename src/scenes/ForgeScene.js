@@ -89,7 +89,9 @@ export class ForgeScene extends Phaser.Scene {
   oreOptions() {
     const seen = new Map();
     for (const it of state.inventory) {
-      if (it.oreTier != null && !seen.has(it.id)) seen.set(it.id, it);
+      // Read from the catalog: saved copies can carry an older tier, or none.
+      const ore = getItem(it.id);
+      if (ore?.oreTier != null && !seen.has(it.id)) seen.set(it.id, ore);
     }
     return [...seen.values()];
   }
@@ -241,7 +243,7 @@ export class ForgeScene extends Phaser.Scene {
     if (!materialIds.every(id => id && state.inventory.some(i => i.id === id))) return;
 
     // Capture the ore's tier before consuming it.
-    const oreItem = oreId ? state.inventory.find(i => i.id === oreId) : null;
+    const oreItem = oreId ? getItem(oreId) : null;
     const rarity = oreItem ? (ORE_TIER_TO_RARITY[oreItem.oreTier] ?? 'uncommon') : 'uncommon';
 
     for (const id of materialIds) {
