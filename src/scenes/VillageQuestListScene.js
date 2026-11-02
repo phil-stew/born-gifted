@@ -50,7 +50,7 @@ export class VillageQuestListScene extends Phaser.Scene {
   render() {
     const known = VILLAGE_QUESTS.filter(q => state.unlockedMissions.includes(q.id));
     mount(`
-      <div class="ui-screen">
+      <div class="ui-screen ui-index">
         <div class="ui-topbar">
           <button class="ui-navbtn" data-nav="back">◀ Back</button>
           <div class="ui-title">Quest Menu</div>

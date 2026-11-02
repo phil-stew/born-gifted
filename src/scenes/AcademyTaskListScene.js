@@ -38,7 +38,7 @@ export class AcademyTaskListScene extends Phaser.Scene {
   render() {
     const board = state.academyTasks[this.nodeId] ?? [];
     mount(`
-      <div class="ui-screen">
+      <div class="ui-screen ui-index">
         <div class="ui-topbar">
           <button class="ui-navbtn" data-nav="back">◀ Back</button>
           <div class="ui-title">Task Board</div>
