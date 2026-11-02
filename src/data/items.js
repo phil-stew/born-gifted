@@ -530,7 +530,7 @@ export function rollHealHerbDrop() {
 export const FORGE_RECIPES = [
   { id: 'craft_class_item', resultSlots: ['weapon'],                materials: ['bone', 'skin', 'ore'], desc: 'Bone + Skin + Ore → Class Item' },
   { id: 'craft_chest',      resultSlots: ['chest'],                  materials: ['bone', 'ore'],         desc: 'Bone + Ore → Chest' },
-  { id: 'craft_hand_head',  resultSlots: ['handwear', 'headwear'],   materials: ['skin', 'ore'],         desc: 'Skin + Ore → Hand & Head (pick one)' },
+  { id: 'craft_hand_head',  resultSlots: ['handwear', 'headwear'],   materials: ['skin', 'ore'],         desc: 'Skin + Ore → Gloves or Headgear (pick one)' },
   { id: 'craft_foot',       resultSlots: ['footwear'],               materials: ['fur', 'bone'],         desc: 'Fur + Bone → Foot' },
   { id: 'craft_health',   resultItem: 'health_potion',   resultSlots: [], materials: ['wild_berries'],   desc: 'Wild Berries → Health Potion' },
   { id: 'craft_focus',    resultItem: 'focus_potion',    resultSlots: [], materials: ['lavender_bloom'], desc: 'Lavender Bloom → Focus Potion' },
@@ -617,7 +617,7 @@ function rollMainLine(slot, rarity) {
 
 function defaultGearName(slot, rarity) {
   const rarityLabel = rarity.charAt(0).toUpperCase() + rarity.slice(1);
-  const slotLabel = { weapon: 'Class Item', headwear: 'Headwear', footwear: 'Footwear', chest: 'Chest Gear', handwear: 'Handwear' }[slot] ?? slot;
+  const slotLabel = { weapon: 'Class Item', headwear: 'Headgear', footwear: 'Shoes', chest: 'Chest Gear', handwear: 'Gloves' }[slot] ?? slot;
   return `${rarityLabel} ${slotLabel}`;
 }
 

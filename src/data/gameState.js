@@ -838,6 +838,13 @@ function toBaseClassItem(item) {
   return item;
 }
 
+// Old saves named rolled gear "Rare Headwear"/"Rare Handwear", too alike to tell apart.
+const OLD_SLOT_NAMES = { Headwear: 'Headgear', Handwear: 'Gloves', Footwear: 'Shoes' };
+function renameOldSlotLabel(item) {
+  if (item?.name) item.name = item.name.replace(/\b(Headwear|Handwear|Footwear)$/, w => OLD_SLOT_NAMES[w]);
+  return item;
+}
+
 // An item's stats and multipliers as they apply to this unit.
 export function wornItemValues(unit, item) {
   const scale = classItemScale(unit, item);
@@ -1109,7 +1116,7 @@ export function collectAllGear(slot) {
     const data = JSON.parse(raw);
     const fromInventory = (data.inventory ?? []).filter(i => i.type === 'equipment');
     const fromParty = (data.party ?? []).flatMap(u => Object.values(u.equip ?? {}).filter(Boolean));
-    return [...fromInventory, ...fromParty].map(toBaseClassItem);
+    return [...fromInventory, ...fromParty].map(toBaseClassItem).map(renameOldSlotLabel);
   } catch (e) {
     return [];
   }
@@ -1246,8 +1253,8 @@ export function loadGame(slot) {
         hasActed:  false, hasMoved: false,
       };
     });
-    state.inventory         = (data.inventory ?? []).filter(i => !REMOVED_ITEMS.has(i.id)).map(toBaseClassItem);
-    for (const u of state.party) Object.values(u.equip).forEach(toBaseClassItem);
+    state.inventory         = (data.inventory ?? []).filter(i => !REMOVED_ITEMS.has(i.id)).map(toBaseClassItem).map(renameOldSlotLabel);
+    for (const u of state.party) Object.values(u.equip).forEach(i => renameOldSlotLabel(toBaseClassItem(i)));
     state.tytrate           = data.tytrate           ?? 150;
     state.completedMissions = data.completedMissions ?? [];
     state.unlockedMissions  = data.unlockedMissions  ?? ['M0'];

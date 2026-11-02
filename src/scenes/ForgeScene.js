@@ -11,7 +11,7 @@ const REINFORCE_BASE = 75;
 const MAX_REINFORCE  = 3;
 
 const SLOT_NAMES = ['weapon', 'footwear', 'handwear', 'chest', 'headwear'];
-const SLOT_LABEL = { weapon:'Class Item', footwear:'Footwear', handwear:'Handwear', chest:'Chest', headwear:'Headwear' };
+const SLOT_LABEL = { weapon:'Class Item', footwear:'Shoes', handwear:'Gloves', chest:'Chest', headwear:'Headgear' };
 
 export class ForgeScene extends Phaser.Scene {
   constructor() { super({ key: 'ForgeScene' }); }
@@ -106,7 +106,7 @@ export class ForgeScene extends Phaser.Scene {
     return recipe.resultSlots.filter(s => slots.includes(s));
   }
 
-  // Names only the result this unit can make, e.g. "Skin + Ore → Headwear".
+  // Names only the result this unit can make, e.g. "Skin + Ore → Headgear".
   recipeDesc(recipe, unit) {
     const slots = this.craftableSlots(recipe, unit);
     return slots.length === recipe.resultSlots.length ? recipe.desc
