@@ -104,6 +104,8 @@ const MISSION_ENEMY_LEVEL = {
   TG: 26, FT: 28,
 };
 const BOSS_LEVEL_BONUS = 2;
+// Newbie only: regular monsters below this level fight without skills.
+const NEWBIE_MONSTER_SKILL_LEVEL = 16;
 // Flat per-level stat growth for monsters (2026-08-01, "game is too easy if
 // monster don't get increased stats via leveling") — level previously only
 // fed HP/XP/kit-size (see buildEnemyUnit), leaving raw speed/strength/
@@ -1657,7 +1659,13 @@ export class BattleScene extends Phaser.Scene {
     // buildMonster), not the real scaled `lv` computed just above.
     // Rebuild the kit here so skill/passive COUNT actually reflects the
     // level a repeat-scaled enemy ends up at in this specific battle.
-    const { skills, passives } = buildMonsterKit(d.base, { kind: d.kind, level: lv });
+    const kit = buildMonsterKit(d.base, { kind: d.kind, level: lv });
+    // Newbie (2026-11-02): regular monsters hold off on skills until the
+    // middle of the story (Monster Hunt, level 16). Bosses, uniques and
+    // human teams keep theirs; passives stay either way.
+    const newbieEarly = this.difficultyCfg?.key === 'newbie' && d.kind === 'regular'
+      && !d.heroClass && lv < NEWBIE_MONSTER_SKILL_LEVEL;
+    const skills = newbieEarly ? [] : kit.skills, passives = kit.passives;
     // fixedMaxHp (Ester Academy's "Rock" quest, 2026-07-11) — bypasses the
     // endurance/stamina/level HP formula for a one-off encounter that needs
     // an exact HP pool (15,000, matching "deal 15,000 damage to the rock")
