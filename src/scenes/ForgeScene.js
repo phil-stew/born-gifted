@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { state, roleDisplayLabel, gearLayoutForUnit, wornItemValues, classItemScale } from '../data/gameState.js';
-import { FORGE_RECIPES, ORE_TIER_TO_RARITY, RARITY_GEAR_VALUE, rollGearItem, getItem } from '../data/items.js';
+import { FORGE_RECIPES, RARITY_GEAR_VALUE, rollGearItem, getItem, materialOptions, craftedRarity, materialAverage, tieredId } from '../data/items.js';
 import { playSfx, SFX } from '../audio/sound.js';
 import { playMusic } from '../audio/music.js';
 import { currencyLabel } from '../ui/canvasButton.js';
@@ -23,7 +23,7 @@ export class ForgeScene extends Phaser.Scene {
     this.mode           = 'reinforce'; // 'reinforce' | 'craft'
     this.selectedRecipe = null;
     this.selectedResultSlot = null;
-    this.selectedOreId  = null;
+    this.selectedMats   = {};
   }
 
   create() {
@@ -82,27 +82,21 @@ export class ForgeScene extends Phaser.Scene {
   }
 
   // ── Crafting (Gear & Forge, FORGE_RECIPES) ──────────────────────────────
-  // 'ore' in a recipe's materials is abstract — resolves to whichever
-  // specific ore item (iron/silver/gold/mystic) the player owns; its
-  // oreTier drives the crafted item's rarity via ORE_TIER_TO_RARITY.
+  // A recipe lists kinds of material ('bone', 'ore'); the player picks which
+  // owned rarity pays for each, and craftedRarity turns those into the result.
 
-  oreOptions() {
-    const seen = new Map();
-    for (const it of state.inventory) {
-      // Read from the catalog: saved copies can carry an older tier, or none.
-      const ore = getItem(it.id);
-      if (ore?.oreTier != null && !seen.has(it.id)) seen.set(it.id, ore);
-    }
-    return [...seen.values()];
+  // Whether every kind in `recipe` has at least one owned option.
+  recipeAvailable(recipe) {
+    return recipe.materials.every(kind => materialOptions(kind, state.inventory).length > 0);
   }
 
-  // Whether `recipe` is currently craftable at all (every non-ore material
-  // present at least once, and at least one ore type owned).
-  recipeAvailable(recipe) {
-    const nonOre = recipe.materials.filter(m => m !== 'ore');
-    if (!nonOre.every(id => state.inventory.some(i => i.id === id))) return false;
-    if (recipe.materials.includes('ore') && this.oreOptions().length === 0) return false;
-    return true;
+  pickMaterials(recipe) {
+    this.selectedMats = Object.fromEntries(recipe.materials.map(kind =>
+      [kind, materialOptions(kind, state.inventory)[0]?.id ?? null]));
+  }
+
+  chosenMaterials(recipe) {
+    return recipe.materials.map(kind => this.selectedMats[kind]).filter(Boolean);
   }
 
   // Slots this unit's class can wear, so the Forge never offers gear they
@@ -122,10 +116,11 @@ export class ForgeScene extends Phaser.Scene {
   recipesHTML(unit) {
     return FORGE_RECIPES.map((recipe, i) => {
       const resultSlots = this.craftableSlots(recipe, unit);
-      if (!resultSlots.length) return '';
+      if (!resultSlots.length && !recipe.resultItem) return '';
+      const name = recipe.resultItem ? getItem(recipe.resultItem).name : resultSlots.map(s => SLOT_LABEL[s] ?? s).join(' / ');
       return `
       <button class="ui-row ${this.selectedRecipe?.id === recipe.id ? 'active' : ''} ${this.recipeAvailable(recipe) ? '' : 'dim'}" data-recipe="${i}">
-        <span class="ui-row-name">${resultSlots.map(s => SLOT_LABEL[s] ?? s).join(' / ')}
+        <span class="ui-row-name">${esc(name)}
           <span class="ui-row-sub">${esc(this.recipeDesc(recipe, unit))}</span></span>
       </button>`;
     }).join('');
@@ -137,33 +132,34 @@ export class ForgeScene extends Phaser.Scene {
 
     const picker = (label, attr, options) => `
       <div class="ui-section-label">${label}</div>
-      <div class="ui-detail-tabs ui-tabs-flush">
+      <div class="ui-detail-tabs ui-tabs-flush ui-tabs-wrap">
         ${options.map(o => `<button class="ui-detail-tab ${o.active ? 'active' : ''}" data-${attr}="${o.value}">${esc(o.label)}</button>`).join('')}
       </div>`;
 
     const resultSlots = this.craftableSlots(recipe, unit);
-    const ores = this.oreOptions();
     const materials = recipe.materials.map(kind => {
-      const isOre = kind === 'ore';
-      const matId = isOre ? this.selectedOreId : kind;
-      const have = matId ? state.inventory.some(i => i.id === matId) : false;
-      const label = isOre ? (matId ? getItem(matId)?.name ?? 'Ore' : 'Ore (none owned)') : (getItem(kind)?.name ?? kind);
-      return `<div class="ui-item-stat ${have ? 'have' : 'missing'}">${have ? '✓' : '✕'} ${esc(label)}</div>`;
+      const options = materialOptions(kind, state.inventory);
+      const chosen = getItem(this.selectedMats[kind]);
+      const label = chosen?.name ?? `${kind === 'ore' ? 'Ore' : getItem(kind)?.name} (none owned)`;
+      const pick = options.length > 1 ? picker(kind === 'ore' ? 'Ore' : getItem(kind).name, 'mat', options.map(o => ({
+        value: `${kind}:${o.id}`, label: o.name.replace(getItem(kind)?.name ?? ' Ore', '').trim() || 'Common',
+        active: o.id === chosen?.id,
+      }))) : '';
+      return `${pick}<div class="ui-item-stat ${chosen ? 'have' : 'missing'}">${chosen ? '✓' : '✕'} ${esc(label)}</div>`;
     }).join('');
 
-    const oreTier = recipe.materials.includes('ore') ? getItem(this.selectedOreId)?.oreTier : null;
-    const previewRarity = oreTier ? (ORE_TIER_TO_RARITY[oreTier] ?? 'uncommon') : 'uncommon';
+    const chosen = this.chosenMaterials(recipe);
+    const ready = this.recipeAvailable(recipe);
+    const preview = ready ? `${rarityBadgeHTML(craftedRarity(chosen))} average ${materialAverage(chosen).toFixed(1).replace('.0', '')}` : 'Missing materials';
 
     return `
       <div class="ui-item-name">${esc(this.recipeDesc(recipe, unit))}</div>
       ${resultSlots.length > 1 ? picker('Result slot', 'result-slot', resultSlots.map(slot => (
         { value: slot, label: SLOT_LABEL[slot] ?? slot, active: this.selectedResultSlot === slot }))) : ''}
-      ${recipe.materials.includes('ore') && ores.length > 1 ? picker('Ore type (sets rarity)', 'ore', ores.map(ore => (
-        { value: ore.id, label: ore.name.replace(' Ore', ''), active: this.selectedOreId === ore.id }))) : ''}
       <div class="ui-section-label">Materials needed</div>
       ${materials}
-      <div class="ui-item-tags">Result: ${rarityBadgeHTML(previewRarity)} rolled for ${esc(unit.name.split(' ')[0])}'s talents</div>
-      <button class="ui-action-btn" data-craft="1" ${this.recipeAvailable(recipe) ? '' : 'disabled'}>Craft</button>`;
+      <div class="ui-item-tags">Result: ${preview}</div>
+      <button class="ui-action-btn" data-craft="1" ${ready ? '' : 'disabled'}>Craft</button>`;
   }
 
   rebuild() {
@@ -199,7 +195,7 @@ export class ForgeScene extends Phaser.Scene {
       this.selectedSlot = null;
       this.selectedRecipe = null;
       this.selectedResultSlot = null;
-      this.selectedOreId = null;
+      this.selectedMats = {};
       this.rebuild();
     });
     onClick('[data-unit]', (e, node) => {
@@ -218,12 +214,16 @@ export class ForgeScene extends Phaser.Scene {
       const recipe = FORGE_RECIPES[Number(node.dataset.recipe)];
       this.selectedRecipe = recipe;
       this.selectedResultSlot = this.craftableSlots(recipe, unit)[0];
-      this.selectedOreId = this.oreOptions()[0]?.id ?? null;
+      this.pickMaterials(recipe);
       this.rebuild();
     });
     onClick('[data-result-slot]', (e, node) => { this.selectedResultSlot = node.dataset.resultSlot; this.rebuild(); });
-    onClick('[data-ore]', (e, node) => { this.selectedOreId = node.dataset.ore; this.rebuild(); });
-    onClick('[data-craft]', () => this.craftItem(unit, this.selectedRecipe, this.selectedResultSlot, this.selectedOreId));
+    onClick('[data-mat]', (e, node) => {
+      const [kind, id] = node.dataset.mat.split(':');
+      this.selectedMats[kind] = id;
+      this.rebuild();
+    });
+    onClick('[data-craft]', () => this.craftItem(unit, this.selectedRecipe, this.selectedResultSlot));
   }
 
   reinforce(unit, slot, cost, statKey) {
@@ -238,17 +238,24 @@ export class ForgeScene extends Phaser.Scene {
     this.rebuild();
   }
 
-  craftItem(unit, recipe, resultSlot, oreId) {
-    const materialIds = recipe.materials.map(kind => kind === 'ore' ? oreId : kind);
-    if (!materialIds.every(id => id && state.inventory.some(i => i.id === id))) return;
-
-    // Capture the ore's tier before consuming it.
-    const oreItem = oreId ? getItem(oreId) : null;
-    const rarity = oreItem ? (ORE_TIER_TO_RARITY[oreItem.oreTier] ?? 'uncommon') : 'uncommon';
+  craftItem(unit, recipe, resultSlot) {
+    const materialIds = this.chosenMaterials(recipe);
+    if (materialIds.length !== recipe.materials.length) return;
+    if (!materialIds.every(id => state.inventory.some(i => i.id === id))) return;
+    const rarity = craftedRarity(materialIds);
 
     for (const id of materialIds) {
       const idx = state.inventory.findIndex(i => i.id === id);
       if (idx !== -1) state.inventory.splice(idx, 1);
+    }
+
+    if (recipe.resultItem) {
+      state.inventory.push({ ...getItem(tieredId(recipe.resultItem, rarity)) });
+      this.selectedRecipe = null;
+      this.selectedMats = {};
+      playSfx(this, SFX.craft);
+      this.rebuild();
+      return;
     }
 
     const item = rollGearItem({
@@ -265,7 +272,7 @@ export class ForgeScene extends Phaser.Scene {
 
     this.selectedRecipe = null;
     this.selectedResultSlot = null;
-    this.selectedOreId = null;
+    this.selectedMats = {};
     playSfx(this, SFX.craft);
     this.rebuild();
   }

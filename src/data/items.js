@@ -24,8 +24,8 @@ export const ITEMS = [
   { id:'bone', name:'Bone', type:'material', slot:null, rarity:'common', cost:25, stats:{}, desc:'A sturdy monster bone. A Forge crafting material.' },
 
   // ── Cave ore (Gear & Forge, July 2026) — Forge crafting materials, tiered
-  // T1-T4. oreTier drives the rarity of whatever gear a recipe crafts with
-  // it (see ORE_TIER_TO_RARITY / FORGE_RECIPES below).
+  // T1-T5. oreTier marks it as ore, and its rarity feeds what a recipe crafts with
+  // it (see craftedRarity / FORGE_RECIPES below).
   { id:'iron_ore',   name:'Iron Ore',   type:'material', slot:null, rarity:'common',    oreTier:1, cost:30,  stats:{}, desc:'Raw iron pulled from cave veins. Crafts Common gear.' },
   { id:'silver_ore', name:'Silver Ore', type:'material', slot:null, rarity:'uncommon',  oreTier:2, cost:90,  stats:{}, desc:'A vein of silver ore. Crafts Uncommon gear.' },
   { id:'gold_ore',   name:'Gold Ore',   type:'material', slot:null, rarity:'rare',      oreTier:3, cost:250, stats:{}, desc:'A rich seam of gold ore. Crafts Rare gear.' },
@@ -40,9 +40,9 @@ export const ITEMS = [
   { id:'mint_sprig',     name:'Mint Sprig',     type:'material', slot:null, rarity:'common',   cost:15, stats:{}, desc:'A hardy green sprig with a sharp, clean scent.' },
   { id:'lavender_bloom', name:'Lavender Bloom', type:'material', slot:null, rarity:'common',   cost:20, stats:{}, desc:'A flowering herb prized for its calming scent.' },
   { id:'wild_berries',   name:'Wild Berries',   type:'material', slot:null, rarity:'common',   cost:20, stats:{}, desc:'Sweet berries picked from a hardy bramble.' },
-  { id:'health_potion',  name:'Health Potion',  type:'material', slot:null, rarity:'uncommon', cost:45, stats:{}, healPct:0.35, desc:'A brewed red tonic, warm to the touch. Restores 35% of max HP.' },
-  { id:'focus_potion',   name:'Focus Potion',   type:'material', slot:null, rarity:'uncommon', cost:45, stats:{}, spPct:0.35, desc:'A brewed blue tonic said to sharpen the mind. Restores 35% of max SP.' },
-  { id:'vitality_potion',name:'Vitality Potion',type:'material', slot:null, rarity:'uncommon', cost:45, stats:{}, healPct:0.25, spPct:0.25, desc:'A brewed green tonic with a faint herbal shimmer. Restores 25% of max HP and 25% of max SP.' },
+  { id:'health_potion',  name:'Health Potion',  type:'material', slot:null, rarity:'common', cost:45, stats:{}, healPct:0.35, desc:'A brewed red tonic, warm to the touch. Restores 35% of max HP.' },
+  { id:'focus_potion',   name:'Focus Potion',   type:'material', slot:null, rarity:'common', cost:45, stats:{}, spPct:0.35, desc:'A brewed blue tonic said to sharpen the mind. Restores 35% of max SP.' },
+  { id:'vitality_potion',name:'Vitality Potion',type:'material', slot:null, rarity:'common', cost:45, stats:{}, healPct:0.25, spPct:0.25, desc:'A brewed green tonic with a faint herbal shimmer. Restores 25% of max HP and 25% of max SP.' },
 
   // ══════════════════════════════════════════════════════════════════════════
   // SOCCER  (Reno · Sela)
@@ -187,7 +187,6 @@ export const RARITY_GEAR_VALUE = { common: 100, uncommon: 200, rare: 400, epic: 
 // Cave-ore tier → the rarity a Forge recipe crafts when that ore is used
 // (Gear & Forge: "Ore tier drives result rarity — e.g. Bone(T3) + Gold =
 // Epic Chest").
-export const ORE_TIER_TO_RARITY = { 1: 'common', 2: 'uncommon', 3: 'rare', 4: 'epic', 5: 'legendary' };
 
 // Inventory stack cap for materials (Gear & Forge: "Stack cap: 25 per item").
 // NOTE: not yet enforced anywhere — the current inventory model stores N
@@ -292,7 +291,8 @@ export const MATERIAL_ICON_FRAME = {
 };
 
 export function materialFrameName(id) {
-  return MATERIAL_ICON_FRAME[id] ? `material_${id}` : null;
+  const base = getItem(id)?.baseId ?? id;
+  return MATERIAL_ICON_FRAME[base] ? `material_${base}` : null;
 }
 
 // Guaranteed material drops per mission clear
@@ -327,20 +327,83 @@ export const MONSTER_DROP_MATERIALS = ['skin', 'fur', 'bone'];
 // Materials are a small chance per kill, except in caves where every kill drops one.
 const KILL_DROP_CHANCE = 0.25;
 
-export function getKillDrops(killsByType, isCave = false) {
+export function getKillDrops(killLevels, isCave = false) {
   const drops = [];
-  for (const [name, count] of Object.entries(killsByType)) {
-    for (let i = 0; i < count; i++) {
-      if (!isCave && Math.random() >= KILL_DROP_CHANCE) continue;
-      const id = MONSTER_DROP_MATERIALS[Math.floor(Math.random() * MONSTER_DROP_MATERIALS.length)];
-      const item = getItem(id);
-      if (item) drops.push({ ...item });
-    }
+  for (const level of killLevels) {
+    if (!isCave && Math.random() >= KILL_DROP_CHANCE) continue;
+    const id = MONSTER_DROP_MATERIALS[Math.floor(Math.random() * MONSTER_DROP_MATERIALS.length)];
+    const item = getItem(tieredId(id, rollMaterialRarity(level)));
+    if (item) drops.push({ ...item });
   }
   return drops;
 }
 
 export function getItem(id) { return ITEMS.find(i => i.id === id) ?? null; }
+
+// Bone, Skin, Fur, the herbs and the potions come in every rarity. The catalog
+// entry above is the Common one; the rest are 'bone_rare' and so on, sharing
+// its icon through baseId. Mystic Ore is Mythic and stays out of all of this.
+const TIERED_MATERIALS = ['skin', 'fur', 'bone', 'mint_sprig', 'lavender_bloom', 'wild_berries',
+  'health_potion', 'focus_potion', 'vitality_potion'];
+const RARITY_COST_MULT = { uncommon: 2, rare: 4, epic: 9, legendary: 20 };
+const POTION_STEP_PCT = 3; // added per rarity step
+for (const id of TIERED_MATERIALS) {
+  const base = getItem(id);
+  RARITY_ORDER.slice(1).forEach((rarity, i) => {
+    const step = (i + 1) * POTION_STEP_PCT;
+    const raise = pct => pct == null ? undefined : (Math.round(pct * 100) + step) / 100;
+    ITEMS.push({
+      ...base, id: `${id}_${rarity}`, baseId: id, rarity,
+      name: `${rarity[0].toUpperCase()}${rarity.slice(1)} ${base.name}`,
+      cost: base.cost * RARITY_COST_MULT[rarity],
+      healPct: raise(base.healPct), spPct: raise(base.spPct),
+      desc: base.desc.replace(/\d+%/g, m => `${parseInt(m, 10) + step}%`),
+    });
+  });
+}
+
+export function tieredId(id, rarity) { return rarity === 'common' ? id : `${id}_${rarity}`; }
+
+// Rarity by the level of whatever dropped it.
+const MATERIAL_RARITY_BRACKETS = [
+  { min:1,  max:9,        rarities: [['common', 1]] },
+  { min:10, max:14,       rarities: [['common', 0.6], ['uncommon', 0.4]] },
+  { min:15, max:23,       rarities: [['uncommon', 0.6], ['rare', 0.4]] },
+  { min:24, max:29,       rarities: [['rare', 0.95], ['epic', 0.05]] },
+  { min:30, max:Infinity, rarities: [['rare', 0.6], ['epic', 0.35], ['legendary', 0.05]] },
+];
+
+function rollMaterialRarity(level) {
+  const { rarities } = MATERIAL_RARITY_BRACKETS.find(b => level >= b.min && level <= b.max) ?? MATERIAL_RARITY_BRACKETS[0];
+  let roll = Math.random();
+  for (const [rarity, chance] of rarities) {
+    roll -= chance;
+    if (roll < 0) return rarity;
+  }
+  return rarities[0][0];
+}
+
+// Each material counts for its rarity's value. A craft takes the rarity nearest
+// the average of its materials, and an exact tie goes to the lower one.
+export const RARITY_VALUE = { common: 1, uncommon: 3, rare: 5, epic: 7, legendary: 10 };
+
+export function materialAverage(ids) {
+  const values = ids.map(id => RARITY_VALUE[getItem(id)?.rarity] ?? 1);
+  return values.reduce((a, b) => a + b, 0) / values.length;
+}
+
+export function craftedRarity(ids) {
+  const avg = materialAverage(ids);
+  return RARITY_ORDER.reduce((best, r) =>
+    Math.abs(RARITY_VALUE[r] - avg) < Math.abs(RARITY_VALUE[best] - avg) ? r : best);
+}
+
+// Every owned item a recipe's kind can be paid with, lowest rarity first.
+export function materialOptions(kind, inventory) {
+  const fits = item => kind === 'ore' ? item?.oreTier != null : (item?.baseId ?? item?.id) === kind;
+  const seen = new Set(inventory.map(i => i.id));
+  return [...seen].map(getItem).filter(fits).sort((a, b) => RARITY_VALUE[a.rarity] - RARITY_VALUE[b.rarity]);
+}
 
 export function getMissionMaterials(missionId) {
   return (MISSION_MATERIALS[missionId] ?? []).map(id => getItem(id)).filter(Boolean);
@@ -444,6 +507,17 @@ export function isUsableItem(item) {
 // the guaranteed MISSION_MATERIALS table (which still separately guarantees
 // heal_herb on M1 specifically).
 export const HEAL_HERB_DROP_CHANCE = 0.25;
+// Green maps can turn up one of the three crafting herbs.
+const GREEN_HERBS = ['mint_sprig', 'lavender_bloom', 'wild_berries'];
+const GREEN_HERB_CHANCE = 0.30;
+
+export function rollGreenHerbDrop(level) {
+  if (Math.random() >= GREEN_HERB_CHANCE) return null;
+  const id = GREEN_HERBS[Math.floor(Math.random() * GREEN_HERBS.length)];
+  const item = getItem(tieredId(id, rollMaterialRarity(level)));
+  return item ? { ...item } : null;
+}
+
 export function rollHealHerbDrop() {
   if (Math.random() >= HEAL_HERB_DROP_CHANCE) return null;
   const item = getItem('heal_herb');
@@ -455,14 +529,17 @@ export function rollHealHerbDrop() {
 // as-is, per decision — reinforcement upgrades an equipped item's stats,
 // this crafts a NEW item from materials). Material kind names here are
 // abstract; 'ore' resolves to whichever specific ore item (iron/silver/
-// gold/mystic) the player supplies — its oreTier drives the result's
-// rarity via ORE_TIER_TO_RARITY (e.g. Bone + Gold Ore(T3) → Epic Chest).
+// gold/crystal/shadow) the player supplies — its rarity feeds the result's
+// rarity through craftedRarity (e.g. Rare Bone + Gold Ore → Rare Chest).
 // Craft costs: TBD per the sheet's own open item — not modeled yet.
 export const FORGE_RECIPES = [
   { id: 'craft_class_item', resultSlots: ['weapon'],                materials: ['bone', 'skin', 'ore'], desc: 'Bone + Skin + Ore → Class Item' },
   { id: 'craft_chest',      resultSlots: ['chest'],                  materials: ['bone', 'ore'],         desc: 'Bone + Ore → Chest' },
   { id: 'craft_hand_head',  resultSlots: ['handwear', 'headwear'],   materials: ['skin', 'ore'],         desc: 'Skin + Ore → Hand & Head (pick one)' },
   { id: 'craft_foot',       resultSlots: ['footwear'],               materials: ['fur', 'bone'],         desc: 'Fur + Bone → Foot' },
+  { id: 'craft_health',   resultItem: 'health_potion',   resultSlots: [], materials: ['wild_berries'],   desc: 'Wild Berries → Health Potion' },
+  { id: 'craft_focus',    resultItem: 'focus_potion',    resultSlots: [], materials: ['lavender_bloom'], desc: 'Lavender Bloom → Focus Potion' },
+  { id: 'craft_vitality', resultItem: 'vitality_potion', resultSlots: [], materials: ['mint_sprig'],     desc: 'Mint Sprig → Vitality Potion' },
 ];
 
 // ── Gear stat rolls (Gear & Forge, July 2026) ───────────────────────────────

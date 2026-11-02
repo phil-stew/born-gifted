@@ -916,6 +916,10 @@ export function isCaveMission(id) {
   return ['cave', 'deepCave'].includes(STAGE_CONFIGS[id]?.theme);
 }
 
+export function isGreenMission(id) {
+  return ['plains', 'forest', 'field'].includes(STAGE_CONFIGS[id]?.theme);
+}
+
 export function prepareRandomTowerFloor(floor) {
   const id = towerFloorId('random', floor);
   const { place, team } = rollRandomFloor(floor, TOURNAMENT_HERO_CLASSES);
@@ -1257,7 +1261,7 @@ export class BattleScene extends Phaser.Scene {
     this.unitMap   = new Map();
 
     this.killedEnemies  = 0;
-    this.killsByType    = {};
+    this.killLevels     = [];
     this.xpEarned       = 0;
     this.actionMenu     = null;
     this.statusPopup    = null;
@@ -2605,7 +2609,7 @@ export class BattleScene extends Phaser.Scene {
     unit.isDead = true;
     if (unit.team === 'enemy') {
       this.killedEnemies++;
-      this.killsByType[unit.name] = (this.killsByType[unit.name] ?? 0) + 1;
+      this.killLevels.push(unit.level ?? 1);
       this.xpEarned += unit.xpValue ?? 40;
     }
     // The Corrupted One's ally-count buff (FT, 2026-08-03) tracks LIVING
@@ -2731,7 +2735,7 @@ export class BattleScene extends Phaser.Scene {
         this.scene.start('VictoryScene', {
           mission:       state.currentMission,
           enemiesKilled: this.killedEnemies,
-          killsByType:   this.killsByType,
+          killLevels:    this.killLevels,
           xpEarned:      this.xpEarned,
         })
       );

@@ -1,9 +1,9 @@
 import Phaser from 'phaser';
 import { isTowerFloor, isRandomTowerFloor, towerFloorOf, towerReward, winTowerFloor } from '../data/tower.js';
 import { state, addXP, xpToNext, completeMission, roleDisplayLabel, TRIAL_CLASS, sportById, currentSport, resolvePartyLines } from '../data/gameState.js';
-import { getMissionMaterials, getKillDrops, rollHealHerbDrop, rollBracketedDrop, rollGodTierClassItem } from '../data/items.js';
+import { getMissionMaterials, getKillDrops, rollHealHerbDrop, rollGreenHerbDrop, rollBracketedDrop, rollGodTierClassItem } from '../data/items.js';
 import { BACKDROPS } from '../data/storyBackdrops.js';
-import { isCaveMission } from './BattleScene.js';
+import { isCaveMission, isGreenMission } from './BattleScene.js';
 import { drawButton } from '../ui/canvasButton.js';
 
 const XP_PER_ENEMY = 40;
@@ -213,7 +213,7 @@ export class VictoryScene extends Phaser.Scene {
   init(data) {
     this.missionId     = data.mission       ?? 'M1';
     this.enemiesKilled = data.enemiesKilled ?? 0;
-    this.killsByType   = data.killsByType   ?? {};
+    this.killLevels    = data.killLevels    ?? [];
     this.xpEarned      = data.xpEarned     ?? this.enemiesKilled * XP_PER_ENEMY;
     // Capture first-clear BEFORE completeMission is called in create()
     this.isFirstClear  = !state.completedMissions.includes(this.missionId);
@@ -232,7 +232,7 @@ export class VictoryScene extends Phaser.Scene {
 
     // Drop loot: per-kill drops → guaranteed materials → herb chance → level-bracketed equipment
     const isCave = isCaveMission(this.missionId);
-    const killDrops = getKillDrops(this.killsByType, isCave);
+    const killDrops = getKillDrops(this.killLevels, isCave);
     for (const item of killDrops) state.inventory.push(item);
     const materials = getMissionMaterials(this.missionId);
     for (const mat of materials) state.inventory.push(mat);
@@ -243,6 +243,8 @@ export class VictoryScene extends Phaser.Scene {
     // MISSION_MATERIALS table above (which still separately guarantees one on M1).
     const herbDrop = rollHealHerbDrop();
     if (herbDrop) state.inventory.push(herbDrop);
+    const greenHerb = isGreenMission(this.missionId) ? rollGreenHerbDrop(Math.max(1, ...this.killLevels)) : null;
+    if (greenHerb) state.inventory.push(greenHerb);
 
     // Level-bracketed equipment drop, rolled against the protagonist's
     // level (2026-07-08 feedback: a level 20 party was still getting common
@@ -295,6 +297,7 @@ export class VictoryScene extends Phaser.Scene {
       ...killDropSummary,
       ...materials.map(item => ({ item, count: 1 })),
       ...(herbDrop ? [{ item: herbDrop, count: 1 }] : []),
+      ...(greenHerb ? [{ item: greenHerb, count: 1 }] : []),
       ...bracketDropSummary,
       ...godTierDrops.map(item => ({ item, count: 1 })),
     ];
