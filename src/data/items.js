@@ -379,7 +379,7 @@ function rollMaterialRarity(level) {
 }
 
 // Each material counts for its rarity's value. A craft takes the rarity nearest
-// the average of its materials, and an exact tie goes to the lower one.
+// the average of its materials, and an exact tie goes to the higher one.
 export const RARITY_VALUE = { common: 1, uncommon: 3, rare: 5, epic: 7, legendary: 10 };
 
 export function materialAverage(ids) {
@@ -390,7 +390,7 @@ export function materialAverage(ids) {
 export function craftedRarity(ids) {
   const avg = materialAverage(ids);
   return RARITY_ORDER.reduce((best, r) =>
-    Math.abs(RARITY_VALUE[r] - avg) < Math.abs(RARITY_VALUE[best] - avg) ? r : best);
+    Math.abs(RARITY_VALUE[r] - avg) <= Math.abs(RARITY_VALUE[best] - avg) ? r : best);
 }
 
 // Every owned item a recipe's kind can be paid with, lowest rarity first.
