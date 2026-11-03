@@ -3,7 +3,7 @@
 // GEAR_ICON_FRAME / GEAR_SLOT_ROW below) — rarity is shown separately via
 // rarityColor(), not baked into the icon art.
 
-import { TALENT_STAT_KEY, roleDisplayLabel, SPORTS } from './gameState.js';
+import { TALENT_STAT_KEY, roleDisplayLabel, SPORTS, spLineValue } from './gameState.js';
 
 export const ITEMS = [
 
@@ -583,7 +583,7 @@ function rollRandomLine(rarity) {
   const pool = [...FLAT_STAT_POOL, ...MULTIPLIER_STAT_POOL];
   const stat = pool[Math.floor(Math.random() * pool.length)];
   if (MULTIPLIER_STAT_POOL.includes(stat)) return { kind: 'multiplier', stat, value: rollMultiplierStat(rarity) };
-  return { kind: 'flat', stat, value: rollFlatStat(rarity) };
+  return { kind: 'flat', stat, value: stat === 'sp' ? spLineValue(rarity) : rollFlatStat(rarity) };
 }
 function rollTalentLine(talent, rarity) {
   const stat = TALENT_STAT_KEY[talent];
@@ -608,7 +608,9 @@ function applyLine(item, line) {
 // equally to all 4 core stats at once.
 function rollMainLine(slot, rarity) {
   if (slot === 'weapon')   return { kind: 'flat-all', value: rollFlatStat(rarity) };
-  if (slot === 'headwear') return { kind: 'flat', stat: Math.random() < 0.5 ? 'hp' : 'sp', value: rollFlatStat(rarity) };
+  if (slot === 'headwear') return Math.random() < 0.5
+    ? { kind: 'flat', stat: 'hp', value: rollFlatStat(rarity) }
+    : { kind: 'flat', stat: 'sp', value: spLineValue(rarity) };
   if (slot === 'footwear') return { kind: 'flat', stat: 'speed', value: rollFlatStat(rarity) };
   if (slot === 'chest')    return { kind: 'flat', stat: Math.random() < 0.5 ? 'endurance' : 'stamina', value: rollFlatStat(rarity) };
   if (slot === 'handwear') return { kind: 'multiplier', stat: 'damage', value: rollMultiplierStat(rarity) };

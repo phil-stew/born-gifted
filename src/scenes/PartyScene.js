@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import {
-  state, FULL_ROSTER, effectiveStats, maxHp, xpToNext, classSkillSlotCount, elementIcon,
+  state, FULL_ROSTER, effectiveStats, maxHp, unitMaxSp, xpToNext, classSkillSlotCount, elementIcon,
   roleDisplayLabel, currentRoleId, roleById, pendingPromotion, chainById,
   sportById, t3SportOptions, promoteUnit, gearLayoutForUnit, wornItemValues, equipItem, dismissUnit,
 } from '../data/gameState.js';
@@ -220,7 +220,7 @@ export class PartyScene extends Phaser.Scene {
         <div class="ui-stat-grid">${statsHTML}</div>
         <div class="ui-hpsp-row" style="margin-top:14px;">
           <span style="color:#4ecc6e">HP ${maxHp(unit)}</span>
-          <span style="color:#4d9dff">SP ${unit.sp ?? 4} / ${unit.maxSp ?? 4}</span>
+          <span style="color:#4d9dff">SP ${unitMaxSp(unit)}</span>
         </div>
       </div>
       ${state.party.length > 1 ? `

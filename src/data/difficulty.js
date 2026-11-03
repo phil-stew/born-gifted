@@ -23,13 +23,13 @@ export const DIFFICULTIES = [
   {
     key: 'veteran', label: 'Veteran',
     levelFloorOffset: 0, disableRepeatScaling: false,
-    enemyDamageMult: 1.10, playerDamageMult: 1.0, enemySpBonus: 5,
+    enemyDamageMult: 1.10, playerDamageMult: 1.0, enemySpBonus: 1,
     color: '#ffaa33', bdr: 0x7a4410, bg0: 0x110a04,
   },
   {
     key: 'perilous', label: 'Perilous',
     levelFloorOffset: 2, disableRepeatScaling: false,
-    enemyDamageMult: 1.0, playerDamageMult: 1.0, enemySpBonus: 10,
+    enemyDamageMult: 1.0, playerDamageMult: 1.0, enemySpBonus: 2,
     color: '#ff4444', bdr: 0x7a1a1a, bg0: 0x110404,
   },
 ];

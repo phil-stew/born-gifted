@@ -37,6 +37,20 @@ export const TALENT_STAT_KEY = { Speed:'speed', Strength:'strength', Endurance:'
 export const LEVEL_CAP = 30;
 export const CLASS_TIER_LEVELS = { t2: 10, t3: 20 };
 
+// ── SP ──────────────────────────────────────────────────────────────────────
+// Everyone (heroes and monsters) has 5 SP, plus up to 3 from gear and 3 from
+// class upgrades (T2 +1, T3 +2 more), never above 10. Battles start full; each
+// round gives back 1, or 3 to a unit that didn't attack or use a skill.
+export const SP_CAP = 10, SP_BASE = 5, GEAR_SP_CAP = 3, SP_PER_ROUND = 1, SP_RESTED = 3;
+const CLASS_SP = { t1: 0, t2: 1, t3: 3 };
+// A gear SP line's value by rarity: 1, 2 or 3.
+export function spLineValue(rarity) {
+  return { common: 1, uncommon: 1, rare: 2, epic: 2, legendary: 3, god: 3 }[rarity] ?? 1;
+}
+export function maxSpFrom(classTier, gearSp, bonus = 0) {
+  return Math.min(SP_CAP, SP_BASE + CLASS_SP[classTier] + Math.min(GEAR_SP_CAP, gearSp) + bonus);
+}
+
 // Class skill slots: 3 total, unlocking one at a time at these levels.
 // NOTE: per the Class & Skill System Redesign (Part 5), these slots now hold
 // passive "Class Skills" (equipped permanent buffs) — not active abilities.
@@ -520,6 +534,16 @@ export function maxBattlePartySize(state) {
 // Not part of the persisted save shape (see saveGame) — purely a same-session
 // handoff between the picker and BattleScene.
 state.battlePartyIds = null;
+export function unitMaxSp(unit) {
+  return maxSpFrom(unit.t3Role ? 't3' : unit.t2Role ? 't2' : 't1', effectiveStats(unit).bonusSp);
+}
+
+// Older gear rolled SP lines worth up to 20; bring them to the new 1-3.
+function capOldSpLine(item) {
+  if (item?.stats?.sp > GEAR_SP_CAP) item.stats.sp = spLineValue(item.rarity);
+  return item;
+}
+
 export function getBattleParty(state) {
   const cap = maxBattlePartySize(state);
   if (state.battlePartyIds?.length) {
@@ -1261,8 +1285,8 @@ export function loadGame(slot) {
         hasActed:  false, hasMoved: false,
       };
     });
-    state.inventory         = (data.inventory ?? []).filter(i => !REMOVED_ITEMS.has(i.id)).map(toBaseClassItem).map(renameOldSlotLabel);
-    for (const u of state.party) Object.values(u.equip).forEach(i => renameOldSlotLabel(toBaseClassItem(i)));
+    state.inventory         = (data.inventory ?? []).filter(i => !REMOVED_ITEMS.has(i.id)).map(toBaseClassItem).map(renameOldSlotLabel).map(capOldSpLine);
+    for (const u of state.party) Object.values(u.equip).forEach(i => capOldSpLine(renameOldSlotLabel(toBaseClassItem(i))));
     state.tytrate           = data.tytrate           ?? 150;
     state.completedMissions = data.completedMissions ?? [];
     state.unlockedMissions  = data.unlockedMissions  ?? ['M0'];

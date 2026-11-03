@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import {
-  state, effectiveStats, maxHp as gsMaxHp, elementIcon, currentRoleId, currentDesignations,
+  state, effectiveStats, maxHp as gsMaxHp, unitMaxSp, maxSpFrom, CLASS_TIER_LEVELS, SP_PER_ROUND, SP_RESTED, elementIcon, currentRoleId, currentDesignations,
   currentSport, sportById, SPORTS, maxBattlePartySize, getBattleParty,
   DESIGNATION_BEATS, designationIcon, DESIGNATION_CYCLE, ELEMENT_CYCLE, ELEMENT_BEATS,
 } from '../data/gameState.js';
@@ -12,7 +12,7 @@ import {
 import { PROJECTILE_SHEET, registerProjectileFrames, projectileFor, projectileDisplaySize, projectileHeading } from '../data/projectiles.js';
 import { ATTACK, THROW, ABILITIES, getEquippedSpecialAbilities, getEquippedSkillAbilities, getEquippedPassives, fastPlayAbility } from '../data/abilities.js';
 import { loadHeroSprites, createHeroAnims, stripHeroBackground, stripBackgroundByKey, trimmedSheetConfig, heroKey, getSpriteInfo, firstFrame, spriteKeyForRole, HERO_SPRITES } from '../data/heroSprites.js';
-import { buildMonster, buildMonsterKit, spriteInfoForBase, spForLevel } from '../data/monsters.js';
+import { buildMonster, buildMonsterKit, spriteInfoForBase } from '../data/monsters.js';
 import { isUsableItem, rollGearItem } from '../data/items.js';
 import { BACKDROPS } from '../data/storyBackdrops.js';
 import { preloadSfx, playSfx, playStinger, SFX } from '../audio/sound.js';
@@ -1306,16 +1306,7 @@ export class BattleScene extends Phaser.Scene {
       }
       const hp  = Math.round(gsMaxHp(gs) * (passive('life_effort') ? 1.1 : 1));
       const moveSpeed = gs.moveSpeed + (passive('mobility') ? 1 : 0);
-      // Talent-tree units get an expanded SP pool so their tree's higher costs
-      // become reachable as the relevant stat(s) grow. Units qualifying for
-      // multiple trees get the best applicable pool (not stacked).
-      const talents = gs.talents ?? [];
-      let maxSp = 4;
-      if (talents.includes('Speed'))    maxSp = Math.max(maxSp, 4 + Math.floor(eff.speed / 2));
-      if (talents.includes('Strength')) maxSp = Math.max(maxSp, 4 + Math.floor(eff.strength / 2));
-      if (talents.includes('Stamina') || talents.includes('Endurance')) {
-        maxSp = Math.max(maxSp, 4 + Math.floor((eff.stamina + eff.endurance) / 4));
-      }
+      const maxSp = unitMaxSp(gs); // see the SP rules in gameState.js
       // Sports-partner adjacency ("same dis") is keyed off the unit's CURRENT
       // class grouping (SPORTS[*].class — Ball/Racquet/Bat & Ball/...), not
       // its accumulated history.
@@ -1680,24 +1671,17 @@ export class BattleScene extends Phaser.Scene {
     // an exact HP pool (15,000, matching "deal 15,000 damage to the rock")
     // regardless of the difficulty picker's stat multiplier.
     const maxHp = d.fixedMaxHp ?? (enemyMaxHp(scaled) + bonusHp);
-    // Monster SP (2026-08-04, "monsters need sp as well") — scales with
-    // level via spForLevel() instead of the old flat 4 (the unmodified
-    // player default), so SP-gated skills (inner_focus's 10 cost, etc.)
-    // are actually reachable at higher levels, not just decorative kit
-    // entries. `diff` bumps it a bit further on the replay-picker's own
-    // Hard/Elite (the same lever every other raw stat already scales by
-    // there); `difficultyCfg.enemySpBonus` bumps it instead on the
-    // Settings-tier system's Veteran/Perilous — the two are mutually
-    // exclusive (see init()'s comment), so only one of these two ever
-    // actually applies on a given battle.
-    const maxSp = Math.round(spForLevel(lv) * diff) + (this.difficultyCfg?.enemySpBonus ?? 0);
+    // Same SP rules as heroes: class tier by level (T2/T3 levels), gear, and
+    // the Veteran/Perilous bonus, capped at 10.
+    const tier = lv >= CLASS_TIER_LEVELS.t3 ? 't3' : lv >= CLASS_TIER_LEVELS.t2 ? 't2' : 't1';
+    const maxSp = maxSpFrom(tier, bonusSp, this.difficultyCfg?.enemySpBonus ?? 0);
     const ace = passives.some(p => p.id === 'ace');
     return {
       ...scaled, sportId: d.heroClass ? sportForHeroClass(d.heroClass) : undefined,
       abilities: skills, passives, equippedPassives: passives.map(p => p.ability),
       speed: Math.round(scaled.speed * (ace ? 1.1 : 1)), strength: Math.round(scaled.strength * (ace ? 1.1 : 1)),
       hp: maxHp, maxHp, isDead: false, debuffs: [], baseMoveSpeed: d.moveSpeed,
-      sp: maxSp + bonusSp, maxSp, skillCooldowns: {}, skillUses: {},
+      sp: maxSp, maxSp, skillCooldowns: {}, skillUses: {},
     };
   }
 
@@ -4789,6 +4773,7 @@ export class BattleScene extends Phaser.Scene {
   // original mutually-exclusive design, just decoupled from the free move.
   finishAbilityTurn(attacker) {
     attacker.hasActed = true;
+    attacker.tookAction = true; // only +1 SP next round instead of +3
     this.activeAbility = null;
     if (this.hasPassive(attacker, 'duo') && !attacker.duoBonusUsed && this.sportsPartnerAdjacent(attacker)) {
       attacker.duoBonusUsed = true;
@@ -5012,7 +4997,8 @@ export class BattleScene extends Phaser.Scene {
       // sharp_throw (4) and tri_throw (3), so this never lets him afford
       // something he otherwise couldn't.
       if (e.isCorruptedOneBoss) e.sp = e.maxSp;
-      else if (e.maxSp != null) e.sp = Math.min(e.maxSp, (e.sp ?? 0) + 1);
+      else if (e.maxSp != null) e.sp = Math.min(e.maxSp, (e.sp ?? 0) + (e.tookAction ? SP_PER_ROUND : SP_RESTED));
+      e.tookAction = false;
       e.stopperUsedThisTurn = false;
       this.tickWet(e);
       this.tickBurn(e);
@@ -5085,7 +5071,8 @@ export class BattleScene extends Phaser.Scene {
         u.isDone = false;
         u.hasActed = false;
         u.hasMoved = false;
-        u.sp = Math.min(u.maxSp, u.sp + 1);
+        u.sp = Math.min(u.maxSp, u.sp + (u.tookAction ? SP_PER_ROUND : SP_RESTED));
+        u.tookAction = false;
         u.moveSpeed = u.baseMoveSpeed; // reset move buff
         u.atkBuff   = u.assistReady ? 2.0 : 1.0; // reset atk buff; Assist waits for the next attack
         u.tankReady = false;
@@ -5207,6 +5194,7 @@ export class BattleScene extends Phaser.Scene {
       const far = [target, ...this.playerUnits].find(p => !p.isDead
         && this.distanceToUnit(wolf.col, wolf.row, p) <= reach);
       if (far) {
+        wolf.tookAction = true;
         const hit = () => { if (!wolf.isDead && !far.isDead && !this.coverBlocks(wolf, far)) this.doAttack(wolf, far); };
         if (this.distanceToUnit(wolf.col, wolf.row, far) > 1) this.fireProjectile(wolf, far, projectileFor(wolf, ATTACK), hit);
         else hit();
@@ -5220,6 +5208,7 @@ export class BattleScene extends Phaser.Scene {
       // Prefer the original target if adjacent, else first available
       const t = targets.find(t => t.col === target.col && t.row === target.row) || targets[0];
       const enemy = this.unitMap.get(`${t.col},${t.row}`);
+      wolf.tookAction = true;
       if (enemy && !enemy.isDead) this.doAttack(wolf, enemy);
     }
   }
@@ -5249,6 +5238,7 @@ export class BattleScene extends Phaser.Scene {
         .sort((a, b) => a.hp / a.maxHp - b.hp / b.maxHp)[0];
       if (hurt) {
         this.consumeAbilityResource(attacker, shield);
+        attacker.tookAction = true;
         this.applyShield(hurt, shield);
         return true;
       }
@@ -5273,6 +5263,7 @@ export class BattleScene extends Phaser.Scene {
   // projectile visuals, finishAbilityTurn's showActionMenu/endUnitTurn),
   // none of which apply to an AI-controlled unit.
   enemySkillAttack(attacker, ability, target) {
+    attacker.tookAction = true;
     this.playEnemyAnim(attacker, 'attack2');
     this.consumeAbilityResource(attacker, ability);
     target = this.redirectHit(target);

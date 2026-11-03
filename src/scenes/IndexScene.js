@@ -144,6 +144,7 @@ export class IndexScene extends Phaser.Scene {
         <div class="ui-section-label">Battle Basics</div>
         <ul class="ui-index-list">
           <li>Each unit gets one Move and one Action per turn, from the Action menu: Playbook (Specials, SP), Skillbook (Skills, cooldown) or Basicbook (Attack, Throw).</li>
+          <li>SP: 5 to start, up to +3 from gear and +3 from class upgrades, never above 10. Battles start full. Each round gives back 1 SP, or 3 if the unit didn't attack or use a skill (moving is fine). Monsters follow the same rules.</li>
           <li>Fast Play (Settings): drag a hero to move, drag onto an enemy to attack, double-tap an enemy for your second attack, triple-tap open ground to end the turn.</li>
           <li>Combat-designated units deal <b>×2 damage on adjacent (melee-range) hits</b> — close the distance when you can.</li>
           <li>Watch for buff (⬆ gold) and debuff (⬇ pink) icons above a unit's head in battle.</li>
