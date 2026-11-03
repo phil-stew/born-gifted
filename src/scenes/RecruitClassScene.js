@@ -3,7 +3,7 @@ import {
   STARTING_SPORTS, sportById, TALENTS, ELEMENTS, elementIcon,
   FULL_ROSTER, recruitWithChoice, recruitNewUnit,
 } from '../data/gameState.js';
-import { loadHeroSprites, stripHeroBackground, createHeroAnims, getSpriteInfo, heroKey, firstFrame, spriteKeyForRole } from '../data/heroSprites.js';
+import { loadHeroSprites, stripHeroBackground, createHeroAnims, getSpriteInfo, heroKey, firstFrame, spriteKeyForRole, HERO_SPRITES } from '../data/heroSprites.js';
 import { mount, unmount, onClick, esc } from '../ui/domUI.js';
 import { playSfx, SFX } from '../audio/sound.js';
 import { drawBackButton } from '../ui/canvasButton.js';
@@ -25,6 +25,9 @@ import { BACKDROPS } from '../data/storyBackdrops.js';
 // text-entry widget), and recruitNewUnit() instead of recruitWithChoice() on
 // confirm. Both modes share every other step. The name comes last, on one
 // screen with the class summary, so the phone keyboard only opens at the end.
+// Other classes loaded in the background to run across the recruit screen.
+const EXTRA_RUNNER_CLASSES = 8;
+
 export class RecruitClassScene extends Phaser.Scene {
   constructor() { super({ key: 'RecruitClassScene' }); }
 
@@ -103,8 +106,9 @@ export class RecruitClassScene extends Phaser.Scene {
 
     this.drawBackground();
 
-    this.time.addEvent({ delay: 1300, loop: true, callback: () => this.spawnRunner() });
-    for (let i = 0; i < 4; i++) this.spawnRunner(Math.random());
+    this.loadExtraRunners();
+    this.time.addEvent({ delay: 900, loop: true, callback: () => this.spawnRunner() });
+    for (let i = 0; i < 7; i++) this.spawnRunner(Math.random());
 
     this.headerText = this.add.text(width / 2, 24, '', {
       fontSize: '26px', fontFamily: 'Georgia, serif', fontStyle: 'bold', color: '#14284a',
@@ -124,8 +128,7 @@ export class RecruitClassScene extends Phaser.Scene {
   }
 
   // Last step for a new recruit: the class they built, and their name.
-  // Sunny training field covered in little coloured pixels drifting upward.
-  // The menus sit on top of them.
+  // Sunny training field; heroes run across it behind the menus (spawnRunner).
   drawBackground() {
     const { width, height } = this.scale;
     this.add.rectangle(width / 2, height / 2, width, height, 0xcfe4f7).setDepth(-10);
@@ -133,28 +136,29 @@ export class RecruitClassScene extends Phaser.Scene {
       const img = this.add.image(width / 2, height / 2, BACKDROPS.schoolTraining.key).setDepth(-10);
       img.setScale(Math.max(width / img.width, height / img.height));
     }
-    // One small emitter per colour, so each pixel keeps a clear colour.
-    [0xffffff, 0x8fd3ff, 0x4f8fe0, 0xffd76a, 0xff9ec7, 0x9ef0c0].forEach(color => {
-      const key = `recruit-pixel-${color}`;
-      if (!this.textures.exists(key)) {
-        const g = this.add.graphics();
-        g.fillStyle(color, 1);
-        g.fillRect(0, 0, 6, 6);
-        g.generateTexture(key, 6, 6);
-        g.destroy();
-      }
-      // Spawn anywhere on the page so it's covered from the start.
-      this.add.particles(0, 0, key, {
-        x: { min: 0, max: width }, y: { min: 0, max: height },
-        speedY: { min: -40, max: -12 }, speedX: { min: -14, max: 14 },
-        scale: { min: 0.6, max: 1.5 }, alpha: { values: [0, 1, 1, 0] },
-        lifespan: { min: 5000, max: 9000 }, frequency: 120, quantity: 1,
-        advance: 9000,
-      }).setDepth(-5);
-    });
   }
 
-  // A hero from one of the offered classes running across the field behind
+  // A few other classes from any tier join the runners once they've loaded
+  // in the background, so the field isn't only this academy's classes.
+  loadExtraRunners() {
+    const extras = Phaser.Utils.Array.Shuffle(Object.keys(HERO_SPRITES)
+      .filter(cn => !this.runnerClasses.includes(cn))).slice(0, EXTRA_RUNNER_CLASSES);
+    const ready = cn => {
+      if (!this.textures.exists(heroKey(cn)) || this.runnerClasses.includes(cn)) return;
+      stripHeroBackground(this, cn);
+      createHeroAnims(this, cn);
+      this.runnerClasses.push(cn);
+    };
+    const missing = extras.filter(cn => !this.textures.exists(heroKey(cn)));
+    extras.filter(cn => !missing.includes(cn)).forEach(ready);
+    if (!missing.length) return;
+    loadHeroSprites(this, missing);
+    this.load.on('filecomplete', () => missing.forEach(ready));
+    this.events.once('shutdown', () => this.load.off('filecomplete'));
+    this.load.start();
+  }
+
+  // A hero from one of the classes running across the field behind
   // the menu. Lower on the screen means closer, so bigger. `startAt` (0-1)
   // places one part way across, to fill the field on the first frame.
   spawnRunner(startAt = 0) {
