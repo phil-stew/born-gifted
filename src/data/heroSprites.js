@@ -225,6 +225,14 @@ function clearGridBoundaries(d, W, H, cols, rows, bandPx = 3) {
 const CELL_LINE_REACH = 24;
 const CELL_LINE_FILL = 0.75;
 const CELL_LINE_SIDE_FILL = 0.3; // side lines can be dashed; a staff or bat is thicker
+// A broken grey grid line along a cell's top edge (seen over Netball, Hockey and
+// Paintball runners) is thin and greyish but too gappy for CELL_LINE_FILL.
+const CELL_TOP_LINE_FILL = 0.25, CELL_TOP_LINE_THICK = 3, CELL_TOP_LINE_GREY = 40;
+// The same grid also leaves short dashes at the very top of a cell (Hockey),
+// solid lines along the bottom (some attack rows) and tall vertical lines
+// (Black Belt, Kyokushin). Each is cleared as one unbroken thin grey run.
+const CELL_TOP_DASH_ROWS = 10, CELL_TOP_DASH_MIN = 6;
+const CELL_BOTTOM_LINE_RUN = 0.35, CELL_SIDE_LINE_RUN = 0.6;
 function clearStrayCellLines(d, W, x0, y0, x1, y1) {
   const isOpaque = (x, y) => d[(y * W + x) * 4 + 3] > 0;
   const clear = (x, y) => { d[(y * W + x) * 4 + 3] = 0; };
@@ -234,6 +242,56 @@ function clearStrayCellLines(d, W, x0, y0, x1, y1) {
     for (let y = y0; y <= y1; y++) if (isOpaque(x, y)) solid++;
     return solid;
   };
+  // Thin, greyish pixels: nothing opaque a few pixels above and below them.
+  const thinGrey = (x, y) => {
+    if (!isOpaque(x, y)) return false;
+    const pi = (y * W + x) * 4;
+    if (Math.max(d[pi], d[pi + 1], d[pi + 2]) - Math.min(d[pi], d[pi + 1], d[pi + 2]) > CELL_TOP_LINE_GREY) return false;
+    const above = y - CELL_TOP_LINE_THICK, below = y + CELL_TOP_LINE_THICK;
+    return (above < y0 || !isOpaque(x, above)) && (below > y1 || !isOpaque(x, below));
+  };
+  for (let y = y0; y < y0 + CELL_LINE_REACH; y++) {
+    let thin = 0;
+    for (let x = x0; x <= x1; x++) if (thinGrey(x, y)) thin++;
+    if (thin <= cellW * CELL_TOP_LINE_FILL) continue;
+    // Clear the line's full thickness: grey pixels just above and below too.
+    const grey = (x, yy) => {
+      const pi = (yy * W + x) * 4;
+      return isOpaque(x, yy) && Math.max(d[pi], d[pi + 1], d[pi + 2]) - Math.min(d[pi], d[pi + 1], d[pi + 2]) <= CELL_TOP_LINE_GREY;
+    };
+    for (let x = x0; x <= x1; x++) {
+      if (!thinGrey(x, y)) continue;
+      for (let yy = Math.max(y0, y - CELL_TOP_LINE_THICK); yy <= Math.min(y1, y + CELL_TOP_LINE_THICK); yy++) {
+        if (grey(x, yy)) clear(x, yy);
+      }
+    }
+  }
+  // Unbroken runs of thin grey pixels along a row or column, at least `min` long.
+  const isGrey = (x, y) => {
+    const pi = (y * W + x) * 4;
+    return isOpaque(x, y) && Math.max(d[pi], d[pi + 1], d[pi + 2]) - Math.min(d[pi], d[pi + 1], d[pi + 2]) <= CELL_TOP_LINE_GREY;
+  };
+  const thinAcross = (x, y) => isGrey(x, y)
+    && (x - CELL_TOP_LINE_THICK < x0 || !isOpaque(x - CELL_TOP_LINE_THICK, y))
+    && (x + CELL_TOP_LINE_THICK > x1 || !isOpaque(x + CELL_TOP_LINE_THICK, y));
+  const clearRuns = (len, at, test, min) => {
+    let start = -1;
+    for (let i = 0; i <= len; i++) {
+      if (i < len && test(i)) { if (start < 0) start = i; continue; }
+      if (start >= 0 && i - start >= min) for (let k = start; k < i; k++) clear(...at(k));
+      start = -1;
+    }
+  };
+  for (let y = y0; y < y0 + CELL_TOP_DASH_ROWS; y++) {
+    clearRuns(cellW, k => [x0 + k, y], k => thinGrey(x0 + k, y), CELL_TOP_DASH_MIN);
+  }
+  for (let y = y1 - CELL_LINE_REACH; y <= y1; y++) {
+    clearRuns(cellW, k => [x0 + k, y], k => thinGrey(x0 + k, y), cellW * CELL_BOTTOM_LINE_RUN);
+  }
+  for (let x = x0; x <= x1; x++) {
+    clearRuns(cellH, k => [x, y0 + k], k => thinAcross(x, y0 + k), cellH * CELL_SIDE_LINE_RUN);
+  }
+
   for (let i = 0; i < CELL_LINE_REACH; i++) {
     for (const y of [y0 + i, y1 - i]) {
       let solid = 0;
