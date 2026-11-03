@@ -106,6 +106,9 @@ canvas {
   animation: ui-fade-in 220ms ease both;
 }
 
+/* A floating modal over a live canvas scene (the recruit name step). */
+.ui-screen.ui-see-through { background: rgba(7, 8, 15, 0.25); }
+
 /* Party and Index let the world map show faintly behind their panels. */
 .ui-party, .ui-index {
   --ui-panel: rgba(26, 26, 46, 0.5);

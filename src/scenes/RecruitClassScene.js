@@ -3,7 +3,7 @@ import {
   STARTING_SPORTS, sportById, TALENTS, ELEMENTS, elementIcon,
   FULL_ROSTER, recruitWithChoice, recruitNewUnit,
 } from '../data/gameState.js';
-import { loadHeroSprites, stripHeroBackground, heroKey, firstFrame, spriteKeyForRole } from '../data/heroSprites.js';
+import { loadHeroSprites, stripHeroBackground, createHeroAnims, getSpriteInfo, heroKey, firstFrame, spriteKeyForRole } from '../data/heroSprites.js';
 import { mount, unmount, onClick, esc } from '../ui/domUI.js';
 import { playSfx, SFX } from '../audio/sound.js';
 import { drawBackButton } from '../ui/canvasButton.js';
@@ -92,37 +92,45 @@ export class RecruitClassScene extends Phaser.Scene {
     for (const sportId of this.availableSports()) {
       sportById(sportId).roles.forEach(r => roleIds.add(r.id));
     }
+    this.runnerClasses = [];
     for (const roleId of roleIds) {
       const cn = spriteKeyForRole(roleId);
-      if (cn) stripHeroBackground(this, cn);
+      if (!cn) continue;
+      stripHeroBackground(this, cn);
+      createHeroAnims(this, cn);
+      if (this.textures.exists(heroKey(cn))) this.runnerClasses.push(cn);
     }
 
     this.drawBackground();
 
+    this.time.addEvent({ delay: 1300, loop: true, callback: () => this.spawnRunner() });
+    for (let i = 0; i < 4; i++) this.spawnRunner(Math.random());
+
     this.headerText = this.add.text(width / 2, 24, '', {
       fontSize: '26px', fontFamily: 'Georgia, serif', fontStyle: 'bold', color: '#14284a',
       stroke: '#ffffff', strokeThickness: 4,
-    }).setOrigin(0.5);
+    }).setOrigin(0.5).setDepth(20);
 
     this.subText = this.add.text(width / 2, 44, '', {
       fontSize: '18px', fontFamily: 'monospace', color: '#1e3a66',
       stroke: '#ffffff', strokeThickness: 3,
       align: 'center', wordWrap: { width: width - 60 },
-    }).setOrigin(0.5, 0);
+    }).setOrigin(0.5, 0).setDepth(20);
 
-    this.con = this.add.container(0, 0);
+    this.con = this.add.container(0, 0).setDepth(20);
     this.cameras.main.fadeIn(300, 0, 0, 0);
     this.events.once('shutdown', unmount);
     this.render();
   }
 
   // Last step for a new recruit: the class they built, and their name.
-  // Sunny training field with little coloured pixels drifting up across it.
+  // Sunny training field covered in little coloured pixels drifting upward.
+  // The menus sit on top of them.
   drawBackground() {
     const { width, height } = this.scale;
-    this.add.rectangle(width / 2, height / 2, width, height, 0xcfe4f7);
+    this.add.rectangle(width / 2, height / 2, width, height, 0xcfe4f7).setDepth(-10);
     if (this.textures.exists(BACKDROPS.schoolTraining.key)) {
-      const img = this.add.image(width / 2, height / 2, BACKDROPS.schoolTraining.key);
+      const img = this.add.image(width / 2, height / 2, BACKDROPS.schoolTraining.key).setDepth(-10);
       img.setScale(Math.max(width / img.width, height / img.height));
     }
     // One small emitter per colour, so each pixel keeps a clear colour.
@@ -135,13 +143,37 @@ export class RecruitClassScene extends Phaser.Scene {
         g.generateTexture(key, 6, 6);
         g.destroy();
       }
-      this.add.particles(0, height + 6, key, {
-        x: { min: 0, max: width },
-        speedY: { min: -70, max: -30 }, speedX: { min: -15, max: 15 },
-        scale: { min: 0.6, max: 1.4 }, alpha: { start: 1, end: 0.2 },
-        lifespan: { min: 7000, max: 11000 }, frequency: 450, quantity: 1,
+      // Spawn anywhere on the page so it's covered from the start.
+      this.add.particles(0, 0, key, {
+        x: { min: 0, max: width }, y: { min: 0, max: height },
+        speedY: { min: -40, max: -12 }, speedX: { min: -14, max: 14 },
+        scale: { min: 0.6, max: 1.5 }, alpha: { values: [0, 1, 1, 0] },
+        lifespan: { min: 5000, max: 9000 }, frequency: 120, quantity: 1,
         advance: 9000,
-      });
+      }).setDepth(-5);
+    });
+  }
+
+  // A hero from one of the offered classes running across the field behind
+  // the menu. Lower on the screen means closer, so bigger. `startAt` (0-1)
+  // places one part way across, to fill the field on the first frame.
+  spawnRunner(startAt = 0) {
+    if (!this.runnerClasses.length) return;
+    const { width, height } = this.scale;
+    const cn = Phaser.Utils.Array.GetRandom(this.runnerClasses);
+    const key = heroKey(cn);
+    const depthT = Phaser.Math.FloatBetween(0, 1);
+    const y = height * (0.5 + 0.45 * depthT);
+    const scale = 0.28 + 0.22 * depthT;
+    const toRight = Math.random() < 0.5;
+    const fromX = toRight ? -60 : width + 60, toX = toRight ? width + 60 : -60;
+    const sprite = this.add.sprite(fromX + (toX - fromX) * startAt, y, key, firstFrame(cn))
+      .setScale(scale).setOrigin(0.5, 0.92).setDepth(depthT).setAlpha(0.95).setFlipX(!toRight);
+    const anim = getSpriteInfo(cn)?.noMoveAnim ? `${key}-idle` : `${key}-run`;
+    if (this.anims.exists(anim)) sprite.play(anim);
+    this.tweens.add({
+      targets: sprite, x: toX, duration: Phaser.Math.Between(6000, 9000) * (1 - startAt),
+      onComplete: () => sprite.destroy(),
     });
   }
 
@@ -152,7 +184,7 @@ export class RecruitClassScene extends Phaser.Scene {
     const role = sport.roles.find(r => r.id === this.chosenRole);
     const growth = TALENTS.map(t => `${t} ×${Math.pow(2, this.chosenTalents.filter(x => x === t).length)}`).join(' · ');
     mount(`
-      <div class="ui-screen" style="align-items:center; justify-content:center;">
+      <div class="ui-screen ui-see-through" style="align-items:center; justify-content:center;">
         <div class="ui-modal">
           <div class="ui-modal-title">NAME YOUR RECRUIT</div>
           <div class="ui-modal-sub">${esc(sport.name)} · ${esc(role.name)} · ${elementIcon(this.chosenElement)} ${esc(this.chosenElement)}</div>
