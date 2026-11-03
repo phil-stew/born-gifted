@@ -3391,7 +3391,8 @@ export class BattleScene extends Phaser.Scene {
 
       if (canUse) {
         const z = this.add.zone(MW/2, iy + IH/2, MW, IH).setInteractive({ useHandCursor:true });
-        z.on('pointerover', () => draw(true)); z.on('pointerout', () => draw(false));
+        z.on('pointerover', () => { draw(true); this.showAbilityDetail(unit, ab); });
+        z.on('pointerout', () => { draw(false); if (!this.abilityDetail?.withCancel) this.hideAbilityDetail(); });
         z.on('pointerdown', (ptr,lx,ly,evt) => {
           evt.stopPropagation();
           playSfx(this, SFX.battleClick);
@@ -3925,6 +3926,7 @@ export class BattleScene extends Phaser.Scene {
     if (this.actionMenu)   { this.actionMenu.destroy(true);   this.actionMenu   = null; }
     if (this.statusPopup)  { this.statusPopup.destroy(true);  this.statusPopup  = null; }
     if (this.emptyTileMenu){ this.emptyTileMenu.destroy(true);this.emptyTileMenu= null; }
+    if (this.abilityDetail && !this.abilityDetail.withCancel) this.hideAbilityDetail();
   }
 
   startTargeting(ability) {
@@ -3940,6 +3942,7 @@ export class BattleScene extends Phaser.Scene {
     }
     this.actionHint.setText(`${ability.icon ?? '◈'} ${ability.name}  ·  range ${rangeLabel}  ·  pick target`);
     this.redraw();
+    this.showAbilityDetail(this.selectedUnit, ability, true);
   }
 
   // Directional abilities (Dash, Blitz, Tackle Kick, ...) no longer show a
@@ -3951,6 +3954,164 @@ export class BattleScene extends Phaser.Scene {
     this.phase = 'directional_targeting';
     this.hideActionMenu();
     this.actionHint.setText(`${ability.icon} ${ability.name}  ·  tap a highlighted tile`);
+    this.redraw();
+    this.showAbilityDetail(this.selectedUnit, ability, true);
+  }
+
+  // ── Attack detail box (bottom middle) ─────────────────────────────────────
+  // Shown while picking a target (with Cancel), and on hover over a menu row
+  // on desktop. The preview line lists damage against the hovered enemy, or
+  // every enemy in range when nothing is hovered (phones have no hover).
+  abilityBook(ab) {
+    if (ab === ATTACK || ab === THROW) return 'Basicbook';
+    return ab.category === 'skill' ? 'Skillbook' : 'Playbook';
+  }
+
+  // desc minus its cost/cooldown part (the live cost is shown separately),
+  // with the short forms spelled out.
+  abilityDetailText(ab) {
+    return (ab.desc ?? '').split('·').map(s => s.trim())
+      .filter(s => s && !/^(\d+ SP|CD \d+|always available)$/.test(s))
+      .join('  ·  ')
+      .replace(/\bdmg\b/g, 'damage').replace(/\bCD (\d+)/g, 'cooldown $1');
+  }
+
+  // Expected damage range for one enemy-targeted hit, before shields.
+  previewDamage(attacker, ab, target) {
+    const dist = this.distanceToUnit(attacker.col, attacker.row, target);
+    const mult = distanceMultiplier(ab, dist) * designationMultiplier(attacker, target, ab)
+      * elementMultiplier(attacker, target, ab) * this.partnerAttackMultiplier(attacker)
+      * this.passiveDefenseMultiplier(target) * this.difficultyDamageMult(attacker);
+    const base = attacker.strength + Math.round(attacker.speed * 0.5);
+    const buff = attacker.atkBuff ?? 1.0;
+    const hits = ab.hits ?? 1;
+    const lo = Math.round(Math.round(base * buff) * mult) * hits;
+    const hi = Math.round(Math.round((base + 3) * buff) * mult) * hits;
+    const edge = designationMultiplier(attacker, target, ab) * elementMultiplier(attacker, target, ab);
+    return { lo, hi, tag: edge > 1 ? 'strong' : edge < 1 ? 'weak' : '' };
+  }
+
+  abilityPreviewText() {
+    const d = this.abilityDetail;
+    if (!d?.withCancel || d.ab.targetType !== 'enemy' || d.ab.effect || d.ab.directional) return '';
+    const u = this.selectedUnit;
+    if (!u) return '';
+    const fmt = (t) => {
+      const p = this.previewDamage(u, d.ab, t);
+      const tag = p.tag === 'strong' ? ' ▲strong' : p.tag === 'weak' ? ' ▼weak' : '';
+      return `${t.name.split(' ')[0]} ${p.lo === p.hi ? p.lo : `${p.lo}-${p.hi}`}${tag}`;
+    };
+    const h = this.hoveredTile && this.unitMap.get(`${this.hoveredTile.col},${this.hoveredTile.row}`);
+    if (h?.team === 'enemy' && !h.isDead && this.abilityReachesUnit(u, d.ab, h)) return `Damage: ${fmt(h)}`;
+    const inRange = this.enemyUnits.filter(e => !e.isDead && this.abilityReachesUnit(u, d.ab, e));
+    if (!inRange.length) return 'No enemy in range';
+    const shown = inRange.slice(0, 3).map(fmt).join('  ·  ');
+    return `Damage: ${shown}${inRange.length > 3 ? `  +${inRange.length - 3} more` : ''}`;
+  }
+
+  showAbilityDetail(unit, ab, withCancel = false) {
+    this.hideAbilityDetail();
+    if (!unit || !ab) return;
+    const { width, height } = this.scale;
+    const W = Math.min(660, width - 32), PAD = 14;
+    const cancelW = withCancel ? 130 : 0;
+    const textW = W - PAD * 2 - cancelW;
+
+    // Hover boxes sit under the menu so they never cover a row being pointed at.
+    const con = this.add.container(width / 2 - W / 2, 0).setDepth(withCancel ? 4100 : 3990);
+    const cost = this.abilitySubLabel(unit, ab) || 'Free';
+    const title = this.add.text(PAD, PAD, `${ab.icon ?? '◈'}  ${ab.name}`, {
+      fontSize: '22px', fontFamily: 'monospace', fontStyle: 'bold', color: '#ffffff',
+      stroke: '#000000', strokeThickness: 4,
+    });
+    const meta = this.add.text(PAD + title.width + 14, PAD + 3, `${this.abilityBook(ab)}  ·  ${cost}  ${this.abilityTypeTag(unit, ab)}`, {
+      fontSize: '17px', fontFamily: 'monospace', color: '#99bbee', stroke: '#000000', strokeThickness: 3,
+    });
+    const body = this.add.text(PAD, PAD + 32, this.abilityDetailText(ab), {
+      fontSize: '18px', fontFamily: 'monospace', color: '#dde4ff', stroke: '#000000', strokeThickness: 3,
+      wordWrap: { width: textW },
+    });
+    const preview = this.add.text(PAD, body.y + body.height + 6, '', {
+      fontSize: '18px', fontFamily: 'monospace', fontStyle: 'bold', color: '#ffcc66',
+      stroke: '#000000', strokeThickness: 3, wordWrap: { width: textW },
+    });
+    this.abilityDetail = { con, ab, withCancel, preview, previewStr: null, unit };
+
+    const layout = () => {
+      const H = Math.max(PAD * 2 + 32 + body.height + (preview.text ? preview.height + 6 : 0), 70);
+      bg.clear();
+      bg.fillStyle(0x0d1428, 0.82);
+      bg.fillRoundedRect(0, 0, W, H, 14);
+      bg.lineStyle(2, unit.color ?? 0x3a5aa0, 0.8);
+      bg.strokeRoundedRect(0, 0, W, H, 14);
+      con.y = height - 34 - H;
+      // Jump to the top when a unit you might tap sits under the box.
+      const left = con.x, right = con.x + W;
+      const covered = [...this.playerUnits, ...this.enemyUnits].some(o => {
+        if (o.isDead) return false;
+        const p = this.gridToScreen(o.col, o.row);
+        return p.x > left - 30 && p.x < right + 30 && p.y + TH2 + 40 > con.y;
+      });
+      if (covered) con.y = 40;
+      if (swallow) { swallow.setPosition(W / 2, H / 2); swallow.setSize(W, H); }
+      if (cancelBtn) cancelBtn.setPosition(W - PAD - cancelW / 2 + 6, H / 2);
+    };
+    const bg = this.add.graphics();
+    con.add([bg, title, meta, body, preview]);
+
+    let cancelBtn = null, swallow = null;
+    if (withCancel) {
+      // A tap on the box itself must not fall through to the tile below it.
+      swallow = this.add.zone(W / 2, 35, W, 70).setInteractive();
+      swallow.on('pointerdown', (ptr, lx, ly, evt) => evt.stopPropagation());
+      con.add(swallow);
+      cancelBtn = this.add.container(0, 0);
+      const cg = this.add.graphics();
+      cg.fillStyle(0x5a2030, 0.9);
+      cg.fillRoundedRect(-cancelW / 2 + 6, -24, cancelW - 12, 48, 10);
+      const ct = this.add.text(0, 0, '✕ Cancel', {
+        fontSize: '20px', fontFamily: 'monospace', fontStyle: 'bold', color: '#ffdddd',
+      }).setOrigin(0.5);
+      const cz = this.add.zone(0, 0, cancelW - 12, 48).setInteractive({ useHandCursor: true });
+      cz.on('pointerdown', (ptr, lx, ly, evt) => {
+        evt.stopPropagation();
+        playSfx(this, SFX.battleClick);
+        this.cancelAbilityTargeting();
+      });
+      cancelBtn.add([cg, ct, cz]);
+      con.add(cancelBtn);
+    }
+    this.abilityDetail.layout = layout;
+    layout();
+    this.updateAbilityDetail();
+  }
+
+  // Called from redraw(): drops a targeting box once targeting ends, and
+  // refreshes the damage line when the hovered enemy changes.
+  updateAbilityDetail() {
+    const d = this.abilityDetail;
+    if (!d) return;
+    if (d.withCancel && this.phase !== 'ability_targeting' && this.phase !== 'directional_targeting') {
+      this.hideAbilityDetail();
+      return;
+    }
+    const s = this.abilityPreviewText();
+    if (s === d.previewStr) return;
+    d.previewStr = s;
+    d.preview.setText(s);
+    d.layout();
+  }
+
+  hideAbilityDetail() {
+    if (this.abilityDetail) { this.abilityDetail.con.destroy(true); this.abilityDetail = null; }
+  }
+
+  cancelAbilityTargeting() {
+    const u = this.selectedUnit;
+    if (!u || (this.phase !== 'ability_targeting' && this.phase !== 'directional_targeting')) return;
+    this.activeAbility = null;
+    this.hideAbilityDetail();
+    this.showActionMenu(u);
     this.redraw();
   }
 
@@ -5949,6 +6110,7 @@ export class BattleScene extends Phaser.Scene {
       enemy_turn:       '', victory: '', defeat: '',
     };
     this.actionHint.setText(hints[this.phase] ?? '');
+    this.updateAbilityDetail();
 
     // Clear any pooled highlight graphics left over from a frame that used more tiles
     for (let i = this.hlPoolIndex; i < this.hlPool.length; i++) this.hlPool[i].clear();
