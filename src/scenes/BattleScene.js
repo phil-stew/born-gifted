@@ -18,7 +18,7 @@ import { BACKDROPS } from '../data/storyBackdrops.js';
 import { preloadSfx, playSfx, playStinger, SFX } from '../audio/sound.js';
 import { preloadMusic, playMusic } from '../audio/music.js';
 import { getDifficultyConfig } from '../data/difficulty.js';
-import { battleInfoOn } from '../data/battleHints.js';
+import { battleInfoOn, BATTLE_SPEEDS, getBattleSpeed, setBattleSpeed } from '../data/battleHints.js';
 
 // M1 first-time control tutorial (2026-08-06, "some people struggle to
 // know how to move and attack") — shown once ever (a plain localStorage
@@ -1454,6 +1454,7 @@ export class BattleScene extends Phaser.Scene {
     }).setOrigin(0.5, 1).setDepth(1001);
 
     this.drawReferenceHud(width);
+    this.drawSpeedButton(width);
 
     // Exit button
     const exitBtn = this.add.text(8, 2, '✕ RETREAT', {
@@ -2224,7 +2225,7 @@ export class BattleScene extends Phaser.Scene {
       // 1 tile). Flooring dur at one full cycle guarantees every move —
       // however short — plays the run animation through at least once.
       const oneCycleMs = runAnimObj ? (runAnimObj.frames.length / runAnimObj.frameRate) * 1000 : 220;
-      const dur = Math.max(oneCycleMs, 180 * tileDist);
+      const dur = Math.max(oneCycleMs, 180 * tileDist) / (this.battleSpeed ?? 1);
       const ease = t => t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t; // easeInOut quad
       const start = performance.now();
       const animate = () => {
@@ -3462,6 +3463,34 @@ export class BattleScene extends Phaser.Scene {
   // systems. Modernized (July 2026) to match the translucent glass-card
   // action menu: each icon gets its own ring-outlined chip instead of a flat
   // arrow-joined text string.
+  // ×1/×2/×3 under the reference panel. Speeds up the scene's clock, tweens and
+  // sprite animations; moves, projectiles and banners divide by battleSpeed.
+  drawSpeedButton(width) {
+    this.battleSpeed = getBattleSpeed();
+    const btn = this.add.text(width - 6, 108, '', {
+      fontSize: '18px', fontFamily: 'monospace', fontStyle: 'bold', color: '#ffee88',
+      backgroundColor: '#08101ecc', padding: { x: 10, y: 5 },
+    }).setOrigin(1, 0).setDepth(1002).setInteractive({ useHandCursor: true });
+    const show = () => btn.setText(`▶ x${this.battleSpeed}`);
+    btn.on('pointerdown', () => {
+      playSfx(this, SFX.battleClick);
+      this.battleSpeed = BATTLE_SPEEDS[(BATTLE_SPEEDS.indexOf(this.battleSpeed) + 1) % BATTLE_SPEEDS.length];
+      setBattleSpeed(this.battleSpeed);
+      this.applyBattleSpeed();
+      show();
+    });
+    show();
+    this.applyBattleSpeed();
+    this.events.once('shutdown', () => { this.anims.globalTimeScale = 1; });
+  }
+  applyBattleSpeed() {
+    const s = this.battleSpeed;
+    this.time.timeScale = s;
+    this.tweens.timeScale = s;
+    this.anims.globalTimeScale = s;
+    if (this.weatherEmitter) this.weatherEmitter.timeScale = s;
+  }
+
   drawReferenceHud(width) {
     const ROW_H = 24, PAD_Y = 8;
     const PW = 208, PY = 34, PH = PAD_Y * 2 + ROW_H * 2;
@@ -4315,6 +4344,7 @@ export class BattleScene extends Phaser.Scene {
       lifespan: style.lifespan, alpha: style.alpha, angle: 0,
       frequency: style.frequency, quantity: 1,
     }).setDepth(2500);
+    this.weatherEmitter.timeScale = this.battleSpeed ?? 1;
   }
 
   // Weather Dance: lasts DANCE_ROUNDS rounds, for both sides. Rain soaks everyone
@@ -4495,7 +4525,7 @@ export class BattleScene extends Phaser.Scene {
     const fromX = from.x, fromY = from.y + TH2 - 20;
     const toX   = to.x,   toY   = to.y + TH2 - 20;
     const travelDist = Math.hypot(toX - fromX, toY - fromY);
-    const dur = Phaser.Math.Clamp(travelDist * 1.1, 120, 260);
+    const dur = Phaser.Math.Clamp(travelDist * 1.1, 120, 260) / (this.battleSpeed ?? 1);
     const angle = Math.atan2(toY - fromY, toX - fromX);
 
     const img = this.add.image(fromX, fromY, PROJECTILE_SHEET.key, name).setDepth(3000);
@@ -5343,17 +5373,18 @@ export class BattleScene extends Phaser.Scene {
     }).setOrigin(0.5).setDepth(2100).setAlpha(0);
 
     // Phaser 4 tweens don't run in scene.start() context — use native timers
+    const speed = this.battleSpeed ?? 1;
     const fadeIn = (start) => {
       const elapsed = performance.now() - start;
-      const t = Math.min(elapsed / 250, 1);
+      const t = Math.min(elapsed * speed / 250, 1);
       if (!banner.scene) return;
       banner.setAlpha(t);
       if (t < 1) requestAnimationFrame(() => fadeIn(start));
-      else setTimeout(() => fadeOut(performance.now()), 600);
+      else setTimeout(() => fadeOut(performance.now()), 600 / speed);
     };
     const fadeOut = (start) => {
       const elapsed = performance.now() - start;
-      const t = Math.min(elapsed / 350, 1);
+      const t = Math.min(elapsed * speed / 350, 1);
       if (!banner.scene) return;
       banner.setAlpha(1 - t);
       if (t < 1) requestAnimationFrame(() => fadeOut(start));

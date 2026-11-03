@@ -44,3 +44,15 @@ export function battleInfoOn() {
 export function setBattleInfoOn(on) {
   try { localStorage.setItem(INFO_KEY, on ? 'on' : 'off'); } catch { /* setting just won't persist */ }
 }
+
+// Battle speed: ×1, ×2 or ×3, picked from the button in battle.
+const SPEED_KEY = 'born-gifted-battle-speed';
+export const BATTLE_SPEEDS = [1, 2, 3];
+
+export function getBattleSpeed() {
+  try { const s = Number(localStorage.getItem(SPEED_KEY)); return BATTLE_SPEEDS.includes(s) ? s : 1; } catch { return 1; }
+}
+
+export function setBattleSpeed(speed) {
+  try { localStorage.setItem(SPEED_KEY, String(speed)); } catch { /* setting just won't persist */ }
+}
