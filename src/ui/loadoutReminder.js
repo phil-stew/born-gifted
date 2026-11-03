@@ -23,8 +23,9 @@ export function remindersFor(unit) {
 
   const { slots } = gearLayoutForUnit(unit);
   const emptySlots = slots.filter(s => !unit.equip[s]);
-  const gear = state.inventory.filter(it => emptySlots.includes(it.slot));
-  if (gear.length) list.push({ key: `gear:${gear.length}`, tab: 'equipment', text: `${firstName(unit)} has gear to equip` });
+  // Only empty slots, keyed by which slots: new drops for the same slot don't nag again.
+  const fillable = emptySlots.filter(slot => state.inventory.some(it => it.slot === slot));
+  if (fillable.length) list.push({ key: `gear:${fillable.join(',')}`, tab: 'equipment', text: `${firstName(unit)} has an empty gear slot` });
 
   const specials = getUnitSpecials(unit);
   const usedSpecials = getEquippedSpecialAbilities(unit).filter(Boolean).length;
@@ -55,35 +56,33 @@ function nextReminder() {
   return null;
 }
 
-// Slides a banner down from the top of `scene`. Tapping it opens the matching
-// Party tab; it leaves on its own after a few seconds.
+// A small, quiet note that fades in near the top of `scene`. Tapping it opens
+// the matching Party tab; it fades out on its own after a few seconds.
 export function showLoadoutReminder(scene) {
   const reminder = nextReminder();
   if (!reminder) return;
   seen.add(reminder.key);
 
   const { width } = scene.scale;
-  const w = Math.min(760, width - 40), h = 62, restY = 40;
-  const con = scene.add.container(width / 2, -h).setDepth(5000);
+  const label = scene.add.text(0, 0, `${reminder.text}  ›`, {
+    fontSize: '16px', fontFamily: 'monospace', color: '#c8d2ee',
+  }).setOrigin(0.5);
+  const w = label.width + 32, h = 34, restY = 44;
+  const con = scene.add.container(width / 2, restY - 6).setDepth(5000).setAlpha(0);
 
   const g = scene.add.graphics();
-  g.fillStyle(0x0d1428, 0.96);
-  g.fillRoundedRect(-w / 2, 0, w, h, 12);
-  g.lineStyle(2, 0xffaa44, 1);
-  g.strokeRoundedRect(-w / 2, 0, w, h, 12);
+  g.fillStyle(0x0d1428, 0.7);
+  g.fillRoundedRect(-w / 2, 0, w, h, h / 2);
+  g.lineStyle(1, 0x3a5aa0, 0.8);
+  g.strokeRoundedRect(-w / 2, 0, w, h, h / 2);
   con.add(g);
-
-  con.add(scene.add.text(-w / 2 + 20, h / 2, reminder.text, {
-    fontSize: '22px', fontFamily: 'monospace', fontStyle: 'bold', color: '#ffffff',
-  }).setOrigin(0, 0.5));
-  con.add(scene.add.text(w / 2 - 20, h / 2, 'OPEN ▶', {
-    fontSize: '20px', fontFamily: 'monospace', fontStyle: 'bold', color: '#ffaa44',
-  }).setOrigin(1, 0.5));
+  label.setPosition(0, h / 2);
+  con.add(label);
 
   const leave = () => {
     if (!con.active) return;
     scene.tweens.add({
-      targets: con, y: -h - 10, duration: 250, ease: 'Sine.easeIn',
+      targets: con, alpha: 0, duration: 400,
       onComplete: () => con.destroy(true),
     });
   };
@@ -95,6 +94,6 @@ export function showLoadoutReminder(scene) {
   });
   con.add(zone);
 
-  scene.tweens.add({ targets: con, y: restY, duration: 350, delay: 500, ease: 'Back.easeOut' });
-  scene.time.delayedCall(7000, leave);
+  scene.tweens.add({ targets: con, y: restY, alpha: 1, duration: 400, delay: 800, ease: 'Sine.easeOut' });
+  scene.time.delayedCall(5000, leave);
 }

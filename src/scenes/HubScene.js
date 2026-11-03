@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { state, MAX_ROSTER_SIZE } from '../data/gameState.js';
 import { BACKDROPS } from '../data/storyBackdrops.js';
-import { HUB_CONFIGS } from '../data/hubConfigs.js';
+import { HUB_CONFIGS, recruitClassesFor } from '../data/hubConfigs.js';
 import { drawBackButton } from '../ui/canvasButton.js';
 import { playMusic } from '../audio/music.js';
 import { playSfx, SFX } from '../audio/sound.js';
@@ -247,7 +247,7 @@ export class HubScene extends Phaser.Scene {
             else if (svc.key === 'Quests') this.scene.start('AcademyQuestListScene', { nodeId: this.nodeId, hubData: this.hubData });
             else if (svc.key === 'VillageQuests') this.scene.start('VillageQuestListScene', { hubData: this.hubData });
             else if (svc.key === 'Recruit') this.scene.start('RecruitClassScene', {
-              newRecruit: true, sportClass: HUB_CONFIGS[this.nodeId]?.recruitPool,
+              newRecruit: true, sportClass: recruitClassesFor(this.nodeId),
               nextScene: 'HubScene', nextSceneData: { nodeId: this.nodeId },
             });
             // No trailing else — every SERVICE_DEFS key above (7 total) has

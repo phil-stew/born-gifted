@@ -143,7 +143,8 @@ export class IndexScene extends Phaser.Scene {
       <div class="ui-section">
         <div class="ui-section-label">Battle Basics</div>
         <ul class="ui-index-list">
-          <li>Each unit gets one Move and one Action (Attack/Throw/a Special/a Class Skill) per turn, via the Playbook menu.</li>
+          <li>Each unit gets one Move and one Action per turn, from the Action menu: Playbook (Specials, SP), Skillbook (Skills, cooldown) or Basicbook (Attack, Throw).</li>
+          <li>Fast Play (Settings): drag a hero to move, drag onto an enemy to attack, double-tap an enemy for your second attack, triple-tap open ground to end the turn.</li>
           <li>Combat-designated units deal <b>×2 damage on adjacent (melee-range) hits</b> — close the distance when you can.</li>
           <li>Watch for buff (⬆ gold) and debuff (⬇ pink) icons above a unit's head in battle.</li>
           <li>🛒 Shop and ⚒ Forge are available at every hub on the world map (badges shown right on the node).</li>

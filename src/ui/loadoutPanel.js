@@ -1,9 +1,10 @@
 import {
   classSkillSlotCount, equipPassive, equipSpecialSlot, equipSkillSlot, CLASS_SKILL_SLOT_LEVELS,
+  FAST_PLAY_DEFAULTS, setFastPlaySlot,
 } from '../data/gameState.js';
 import {
   ATTACK, THROW, getUnitSpecials, getUnitSkills, getUnitPassivePool,
-  getEquippedSpecialAbilities, getEquippedSkillAbilities,
+  getEquippedSpecialAbilities, getEquippedSkillAbilities, fastPlayPool, fastPlayAbility,
 } from '../data/abilities.js';
 import { onClick, esc } from './domUI.js';
 
@@ -70,18 +71,30 @@ export function loadoutSectionsHTML(host, unit, section) {
 
   return `
     <div class="ui-section">
-      <div class="ui-section-label">Specials (SP) &middot; ${specials.length} known</div>
+      <div class="ui-section-label">Playbook &middot; Specials (SP) &middot; ${specials.length} known</div>
       ${specials.length ? `<div class="ui-skill-grid">${specialSlotsHTML}</div>` : '<div class="ui-empty-note">— none yet —</div>'}
     </div>
 
     <div class="ui-section">
-      <div class="ui-section-label">Skills (cooldown) &middot; ${skills.length} known</div>
+      <div class="ui-section-label">Skillbook &middot; Skills (cooldown) &middot; ${skills.length} known</div>
       ${skills.length ? `<div class="ui-skill-grid">${skillSlotsHTML}</div>` : '<div class="ui-empty-note">— none yet —</div>'}
     </div>
 
     <div class="ui-section">
-      <div class="ui-section-label">Playbook &middot; tap for details</div>
+      <div class="ui-section-label">Basicbook &middot; tap for details</div>
       <div class="ui-skill-grid">${[ATTACK, THROW].map(a => abilityRow(a, '')).join('')}</div>
+    </div>
+
+    <div class="ui-section">
+      <div class="ui-section-label">Fast Play &middot; turn on in Settings</div>
+      <div class="ui-skill-grid">${['Drag onto enemy', 'Double-tap enemy'].map((label, i) => {
+        const ab = fastPlayAbility(unit, i);
+        return `
+        <div class="ui-skill-slot" data-fast-slot="${i}">
+          <span class="ui-ability-name">${ab.icon} ${esc(ab.name)}</span>
+          <span class="ui-ability-cost">${label}</span>
+        </div>`;
+      }).join('')}</div>
     </div>`;
 }
 
@@ -94,13 +107,19 @@ function pickerConfig(unit, category) {
   if (category === 'skill') {
     return { pool: getUnitSkills(unit), arr: unit.equippedSkills ?? [], title: 'Choose a Skill', sub: a => `CD ${a.cooldown}` };
   }
+  if (category === 'fast') {
+    return {
+      pool: fastPlayPool(unit), arr: unit.fastPlay ?? FAST_PLAY_DEFAULTS, noEmpty: true, allowRepeat: true,
+      title: 'Fast Play attack', sub: () => '', // each desc already ends with its SP or cooldown
+    };
+  }
   return { pool: getUnitPassivePool(unit), arr: unit.classSkills ?? [], title: 'Choose a Class Skill', sub: () => '' };
 }
 
 export function loadoutPickerHTML(host, unit) {
   const { category, slotIndex } = host.picker;
-  const { pool, arr, title, sub } = pickerConfig(unit, category);
-  const usedElsewhere = new Set(arr.filter((id, idx) => idx !== slotIndex && id));
+  const { pool, arr, title, sub, noEmpty, allowRepeat } = pickerConfig(unit, category);
+  const usedElsewhere = new Set(allowRepeat ? [] : arr.filter((id, idx) => idx !== slotIndex && id));
   const currentId = arr[slotIndex] ?? null;
   const options = pool.filter(a => !usedElsewhere.has(a.id));
 
@@ -118,7 +137,7 @@ export function loadoutPickerHTML(host, unit) {
       <div class="ui-modal" data-picker-stop="1">
         <div class="ui-modal-title">${esc(title)}</div>
         <div class="ui-modal-actions">
-          <button class="ui-btn ui-btn-muted ${currentId === null ? 'ui-btn-primary' : ''}" data-picker-choose="__empty__">— empty —</button>
+          ${noEmpty ? '' : `<button class="ui-btn ui-btn-muted ${currentId === null ? 'ui-btn-primary' : ''}" data-picker-choose="__empty__">— empty —</button>`}
           ${optionButtons}
         </div>
         <button class="ui-btn ui-btn-muted" style="margin-top:10px;width:100%;" data-picker-cancel="1">Cancel</button>
@@ -137,12 +156,14 @@ export function wireLoadoutEvents(host, unit) {
   onClick('[data-skill-slot]', (e, node) => openPicker('classSkill', Number(node.dataset.skillSlot)));
   onClick('[data-special-slot]', (e, node) => openPicker('special', Number(node.dataset.specialSlot)));
   onClick('[data-skillcd-slot]', (e, node) => openPicker('skill', Number(node.dataset.skillcdSlot)));
+  onClick('[data-fast-slot]', (e, node) => openPicker('fast', Number(node.dataset.fastSlot)));
 
   onClick('[data-picker-choose]', (e, node) => {
     const id = node.dataset.pickerChoose === '__empty__' ? null : node.dataset.pickerChoose;
     const { category, slotIndex } = host.picker;
     if (category === 'special') equipSpecialSlot(unit, slotIndex, id);
     else if (category === 'skill') equipSkillSlot(unit, slotIndex, id);
+    else if (category === 'fast') setFastPlaySlot(unit, slotIndex, id);
     else equipPassive(unit, slotIndex, id);
     host.picker = null;
     host.render();

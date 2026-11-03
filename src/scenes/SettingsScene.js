@@ -5,7 +5,7 @@ import { playSfx, SFX } from '../audio/sound.js';
 import { getSfxVolume, setSfxVolume, getMusicVolume } from '../audio/settings.js';
 import { setMusicVolume } from '../audio/music.js';
 import { DIFFICULTIES, getDifficultyKey, setDifficultyKey } from '../data/difficulty.js';
-import { HINT_MODES, getHintMode, setHintMode, battleInfoOn, setBattleInfoOn } from '../data/battleHints.js';
+import { HINT_MODES, getHintMode, setHintMode, battleInfoOn, setBattleInfoOn, fastPlayOn, setFastPlayOn } from '../data/battleHints.js';
 import { TEXT_SIZES, getTextSizeKey, setTextSizeKey } from '../data/textSize.js';
 
 // Reachable from the title screen only (for now) — see GameScene's
@@ -39,6 +39,7 @@ export class SettingsScene extends Phaser.Scene {
     });
     this.buildDifficultyRow(height / 2 - 25);
     this.buildHintRow(height / 2 + 90);
+    this.buildFastPlayRow(height / 2 + 90);
     this.buildTextSizeRow(height / 2 + 205);
     this.buildBattleInfoRow(height / 2 + 205);
 
@@ -81,7 +82,7 @@ export class SettingsScene extends Phaser.Scene {
   }
 
   buildHintRow(y) {
-    const cx = this.scale.width / 2;
+    const cx = this.scale.width / 2 - 140;
     this.add.text(cx, y - 44, 'BATTLE HINTS', {
       fontSize: '21px', fontFamily: 'monospace', fontStyle: 'bold', color: '#ccccee',
     }).setOrigin(0.5);
@@ -119,6 +120,26 @@ export class SettingsScene extends Phaser.Scene {
           this.scene.restart({ returnScene: this.returnScene, returnData: this.returnData });
         },
       });
+    });
+  }
+
+  // Shares its row with Battle Hints, the same way Battle Info sits beside Text Size.
+  buildFastPlayRow(y) {
+    const cx = this.scale.width / 2 + 260;
+    this.add.text(cx, y - 44, 'FAST PLAY', {
+      fontSize: '21px', fontFamily: 'monospace', fontStyle: 'bold', color: '#ccccee',
+    }).setOrigin(0.5);
+
+    const buttons = [];
+    [['On', true], ['Off', false]].forEach(([label, on], i) => {
+      buttons.push(drawButton(this, {
+        x: cx - 55 + i * 110, y, w: 100, h: 56, label, fontSize: '21px',
+        active: on === fastPlayOn(),
+        onClick: () => {
+          setFastPlayOn(on);
+          buttons.forEach((b, bi) => b.setActive(bi === (on ? 0 : 1)));
+        },
+      }));
     });
   }
 

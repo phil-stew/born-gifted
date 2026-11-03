@@ -1,4 +1,4 @@
-import { unlockedRoleIds, classSkillSlotCount, effectiveStats, TALENT_STAT_KEY, CLASS_TIER_LEVELS, roleById, sportById, currentDesignations, DESIGNATION_NAMES, MAX_EQUIPPED_SPECIALS, MAX_EQUIPPED_SKILLS } from './gameState.js';
+import { unlockedRoleIds, classSkillSlotCount, effectiveStats, TALENT_STAT_KEY, CLASS_TIER_LEVELS, roleById, sportById, currentDesignations, DESIGNATION_NAMES, MAX_EQUIPPED_SPECIALS, MAX_EQUIPPED_SKILLS, FAST_PLAY_DEFAULTS } from './gameState.js';
 
 // ── Universal baseline moves ─────────────────────────────────────────────────
 // Every unit starts with these, regardless of class — no cost, no cooldown.
@@ -1209,4 +1209,16 @@ export function getEquippedPassives(unit) {
     if (ab) equipped.push(ab);
   }
   return equipped;
+}
+
+// Attacks Fast Play can fire at an enemy: Attack, Throw and any equipped
+// enemy-targeted Special or Skill that picks a single target.
+export function fastPlayPool(unit) {
+  const equipped = [...getEquippedSpecialAbilities(unit), ...getEquippedSkillAbilities(unit)]
+    .filter(a => a && a.targetType === 'enemy' && !a.directional && !a.selfActivate);
+  return [ATTACK, THROW, ...equipped];
+}
+export function fastPlayAbility(unit, slotIndex) {
+  const id = unit.fastPlay?.[slotIndex] ?? FAST_PLAY_DEFAULTS[slotIndex];
+  return fastPlayPool(unit).find(a => a.id === id) ?? [ATTACK, THROW][slotIndex];
 }

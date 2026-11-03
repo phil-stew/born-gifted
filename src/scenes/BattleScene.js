@@ -10,7 +10,7 @@ import {
   towerHumanTeam, towerHumanElement, towerHumanSpots, towerHumanGear, towerHumanStats,
 } from '../data/tower.js';
 import { PROJECTILE_SHEET, registerProjectileFrames, projectileFor, projectileDisplaySize, projectileHeading } from '../data/projectiles.js';
-import { ATTACK, THROW, ABILITIES, getEquippedSpecialAbilities, getEquippedSkillAbilities, getEquippedPassives } from '../data/abilities.js';
+import { ATTACK, THROW, ABILITIES, getEquippedSpecialAbilities, getEquippedSkillAbilities, getEquippedPassives, fastPlayAbility } from '../data/abilities.js';
 import { loadHeroSprites, createHeroAnims, stripHeroBackground, stripBackgroundByKey, trimmedSheetConfig, heroKey, getSpriteInfo, firstFrame, spriteKeyForRole, HERO_SPRITES } from '../data/heroSprites.js';
 import { buildMonster, buildMonsterKit, spriteInfoForBase, spForLevel } from '../data/monsters.js';
 import { isUsableItem, rollGearItem } from '../data/items.js';
@@ -18,7 +18,7 @@ import { BACKDROPS } from '../data/storyBackdrops.js';
 import { preloadSfx, playSfx, playStinger, SFX } from '../audio/sound.js';
 import { preloadMusic, playMusic } from '../audio/music.js';
 import { getDifficultyConfig } from '../data/difficulty.js';
-import { battleInfoOn, BATTLE_SPEEDS, getBattleSpeed, setBattleSpeed } from '../data/battleHints.js';
+import { battleInfoOn, BATTLE_SPEEDS, getBattleSpeed, setBattleSpeed, fastPlayOn } from '../data/battleHints.js';
 
 // M1 first-time control tutorial (2026-08-06, "some people struggle to
 // know how to move and attack") — shown once ever (a plain localStorage
@@ -106,6 +106,9 @@ const MISSION_ENEMY_LEVEL = {
 const BOSS_LEVEL_BONUS = 2;
 // Newbie only: regular monsters below this level fight without skills.
 const NEWBIE_MONSTER_SKILL_LEVEL = 16;
+// Fast Play gestures: taps closer together than this count as a double/triple
+// tap, and a hero only starts dragging once the finger moves this far.
+const FAST_TAP_MS = 350, FAST_DRAG_PX = 14;
 // Flat per-level stat growth for monsters (2026-08-01, "game is too easy if
 // monster don't get increased stats via leveling") — level previously only
 // fed HP/XP/kit-size (see buildEnemyUnit), leaving raw speed/strength/
@@ -1472,6 +1475,7 @@ export class BattleScene extends Phaser.Scene {
 
     // ── Input ─────────────────────────────────────────────────────────────
     this.input.on('pointermove', ptr => {
+      if (this.fastDrag) this.fastDragMove(ptr);
       if (this.phase === 'enemy_turn' || this.phase === 'victory' || this.phase === 'defeat') return;
       const t = this.screenToGrid(ptr.x, ptr.y);
       this.hoveredTile = this.inBounds(t) ? t : null;
@@ -1480,8 +1484,11 @@ export class BattleScene extends Phaser.Scene {
 
     this.input.on('pointerdown', ptr => {
       if (this.phase === 'enemy_turn' || this.phase === 'victory' || this.phase === 'defeat') return;
+      if (this.fastPlayActive() && this.fastPointerDown(ptr)) return;
+      this.fastPlayQuiet = null;
       this.handleClick(ptr.x, ptr.y);
     });
+    this.input.on('pointerup', ptr => { if (this.fastDrag) this.fastDragEnd(ptr); });
 
     // enemyFirst (M6, 2026-07-17, "the monsters attack so in the M6 battle
     // the enemy will go first") — an ambush: the corrupted monsters get the
@@ -1896,6 +1903,189 @@ export class BattleScene extends Phaser.Scene {
     return this.enemyUnits.every(e => e.isDead);
   }
 
+  // ── Fast Play ─────────────────────────────────────────────────────────────
+  // Drag a hero to a tile to move, or onto an enemy to use its first Fast
+  // Play attack (walking into range first if it hasn't moved). Double-tap an
+  // enemy for the second attack; triple-tap open ground to end the turn.
+  // Units acted on this way stay selected without opening the menu
+  // (fastPlayQuiet) until the player taps normally.
+  fastPlayActive() { return fastPlayOn() && !this.tutorialActive; }
+
+  fastUnitAt(x, y) {
+    const t = this.snapToNearbyUnit(x, y, this.screenToGrid(x, y));
+    return this.inBounds(t) ? this.unitMap.get(`${t.col},${t.row}`) ?? null : null;
+  }
+  fastReady(u) { return u && !u.isDead && !u.isDone && !u.hasActed && u.team === 'player'; }
+
+  // True when Fast Play took the tap; false lets handleClick run as normal.
+  fastPointerDown(ptr) {
+    if (!['player_turn', 'unit_menu', 'unit_selected'].includes(this.phase)) return false;
+    const occ = this.fastUnitAt(ptr.x, ptr.y);
+    const now = performance.now();
+    const last = this.fastTap;
+    if (occ?.team === 'player' && !occ.isDone && !occ.isDead) {
+      this.fastTap = null;
+      this.fastDrag = { unit: occ, x: ptr.x, y: ptr.y, dragging: false };
+      return true;
+    }
+    if (occ?.team === 'enemy') {
+      if (last?.target === occ && now - last.time < FAST_TAP_MS) {
+        this.fastTap = null;
+        this.hideActionMenu();
+        this.fastDoubleTap(occ);
+        return true;
+      }
+      this.fastTap = { target: occ, time: now };
+      return false;
+    }
+    if (!occ && this.phase !== 'unit_selected') {
+      const count = last?.target === 'ground' && now - last.time < FAST_TAP_MS ? last.count + 1 : 1;
+      this.fastTap = { target: 'ground', time: now, count };
+      if (count >= 3) {
+        this.fastTap = null;
+        this.endPlayerTurnEarly();
+        return true;
+      }
+    }
+    return false;
+  }
+
+  fastDragMove(ptr) {
+    const d = this.fastDrag;
+    if (!d.dragging) {
+      if (Math.hypot(ptr.x - d.x, ptr.y - d.y) < FAST_DRAG_PX) return;
+      d.dragging = true;
+      this.hideActionMenu();
+      this.fastPlayQuiet = d.unit;
+      this.selectedUnit = d.unit;
+      this.moveRange = d.unit.hasMoved ? new Set() : this.getReachableTiles(d.unit);
+      this.phase = 'unit_selected';
+      this.fastDragG ??= this.add.graphics().setDepth(3500);
+    }
+    const g = this.fastDragG;
+    const { x, y } = this.gridToScreen(d.unit.col, d.unit.row);
+    const occ = this.fastUnitAt(ptr.x, ptr.y);
+    const t = this.screenToGrid(ptr.x, ptr.y);
+    const key = `${t.col},${t.row}`;
+    const color = occ?.team === 'enemy' ? 0xff5544
+      : (!occ && this.moveRange.has(key)) ? 0x55aaff : 0x888888;
+    g.clear();
+    g.lineStyle(4, color, 0.9);
+    g.lineBetween(x, y + TH2, ptr.x, ptr.y);
+    g.fillStyle(color, 0.9);
+    g.fillCircle(ptr.x, ptr.y, 9);
+  }
+
+  fastDragEnd(ptr) {
+    const d = this.fastDrag;
+    this.fastDrag = null;
+    this.fastDragG?.clear();
+    if (!d.dragging) { this.fastPlayQuiet = null; this.handleClick(d.x, d.y); return; }
+    const unit = d.unit;
+    const occ = this.fastUnitAt(ptr.x, ptr.y);
+    if (occ?.team === 'enemy' && !occ.isDead) { this.fastAttack(unit, occ, 0); return; }
+    const t = this.screenToGrid(ptr.x, ptr.y);
+    const key = `${t.col},${t.row}`;
+    if (!occ && this.moveRange.has(key) && !this.unitMap.has(key)) { this.fastMove(unit, t); return; }
+    this.deselect();
+    this.redraw();
+  }
+
+  fastMove(unit, tile) {
+    this.fastPlayQuiet = unit;
+    this.moveUnit(unit, tile.col, tile.row);
+    if (unit.hasActed) { this.endUnitTurn(unit); this.redraw(); return; }
+    this.selectedUnit = unit;
+    this.moveRange = new Set();
+    this.phase = 'player_turn';
+    this.redraw();
+  }
+
+  // Whether `ability` would reach `target` with `unit` standing on (col,row).
+  fastReachesFrom(unit, ability, target, col, row) {
+    const [c0, r0] = [unit.col, unit.row];
+    unit.col = col; unit.row = row;
+    const ok = this.abilityReachesUnit(unit, ability, target);
+    unit.col = c0; unit.row = r0;
+    return ok;
+  }
+  // The closest reachable empty tile `unit` could attack `target` from, or null.
+  fastApproachTile(unit, ability, target) {
+    if (unit.hasMoved) return null;
+    let best = null;
+    for (const key of this.getReachableTiles(unit)) {
+      if (this.unitMap.has(key)) continue;
+      const [col, row] = key.split(',').map(Number);
+      if (!this.fastReachesFrom(unit, ability, target, col, row)) continue;
+      const dist = Math.abs(col - unit.col) + Math.abs(row - unit.row);
+      if (!best || dist < best.dist) best = { col, row, dist };
+    }
+    return best;
+  }
+  // The slot's attack, or Attack/Throw when it's out of SP or on cooldown.
+  fastAbilityFor(unit, slot) {
+    const ab = fastPlayAbility(unit, slot);
+    return this.abilityUsable(unit, ab) ? ab : null;
+  }
+  fastCanHit(unit, ability, target) {
+    return this.abilityReachesUnit(unit, ability, target) || !!this.fastApproachTile(unit, ability, target);
+  }
+
+  fastAttack(unit, target, slot) {
+    if (!this.fastReady(unit)) { this.deselect(); this.redraw(); return; }
+    let ab = this.fastAbilityFor(unit, slot);
+    let note = '';
+    if (!ab || !this.fastCanHit(unit, ab, target)) {
+      const picked = fastPlayAbility(unit, slot);
+      ab = [ATTACK, THROW].find(a => this.fastCanHit(unit, a, target));
+      if (ab) note = `${picked.name} ${this.abilityUsable(unit, picked) ? 'out of range' : 'not ready'}: ${ab.name}`;
+    }
+    if (!ab) {
+      this.deselect();
+      this.redraw();
+      const { x, y } = this.gridToScreen(target.col, target.row);
+      this.showEffect(x, y + TH2 - 22, 'OUT OF RANGE', '#aaaaaa');
+      return;
+    }
+    this.fastPlayQuiet = unit;
+    this.selectedUnit = unit;
+    if (note) {
+      const { x, y } = this.gridToScreen(unit.col, unit.row);
+      this.showEffect(x, y + TH2 - 40, note, '#ffee88');
+    }
+    const fire = () => {
+      this.selectedUnit = unit;
+      this.activeAbility = ab;
+      this.executeAbility(ab, unit, target);
+      this.redraw();
+    };
+    if (this.abilityReachesUnit(unit, ab, target)) { fire(); return; }
+    const tile = this.fastApproachTile(unit, ab, target);
+    this.moveUnit(unit, tile.col, tile.row);
+    this.moveRange = new Set();
+    this.phase = 'resolving';
+    this.redraw();
+    this.time.delayedCall(Math.max(260, 180 * tile.dist) + 80, () => {
+      if (this.phase === 'victory' || this.phase === 'defeat') return;
+      fire();
+    });
+  }
+
+  // Second Fast Play attack: the hero last moved with Fast Play, else the
+  // selected hero, else the nearest ready hero that can hit the enemy.
+  fastDoubleTap(enemy) {
+    const ready = [this.fastPlayQuiet, this.selectedUnit].find(u => this.fastReady(u));
+    const attacker = ready ?? this.playerUnits
+      .filter(u => this.fastReady(u) && [fastPlayAbility(u, 1), ATTACK, THROW].some(a => this.fastCanHit(u, a, enemy)))
+      .sort((a, b) => (Math.abs(a.col - enemy.col) + Math.abs(a.row - enemy.row)) - (Math.abs(b.col - enemy.col) + Math.abs(b.row - enemy.row)))[0];
+    if (!attacker) {
+      const { x, y } = this.gridToScreen(enemy.col, enemy.row);
+      this.showEffect(x, y + TH2 - 22, 'NO HERO IN RANGE', '#aaaaaa');
+      return;
+    }
+    this.fastAttack(attacker, enemy, 1);
+  }
+
   // ── Click handling ────────────────────────────────────────────────────────
 
   handleClick(sx, sy) {
@@ -1956,7 +2146,7 @@ export class BattleScene extends Phaser.Scene {
         if (this.selectedUnit.hasActed) {
           this.endUnitTurn(this.selectedUnit);
         } else {
-          this.showActionMenu(this.selectedUnit);
+          this.showActionMenu(this.selectedUnit, 'action');
         }
       } else {
         this.hideActionMenu();
@@ -2142,6 +2332,7 @@ export class BattleScene extends Phaser.Scene {
   }
 
   endUnitTurn(unit) {
+    if (this.fastPlayQuiet === unit) this.fastPlayQuiet = null;
     this.hideActionMenu();
     this.activeAbility = null;
     unit.isDone = true;
@@ -2845,7 +3036,9 @@ export class BattleScene extends Phaser.Scene {
 
   // ── Contextual action menu ────────────────────────────────────────────────
 
-  showActionMenu(unit) {
+  // `level` 'top' is Action/Items/Status/Wait; 'action' is Move and the three books.
+  showActionMenu(unit, level = 'top') {
+    if (this.fastPlayQuiet === unit) { this.hideActionMenu(); this.selectedUnit = unit; this.phase = 'player_turn'; return; }
     this.hideActionMenu();
     if (this.statusPopup) { this.statusPopup.destroy(true); this.statusPopup = null; }
     this.phase = 'unit_menu';
@@ -2862,8 +3055,9 @@ export class BattleScene extends Phaser.Scene {
     // Sized 1.5x the original (2026-08-28, "make the in battle menu bigger
     // 1.5X") — every constant below is the original value times 1.5,
     // rounded up on ties so nothing undershoots the ask.
-    const IH = 45, PAD = 8;
-    const ITEMS = this.buildMenuItems(unit, specials, skills);
+    // The top level has only four rows, so they get more room.
+    const IH = level === 'top' ? 58 : 45, PAD = 8;
+    const ITEMS = level === 'action' ? this.buildActionItems(unit, specials, skills) : this.buildMenuItems(unit);
     const HDR = 26; // the name header gets its own row above the first item
     const MW = 222, MH = HDR + ITEMS.length * IH + PAD * 2;
 
@@ -2968,8 +3162,9 @@ export class BattleScene extends Phaser.Scene {
       // M1 tutorial (2026-08-06) — pulsing outline on whichever row the
       // current step wants tapped next, so "choose an action" isn't a guess.
       if (this.tutorialActive &&
-          ((this.tutorialStep === 'move' && label === 'Move') ||
-           (this.tutorialStep === 'attack' && label === 'Playbook'))) {
+          ((level === 'top' && label === 'Action' && (this.tutorialStep === 'move' || this.tutorialStep === 'attack')) ||
+           (this.tutorialStep === 'move' && label === 'Move') ||
+           (this.tutorialStep === 'attack' && label === 'Basicbook'))) {
         const hl = this.add.graphics();
         hl.lineStyle(3, 0xffee88, 0.95);
         hl.strokeRoundedRect(3, iy + 5, MW - 6, IH - 8, 9);
@@ -2979,15 +3174,27 @@ export class BattleScene extends Phaser.Scene {
     });
   }
 
-  buildMenuItems(unit, specials, skills) {
+  // Move, then the three books: Playbook (Specials, SP), Skillbook (Skills,
+  // cooldown), Basicbook (Attack, Throw).
+  buildActionItems(unit, specials, skills) {
     const items = [
-      { icon: '📘', label: 'Playbook', sub: null,
-        disabled: unit.hasActed,
-        action: () => this.showAbilitySubmenu(unit, [ATTACK, THROW, ...specials, ...skills]) },
+      { icon: '←', label: 'Back', disabled: false, action: () => this.showActionMenu(unit) },
 
       { icon: '→', label: 'Move', sub: unit.hasMoved ? 'done' : null,
         disabled: unit.hasMoved,
         action: () => { this.hideActionMenu(); this.phase = 'unit_selected'; this.actionHint.setText('Select a tile to move to'); this.redraw(); } },
+
+      { icon: '📘', label: 'Playbook', sub: specials.length ? `${unit.sp} SP` : 'none',
+        disabled: unit.hasActed || !specials.length,
+        action: () => this.showAbilitySubmenu(unit, specials) },
+
+      { icon: '📗', label: 'Skillbook', sub: skills.length ? null : 'none',
+        disabled: unit.hasActed || !skills.length,
+        action: () => this.showAbilitySubmenu(unit, skills) },
+
+      { icon: '📕', label: 'Basicbook', sub: null,
+        disabled: unit.hasActed,
+        action: () => this.showAbilitySubmenu(unit, [ATTACK, THROW]) },
     ];
 
     // Duo (Athletics) — only shown to units that actually have it equipped,
@@ -3000,6 +3207,16 @@ export class BattleScene extends Phaser.Scene {
         action: () => this.useDuoFreeMove(unit),
       });
     }
+    return items;
+  }
+
+  buildMenuItems(unit) {
+    const canDuo = this.hasPassive(unit, 'duo') && !unit.duoFreeMoveUsed && !!this.findDuoPartner(unit);
+    const items = [
+      { icon: '⚔', label: 'Action', sub: null,
+        disabled: unit.hasActed && unit.hasMoved && !canDuo,
+        action: () => this.showActionMenu(unit, 'action') },
+    ];
 
     const usableItems = this.usableItemGroups();
     items.push(
@@ -3145,7 +3362,7 @@ export class BattleScene extends Phaser.Scene {
     }).setOrigin(0, 0.5));
     const bz = this.add.zone(MW/2, PAD + IH/2, MW, IH).setInteractive({ useHandCursor:true });
     bz.on('pointerover', () => drawBack(true)); bz.on('pointerout', () => drawBack(false));
-    bz.on('pointerdown', (ptr,lx,ly,evt) => { evt.stopPropagation(); playSfx(this, SFX.battleClick); this.showActionMenu(unit); });
+    bz.on('pointerdown', (ptr,lx,ly,evt) => { evt.stopPropagation(); playSfx(this, SFX.battleClick); this.showActionMenu(unit, 'action'); });
     con.add(bz);
 
     abilities.forEach((ab, i) => {
@@ -3685,7 +3902,7 @@ export class BattleScene extends Phaser.Scene {
     this.tutorialPulse.setVisible(false);
 
     if (this.tutorialStep === 'move') {
-      this.tutorialBannerText.setText('👉 TAP MOVE, THEN TAP A GLOWING TILE TO GET CLOSER');
+      this.tutorialBannerText.setText('👉 TAP ACTION, THEN MOVE, THEN A GLOWING TILE TO GET CLOSER');
       return;
     }
 
@@ -3698,7 +3915,7 @@ export class BattleScene extends Phaser.Scene {
       const u = this.selectedUnit;
       const inRange = u && this.enemyUnits.some(e =>
         !e.isDead && Math.abs(e.col - u.col) + Math.abs(e.row - u.row) <= 4);
-      this.tutorialBannerText.setText(inRange ? '👉 TAP PLAYBOOK, THEN ATTACK TO STRIKE THE ENEMY' : '');
+      this.tutorialBannerText.setText(inRange ? '👉 TAP ACTION, THEN BASICBOOK, THEN ATTACK' : '');
     }
   }
 
@@ -4827,6 +5044,7 @@ export class BattleScene extends Phaser.Scene {
   }
 
   startPlayerTurn() {
+    this.fastPlayQuiet = null;
     if (this.phase === 'victory' || this.phase === 'defeat') return;
     this.turnCount++;
     this.tickWeather();
@@ -5732,7 +5950,7 @@ export class BattleScene extends Phaser.Scene {
 
     // Action hint
     const hints = {
-      player_turn:      'Select a unit',
+      player_turn:      this.fastPlayActive() ? 'Drag hero: move/attack · 2× tap enemy · 3× tap ground: end turn' : 'Select a unit',
       unit_menu:        'Choose an action  |  Tap elsewhere to dismiss',
       unit_selected:    'Select a tile to move to  |  Tap unit to reopen menu',
       ability_targeting:'Tap a target  |  Tap empty tile to cancel',

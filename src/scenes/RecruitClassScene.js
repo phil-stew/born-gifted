@@ -22,7 +22,8 @@ import { drawBackButton } from '../ui/canvasButton.js';
 // template, an extra 'name' step up front (DOM text input via ui/domUI,
 // since this scene otherwise draws to the Phaser canvas and has no native
 // text-entry widget), and recruitNewUnit() instead of recruitWithChoice() on
-// confirm. Both modes share every other step.
+// confirm. Both modes share every other step. The name comes last, on one
+// screen with the class summary, so the phone keyboard only opens at the end.
 export class RecruitClassScene extends Phaser.Scene {
   constructor() { super({ key: 'RecruitClassScene' }); }
 
@@ -41,7 +42,7 @@ export class RecruitClassScene extends Phaser.Scene {
     this.recruitId = this.recruitIds[this.idx];
     this.template  = FULL_ROSTER.find(u => u.id === this.recruitId);
 
-    this.step = this.newRecruit ? 'name' : 'sport'; // 'name' | 'sport' | 'role' | 'element' | 'talent1' | 'talent2' | 'confirm' | 'announce'
+    this.step = 'sport'; // 'sport' | 'role' | 'element' | 'talent1' | 'talent2' | 'confirm' (or 'name' for newRecruit) | 'announce'
     this.chosenName = '';
     this.chosenSport = null;
     this.chosenRole = null;
@@ -53,7 +54,7 @@ export class RecruitClassScene extends Phaser.Scene {
   // The name shown in step headers/banners — the FULL_ROSTER template's fixed
   // name in the story-recruit mode, or the player's own typed name in newRecruit mode.
   displayName() {
-    return this.newRecruit ? this.chosenName : this.template.name;
+    return this.newRecruit ? (this.chosenName || 'Your recruit') : this.template.name;
   }
 
   // Starting sports available for this recruit — the full STARTING_SPORTS
@@ -63,8 +64,10 @@ export class RecruitClassScene extends Phaser.Scene {
     if (!this.sportClassFilter) return STARTING_SPORTS;
     // sportClass can be a single class string (Ester: 'Athletics') or an
     // array of classes (Hilbert: Bat & Ball + Ball, 2026-07-08 feedback).
+    // Listed in class order, so the academy's own classes come first.
     const classes = Array.isArray(this.sportClassFilter) ? this.sportClassFilter : [this.sportClassFilter];
-    return STARTING_SPORTS.filter(id => classes.includes(sportById(id).class));
+    return STARTING_SPORTS.filter(id => classes.includes(sportById(id).class))
+      .sort((a, b) => classes.indexOf(sportById(a).class) - classes.indexOf(sportById(b).class));
   }
 
   preload() {
@@ -111,34 +114,41 @@ export class RecruitClassScene extends Phaser.Scene {
     this.render();
   }
 
+  // Last step for a new recruit: the class they built, and their name.
   renderNameStep() {
+    this.headerText.setText('');
+    this.subText.setText('');
+    const sport = sportById(this.chosenSport);
+    const role = sport.roles.find(r => r.id === this.chosenRole);
+    const growth = TALENTS.map(t => `${t} ×${Math.pow(2, this.chosenTalents.filter(x => x === t).length)}`).join(' · ');
     mount(`
       <div class="ui-screen" style="align-items:center; justify-content:center;">
         <div class="ui-modal">
           <div class="ui-modal-title">NAME YOUR RECRUIT</div>
-          <div class="ui-modal-sub">Choose a name for your new teammate.</div>
+          <div class="ui-modal-sub">${esc(sport.name)} · ${esc(role.name)} · ${elementIcon(this.chosenElement)} ${esc(this.chosenElement)}</div>
+          <div class="ui-modal-sub">Growth: ${esc(growth)}</div>
           <input id="recruit-name-input" class="ui-text-input" type="text" maxlength="18"
             placeholder="Enter a name" value="${esc(this.chosenName)}" />
           <div class="ui-modal-actions">
-            <button class="ui-btn ui-btn-primary" data-name-confirm="1">Continue</button>
-            <button class="ui-btn ui-btn-muted" data-name-cancel="1">Cancel</button>
+            <button class="ui-btn ui-btn-primary" data-name-confirm="1">Recruit</button>
+            <button class="ui-btn ui-btn-muted" data-name-cancel="1">Back</button>
           </div>
         </div>
       </div>
     `);
     const input = document.getElementById('recruit-name-input');
-    input?.focus();
     const submit = () => {
       const val = input?.value.trim();
-      if (!val) return;
+      if (!val) { input?.focus(); return; }
       this.chosenName = val;
-      this.step = 'sport';
-      this.render();
+      unmount();
+      this.recruit();
     };
     onClick('[data-name-confirm]', submit);
     onClick('[data-name-cancel]', () => {
-      unmount();
-      this.scene.start(this.nextScene, this.nextSceneData);
+      this.chosenName = input?.value.trim() ?? '';
+      this.step = 'talent2';
+      this.render();
     });
     input?.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); submit(); } });
   }
@@ -197,8 +207,8 @@ export class RecruitClassScene extends Phaser.Scene {
   }
 
   renderSportStep() {
-    this.headerText.setText(`CHOOSE ${this.displayName().split(' ')[0].toUpperCase()}'S SPORT`);
-    this.subText.setText(`${this.displayName()} just joined the team — pick their class`);
+    this.headerText.setText(this.newRecruit ? 'CHOOSE YOUR RECRUIT\'S SPORT' : `CHOOSE ${this.displayName().split(' ')[0].toUpperCase()}'S SPORT`);
+    this.subText.setText(this.newRecruit ? 'Build your new teammate\'s class, then name them' : `${this.displayName()} just joined the team — pick their class`);
 
     const S = this.S;
     const cols = 2, bw = 220 * S, bh = 44 * S, gapX = 20, gapY = 12;
@@ -220,7 +230,7 @@ export class RecruitClassScene extends Phaser.Scene {
       });
     });
 
-    if (this.newRecruit) this.backLink(() => { this.step = 'name'; this.render(); });
+    if (this.newRecruit) this.backLink(() => this.scene.start(this.nextScene, this.nextSceneData));
   }
 
   renderRoleStep() {
@@ -286,7 +296,7 @@ export class RecruitClassScene extends Phaser.Scene {
       const mult = willStack ? '×4 growth' : '×2 growth';
       this.makeButton(this.W / 2, y, bw, bh, t, `${mult}${willStack ? '  (2nd pick)' : ''}`, () => {
         this.chosenTalents[which - 1] = t;
-        this.step = which === 1 ? 'talent2' : 'confirm';
+        this.step = which === 1 ? 'talent2' : this.newRecruit ? 'name' : 'confirm';
         this.render();
       });
     });
@@ -316,30 +326,32 @@ export class RecruitClassScene extends Phaser.Scene {
       y += 40;
     }
 
-    this.makeButton(this.W / 2, y + 60, 420, 66, `RECRUIT ${this.displayName().split(' ')[0].toUpperCase()}`, null, () => {
-      this.recruitedUnit = this.newRecruit
-        ? recruitNewUnit({
-            name: this.chosenName,
-            t1Sport: this.chosenSport, t1Role: this.chosenRole,
-            talents: this.chosenTalents, element: this.chosenElement,
-          })
-        : recruitWithChoice(this.recruitId, {
-            t1Sport: this.chosenSport, t1Role: this.chosenRole,
-            talents: this.chosenTalents, element: this.chosenElement,
-          });
-      // recruitNewUnit/recruitWithChoice return null if the roster filled up
-      // (or, for recruitWithChoice, the character already joined) between
-      // this scene opening and confirming — bail straight to nextScene
-      // rather than crashing the announce step on a null unit.
-      if (!this.recruitedUnit) {
-        this.scene.start(this.nextScene, this.nextSceneData);
-        return;
-      }
-      this.step = 'announce';
-      this.render();
-    });
+    this.makeButton(this.W / 2, y + 60, 420, 66, `RECRUIT ${this.displayName().split(' ')[0].toUpperCase()}`, null, () => this.recruit());
 
     this.backLink(() => { this.step = 'talent2'; this.render(); });
+  }
+
+  recruit() {
+    this.recruitedUnit = this.newRecruit
+      ? recruitNewUnit({
+          name: this.chosenName,
+          t1Sport: this.chosenSport, t1Role: this.chosenRole,
+          talents: this.chosenTalents, element: this.chosenElement,
+        })
+      : recruitWithChoice(this.recruitId, {
+          t1Sport: this.chosenSport, t1Role: this.chosenRole,
+          talents: this.chosenTalents, element: this.chosenElement,
+        });
+    // recruitNewUnit/recruitWithChoice return null if the roster filled up
+    // (or, for recruitWithChoice, the character already joined) between
+    // this scene opening and confirming — bail straight to nextScene
+    // rather than crashing the announce step on a null unit.
+    if (!this.recruitedUnit) {
+      this.scene.start(this.nextScene, this.nextSceneData);
+      return;
+    }
+    this.step = 'announce';
+    this.render();
   }
 
   renderAnnounceStep() {

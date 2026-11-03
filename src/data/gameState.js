@@ -74,6 +74,13 @@ export function equipSkillSlot(unit, slotIndex, abilityId) {
   unit.equippedSkills[slotIndex] = abilityId;
 }
 
+// Fast Play picks: [drag attack, double-tap attack]. Empty means Attack, then Throw.
+export const FAST_PLAY_DEFAULTS = ['attack', 'throw'];
+export function setFastPlaySlot(unit, slotIndex, abilityId) {
+  if (!unit.fastPlay) unit.fastPlay = [...FAST_PLAY_DEFAULTS];
+  unit.fastPlay[slotIndex] = abilityId ?? FAST_PLAY_DEFAULTS[slotIndex];
+}
+
 // ── Designations (combat triangle) ──────────────────────────────────────────
 // Combat beats Ranged, Ranged beats Defender, Defender beats Combat.
 // Support sits outside the triangle.
@@ -1142,6 +1149,7 @@ export function saveGame(slot = state.activeSlot ?? 1) {
         moveSpeed: u.moveSpeed, sp: u.sp ?? 4, maxSp: u.maxSp ?? 4,
         talents: [...(u.talents ?? [])], classSkills: [...(u.classSkills ?? [])],
         equippedSpecials: [...(u.equippedSpecials ?? [])], equippedSkills: [...(u.equippedSkills ?? [])],
+        fastPlay: [...(u.fastPlay ?? FAST_PLAY_DEFAULTS)],
         equip: JSON.parse(JSON.stringify(u.equip)),
       })),
       inventory: state.inventory.map(i => ({ ...i })),

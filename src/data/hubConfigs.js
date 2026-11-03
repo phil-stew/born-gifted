@@ -1,3 +1,5 @@
+import { state } from './gameState.js';
+
 // Per-node hub configuration — replaces the old per-id/per-arc special
 // casing in WorldMapScene.onMissionClick() for hub-type nodes (M0, M3, A1,
 // A2). Each entry names which services HubScene should offer and which
@@ -125,3 +127,13 @@ export const HUB_CONFIGS = {
     services: ['shop', 'forge', 'recruit'],
   },
 };
+
+// Sport classes any academy can recruit from: its own first, then those of
+// every other academy the player has unlocked.
+export function recruitClassesFor(nodeId) {
+  const own = [HUB_CONFIGS[nodeId]?.recruitPool ?? []].flat();
+  const unlocked = Object.entries(HUB_CONFIGS)
+    .filter(([id, cfg]) => cfg.recruitPool && state.unlockedMissions.includes(id))
+    .flatMap(([, cfg]) => [cfg.recruitPool].flat());
+  return [...new Set([...own, ...unlocked])];
+}

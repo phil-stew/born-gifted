@@ -56,3 +56,15 @@ export function getBattleSpeed() {
 export function setBattleSpeed(speed) {
   try { localStorage.setItem(SPEED_KEY, String(speed)); } catch { /* setting just won't persist */ }
 }
+
+// Fast Play: drag heroes to move or attack, double-tap an enemy, triple-tap
+// open ground to end the turn. Off unless turned on in Settings.
+const FAST_PLAY_KEY = 'born-gifted-fast-play';
+
+export function fastPlayOn() {
+  try { return localStorage.getItem(FAST_PLAY_KEY) === 'on'; } catch { return false; }
+}
+
+export function setFastPlayOn(on) {
+  try { localStorage.setItem(FAST_PLAY_KEY, on ? 'on' : 'off'); } catch { /* setting just won't persist */ }
+}
