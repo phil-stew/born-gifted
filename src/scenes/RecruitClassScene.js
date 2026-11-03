@@ -7,6 +7,7 @@ import { loadHeroSprites, stripHeroBackground, heroKey, firstFrame, spriteKeyFor
 import { mount, unmount, onClick, esc } from '../ui/domUI.js';
 import { playSfx, SFX } from '../audio/sound.js';
 import { drawBackButton } from '../ui/canvasButton.js';
+import { BACKDROPS } from '../data/storyBackdrops.js';
 
 // Recruit flow: same sport → role → element → talent1 → talent2 choice
 // machine as CharacterCreationScene (the protagonist's own new-game flow),
@@ -79,6 +80,7 @@ export class RecruitClassScene extends Phaser.Scene {
     }
     const classNames = [...roleIds].map(spriteKeyForRole).filter(Boolean);
     loadHeroSprites(this, classNames);
+    if (!this.textures.exists(BACKDROPS.schoolTraining.key)) this.load.image(BACKDROPS.schoolTraining.key, BACKDROPS.schoolTraining.path);
   }
 
   create() {
@@ -95,16 +97,16 @@ export class RecruitClassScene extends Phaser.Scene {
       if (cn) stripHeroBackground(this, cn);
     }
 
-    this.bg = this.add.graphics();
-    this.bg.fillStyle(0x0a0a18, 1);
-    this.bg.fillRect(0, 0, width, height);
+    this.drawBackground();
 
     this.headerText = this.add.text(width / 2, 24, '', {
-      fontSize: '26px', fontFamily: 'Georgia, serif', fontStyle: 'bold', color: '#ffffff',
+      fontSize: '26px', fontFamily: 'Georgia, serif', fontStyle: 'bold', color: '#14284a',
+      stroke: '#ffffff', strokeThickness: 4,
     }).setOrigin(0.5);
 
     this.subText = this.add.text(width / 2, 44, '', {
-      fontSize: '18px', fontFamily: 'monospace', color: '#aabbdd',
+      fontSize: '18px', fontFamily: 'monospace', color: '#1e3a66',
+      stroke: '#ffffff', strokeThickness: 3,
       align: 'center', wordWrap: { width: width - 60 },
     }).setOrigin(0.5, 0);
 
@@ -115,6 +117,34 @@ export class RecruitClassScene extends Phaser.Scene {
   }
 
   // Last step for a new recruit: the class they built, and their name.
+  // Sunny training field with little coloured pixels drifting up across it.
+  drawBackground() {
+    const { width, height } = this.scale;
+    this.add.rectangle(width / 2, height / 2, width, height, 0xcfe4f7);
+    if (this.textures.exists(BACKDROPS.schoolTraining.key)) {
+      const img = this.add.image(width / 2, height / 2, BACKDROPS.schoolTraining.key);
+      img.setScale(Math.max(width / img.width, height / img.height));
+    }
+    // One small emitter per colour, so each pixel keeps a clear colour.
+    [0xffffff, 0x8fd3ff, 0x4f8fe0, 0xffd76a, 0xff9ec7, 0x9ef0c0].forEach(color => {
+      const key = `recruit-pixel-${color}`;
+      if (!this.textures.exists(key)) {
+        const g = this.add.graphics();
+        g.fillStyle(color, 1);
+        g.fillRect(0, 0, 6, 6);
+        g.generateTexture(key, 6, 6);
+        g.destroy();
+      }
+      this.add.particles(0, height + 6, key, {
+        x: { min: 0, max: width },
+        speedY: { min: -70, max: -30 }, speedX: { min: -15, max: 15 },
+        scale: { min: 0.6, max: 1.4 }, alpha: { start: 1, end: 0.2 },
+        lifespan: { min: 7000, max: 11000 }, frequency: 450, quantity: 1,
+        advance: 9000,
+      });
+    });
+  }
+
   renderNameStep() {
     this.headerText.setText('');
     this.subText.setText('');
@@ -175,7 +205,7 @@ export class RecruitClassScene extends Phaser.Scene {
     const g = this.add.graphics();
     const draw = (hover) => {
       g.clear();
-      g.fillStyle(hover ? 0x16203a : 0x0e1424, 1);
+      g.fillStyle(hover ? 0x16203a : 0x0e1424, 0.9);
       g.fillRoundedRect(x - w / 2, y - h / 2, w, h, 6);
       g.lineStyle(1.5, hover ? 0x4488ff : 0x223355, 1);
       g.strokeRoundedRect(x - w / 2, y - h / 2, w, h, 6);

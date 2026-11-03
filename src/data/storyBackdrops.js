@@ -57,10 +57,11 @@ export const BACKDROPS = {
   lametusArena:        { key: 'bd-lametusarena',   path: LAMETUS + 'grandarena.webp' },
   lametusWaterWilds:   { key: 'bd-lametuswater',    path: LAMETUS + 'waterwilds.webp' },
   lametusTrainingField:{ key: 'bd-lametustrain',    path: LAMETUS + 'trainingfield.webp' },
+  schoolTraining:     { key: 'bd-schooltrain',    path: LAMETUS + 'schooltrainning.webp' }, // academy recruit screen
   // Lametus Capital's HubScene backdrop (2026-07-17) — town.png, same
   // TOWN_BACKDROP treatment HubScene.js already gives Hidden Village,
   // instead of falling back to the generic vector illustration Gale (M5)
   // uses (Gale never got dedicated town art; Lametus did, so no reason
-  // not to use it). townwell/townshop/schooltrainning.png still unused.
+  // not to use it). townwell/townshop.png still unused.
   lametusTown:         { key: 'bd-lametustown',    path: LAMETUS + 'town.webp' },
 };
