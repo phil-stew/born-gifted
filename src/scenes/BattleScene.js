@@ -1518,6 +1518,7 @@ export class BattleScene extends Phaser.Scene {
     if (cfg.eruption) rules.push('Eruption: rocks land on glowing tiles, 1-10% of max HP + Burn');
     if (cfg.blizzard) rules.push('Blizzard: ice balls each round, 1-10% of max HP + Freeze');
     if (cfg.thunderStorm) rules.push('Storm: lightning strikes each round, 1-10% of max HP');
+    if (cfg.thunderStorm && this.stormSoaks()) rules.push('Perilous: the rain soaks everyone each round');
     if (STAGE_CONFIGS[state.currentMission]?.hasObstacles) rules.push('Rocks, logs, tall grass: 2 extra move, 20% ranged miss');
     if (STAGE_CONFIGS[state.currentMission]?.hasWater) rules.push('Water makes units Wet: Lightning ×2, Fire ×½');
     if (enemies.some(e => e.corrupted)) rules.push('Corrupted enemies all target one hero');
@@ -4064,7 +4065,7 @@ export class BattleScene extends Phaser.Scene {
   updateInfoPanel() {
     const cfg = this.missionCfg, w = this.weather;
     const weather = w ? `${DANCE_WEATHER[w.type].icon} ${DANCE_WEATHER[w.type].name}${w.rounds === Infinity ? '' : ` (${w.rounds})`}: ${DANCE_WEATHER[w.type].effect}`
-      : cfg.thunderStorm ? '⛈ Storm: lightning 1-10% HP'
+      : cfg.thunderStorm ? `⛈ Storm: lightning 1-10% HP${this.stormSoaks() ? ', rain soaks everyone' : ''}`
       : cfg.eruption ? '🌋 Eruption: rocks 1-10% HP + Burn'
       : cfg.blizzard ? '🌨 Blizzard: ice 1-10% HP + Freeze'
       : '🌤 Clear skies';
@@ -4448,6 +4449,12 @@ export class BattleScene extends Phaser.Scene {
 
   // Walking in or through water leaves a unit Wet: Lightning hits it for double.
   // Lasts WET_TURNS turns, topped up by still standing in it at turn start.
+  // On Perilous the weather hits you too: a storm's rain soaks everyone each
+  // round, so its lightning lands as Wet (×2).
+  stormSoaks() { return this.difficultyCfg?.key === 'perilous'; }
+  stormRain() {
+    for (const u of [...this.playerUnits, ...this.enemyUnits]) if (!u.isDead) this.soak(u);
+  }
   soak(unit) {
     if (!(unit.wetTurns > 0)) {
       const { x, y } = this.gridToScreen(unit.col, unit.row);
@@ -4872,6 +4879,7 @@ export class BattleScene extends Phaser.Scene {
     this.moveRange = new Set();
     this.showPhaseBanner('PLAYER TURN');
     this.redraw();
+    if (this.missionCfg.thunderStorm && this.stormSoaks()) this.stormRain();
     if (this.missionCfg.thunderStorm) this.stormStrikes();
     if (this.missionCfg.eruption) this.eruptionRound();
     if (this.missionCfg.blizzard) this.blizzardRound();
