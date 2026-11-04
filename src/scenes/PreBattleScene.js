@@ -111,8 +111,7 @@ export class PreBattleScene extends Phaser.Scene {
 
     mount(`
       <div class="ui-screen ui-prebattle" style="background:
-          radial-gradient(ellipse at top, rgba(60,50,90,0.35), transparent 60%),
-          linear-gradient(rgba(8,8,15,0.55), rgba(8,8,15,0.8)),
+          linear-gradient(rgba(7,8,15,0.35), rgba(7,8,15,0.35)),
           url('${BG_URL}') center/cover;">
         <div class="ui-topbar">
           <button class="ui-navbtn" data-nav="back">◀ Cancel</button>

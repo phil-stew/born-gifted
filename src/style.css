@@ -109,6 +109,18 @@ canvas {
 /* A floating modal over a live canvas scene (the recruit name step). */
 .ui-screen.ui-see-through { background: rgba(7, 8, 15, 0.25); }
 
+/* Pre-Battle gets the same see-through panels over its own backdrop. */
+.ui-prebattle {
+  --ui-panel: rgba(26, 26, 46, 0.5);
+  --ui-panel-raised: rgba(36, 36, 60, 0.6);
+  --ui-text: #ffffff;
+  --ui-text-muted: #d6d6e4;
+  --ui-text-faint: #b0b0c8;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.85);
+}
+.ui-prebattle .ui-topbar { background: rgba(8, 8, 15, 0.55); }
+.ui-prebattle .ui-title { color: var(--ui-text); }
+
 /* Party and Index let the world map show faintly behind their panels. */
 .ui-party, .ui-index {
   --ui-panel: rgba(26, 26, 46, 0.5);
