@@ -58,7 +58,7 @@ export class LootScene extends Phaser.Scene {
       const color = '#' + (isMat ? 0xaacc88 : rarityColor(item.rarity)).toString(16).padStart(6, '0');
       const tag = isMat ? 'Material' : item.rarity.charAt(0).toUpperCase() + item.rarity.slice(1);
       return `
-        <div class="ui-quest-card ui-loot-card" style="border-color:${color}">
+        <div class="ui-quest-card ui-loot-card" style="border-color:${color}40">
           ${this.iconHTML(item)}
           <div>
             <div class="ui-quest-name" style="color:${color}">${esc(item.name)}${count > 1 ? ` ×${count}` : ''}</div>
