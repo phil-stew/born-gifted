@@ -229,12 +229,13 @@ export class HubScene extends Phaser.Scene {
       const shadow = this.add.graphics();
       shadow.fillStyle(0x000000, 0.3);
       shadow.fillRoundedRect(myBx + 2, by + 3, btnW, btnH, 8);
-      // The service's picture under a dark wash; locked buttons stay dim.
+      // The service's picture under a light wash with dark text (2026-11-03,
+      // matching the Recruit screen); locked buttons get a dark wash.
       const art = addButtonArt(this, ART[svc.key]?.key, myBx + btnW / 2, by + btnH / 2, btnW, btnH);
       const gfx = this.add.graphics();
       const draw = (hover) => {
         gfx.clear();
-        if (art) gfx.fillStyle(0x000000, locked ? 0.78 : hover ? 0.25 : 0.5);
+        if (art) gfx.fillStyle(locked ? 0x000000 : 0xffffff, locked ? 0.78 : hover ? 0.35 : 0.55);
         else gfx.fillStyle(locked ? 0x0a0a0a : (hover ? c.hover : c.idle), 1);
         gfx.fillRoundedRect(myBx, by, btnW, btnH, 8);
         gfx.lineStyle(1.5, locked ? 0x222222 : c.border, 1);
@@ -246,11 +247,11 @@ export class HubScene extends Phaser.Scene {
       const displayLabel = (svc.label ?? svc.key).toUpperCase();
       this.add.text(myBx + btnW / 2, by + 14, locked ? `🔒  ${displayLabel}` : `${svc.icon}  ${displayLabel}`, {
         fontSize: '21px', fontFamily: 'monospace', fontStyle: 'bold',
-        color: locked ? '#888899' : art ? '#ffffff' : c.text, stroke: '#000000', strokeThickness: art ? 4 : 0,
+        color: locked ? '#888899' : art ? '#14284a' : c.text, stroke: '#ffffff', strokeThickness: art && !locked ? 4 : 0,
       }).setOrigin(0.5, 0);
       this.add.text(myBx + btnW / 2, by + 42, svc.desc, {
-        fontSize: '15px', fontFamily: 'monospace', color: locked ? '#777788' : art ? '#e6ecf5' : '#99aabb',
-        stroke: '#000000', strokeThickness: art ? 3 : 0,
+        fontSize: '15px', fontFamily: 'monospace', color: locked ? '#777788' : art ? '#1e3a66' : '#99aabb',
+        stroke: '#ffffff', strokeThickness: art && !locked ? 3 : 0,
       }).setOrigin(0.5, 0);
 
       if (!locked) {
