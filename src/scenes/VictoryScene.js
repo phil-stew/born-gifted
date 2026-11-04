@@ -33,6 +33,20 @@ const CUTSCENE_AFTER = {
       { speaker:'Instructor', color:'#ddcc88', text:'Welcome to the Academy. Meet me back at the Capital.' },
     ],
   },
+  // Frostbite Pass (2026-11-03) — the two travellers from the overturned
+  // cart turn out to be Kael and Trice, and join (RECRUITS_AFTER.FP).
+  FP: {
+    location: 'FROSTBITE PASS  ·  The Road to Gale',
+    backdrop: BACKDROPS.galeWilds,
+    lines: [
+      { speaker:'Narrator', color:'#888899', text:'The last of the pack scatters into the snow. From behind the overturned cart, two travellers climb out, half frozen.' },
+      { speaker:'Kael',     color:'#ff8844', text:'Ha! Told you someone would come, Trice. Thanks, all of you. Those things had us pinned since sunrise.' },
+      { speaker:'Trice',    color:'#aa44ff', text:'...We were heading to Gale for the tournament. Our team turned back at the first sign of snow.' },
+      { speaker:'Reno',     color:'#4488ff', text:'...We\'re going the same way. You could come with us.' },
+      { speaker:'Kael',     color:'#ff8844', text:'A team that fights like that? You don\'t have to ask twice.' },
+      { speaker:'Trice',    color:'#aa44ff', text:'Fine. But I\'m choosing how I fight.' },
+    ],
+  },
   // Gale Tournament (2026-07-17, "after GT there are given instructions to
   // go to lametus can complete there trail") — bridges the arc's ending
   // straight into M6 ("Lametus's trial"), same "instructions handed down,
@@ -120,7 +134,7 @@ const MISSION_NAMES = {
   // AT1's enemies are a real tournament team in epic gear now (2026-07-11
   // third follow-up) — its own M5a battle slot was removed and folded in.
   AT1:'Altroes Trials I', AT2:'Altroes Trials II',
-  DK: 'The Frozen Peaks', MH: 'Monster Hunt', GT: 'Gale Tournament',
+  FP: 'Frostbite Pass', DK: 'The Frozen Peaks', MH: 'Monster Hunt', GT: 'Gale Tournament',
   M6: 'Blightreach',
   // M7 never reaches VictoryScene (see MISSION_CONFIGS.M7's scriptedDefeat
   // in BattleScene.js — it always ends in triggerScriptedDefeat, never
@@ -152,7 +166,7 @@ const MISSION_NAMES = {
 // the story's actual capstone fight, so it tops every prior reward
 // outright rather than sitting just above the last one the way each
 // earlier step did.
-const MISSION_TYTRATE = { DK: 300, MH: 150, GT: 400, M6: 500, T1: 250, T2: 250, T3: 250, T4: 250, T5: 250, T6: 250, T7: 250, TG: 350, FT: 1000 };
+const MISSION_TYTRATE = { FP: 200, DK: 300, MH: 150, GT: 400, M6: 500, T1: 250, T2: 250, T3: 250, T4: 250, T5: 250, T6: 250, T7: 250, TG: 350, FT: 1000 };
 
 // M12/M15 removed 2026-07-11 ("remove m12", fifth follow-up — M15 went
 // with it, see WorldMapScene.js's NODES comment) — the main chain now ends
@@ -207,7 +221,7 @@ const SIDE_MISSION_UNLOCK = { M2:'M0a' };
 // along with M5/M6 themselves — see the note on CUTSCENE_AFTER above.
 // Empty for now; kept as a const (not deleted) since VictoryScene still
 // reads RECRUITS_AFTER[missionId] generically for every mission.
-const RECRUITS_AFTER = {};
+const RECRUITS_AFTER = { FP: ['kael', 'trice'] };
 
 export class VictoryScene extends Phaser.Scene {
   constructor() { super({ key: 'VictoryScene' }); }

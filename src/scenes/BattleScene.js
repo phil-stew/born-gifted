@@ -98,7 +98,7 @@ const REPEAT_LEVEL_CAP = 40;
 const MISSION_ENEMY_LEVEL = {
   M1: 1, M2: 2, M0a: 3, M3a: 4, M3b: 5, M0b: 6,
   A2c: 7, A2a: 8, A2b: 9, A1a: 10, A1b: 11, M4: 12,
-  AT1: 14, AT2: 15, MH: 16, DK: 17, GT: 18,
+  AT1: 14, AT2: 15, FP: 15, MH: 16, DK: 17, GT: 18,
   M6: 20, M7: 22,
   T1: 24, T2: 24, T3: 24, T4: 24, T5: 24, T6: 24, T7: 24,
   TG: 26, FT: 28,
@@ -283,6 +283,11 @@ const STAGE_CONFIGS = {
   },
   // Monster Hunt (2026-07-11) — Gale quest, NE of Zester. Same rocky/icy
   // family as DK for map consistency in this corner.
+  'FP': {
+    label: 'FROSTBITE PASS',
+    bgColor: 0x0c1420,
+    backdrop: BACKDROPS.galeWilds,
+  },
   'MH': {
     label: 'MONSTER HUNT',
     bgColor: 0x0c1420,
@@ -353,7 +358,7 @@ const STAGE_CONFIGS = {
 const STAGE_THEME = {
   M0a: 'cave', M3a: 'cave', A2b: 'cave', A2c: 'deepCave',
   M0b: 'forest', M1: 'plains', M2: 'plains', M3: 'plains', M3b: 'plains', A2a: 'plains',
-  A1a: 'desert', TG: 'volcanic', DK: 'snow', MH: 'snow', M6: 'blight',
+  A1a: 'desert', TG: 'volcanic', DK: 'snow', MH: 'snow', FP: 'snow', M6: 'blight',
   M4: 'arena', A1b: 'arena', AT1: 'arena', AT2: 'arena', GT: 'arena', M7: 'arena', FT: 'arena',
   T1: 'field', T2: 'field', T3: 'field', T4: 'field', T5: 'field', T6: 'field', T7: 'field',
 };
@@ -724,6 +729,20 @@ const MISSION_CONFIGS = {
   // full-credit finish, no override needed). No missionId — same
   // no-accept-gate shape as DK above and kill_king_wolf, "quest" here just
   // means "tracked in Gale's list", not "needs an accept step first".
+  // Frostbite Pass (2026-11-03) — the road from Altroes into Gale. A pack
+  // hunting the pass, led by a unique Bear. Kael and Trice join after it.
+  'FP': {
+    region: 'Gale',
+    playerPos: { reno:[1,3], drace:[1,4], sela:[1,2], zora:[1,0], kael:[1,5], trice:[1,1] },
+    enemies: [
+      { col:6, row:2, ...buildMonster({ base: 'Wolf', tier: 2 }) },
+      { col:6, row:6, ...buildMonster({ base: 'Wolf', tier: 2 }) },
+      { col:7, row:4, ...buildMonster({ base: 'Hawk', tier: 2 }) },
+      { col:8, row:3, ...buildMonster({ base: 'Wyvern', tier: 2 }) },
+      { col:8, row:5, ...buildMonster({ base: 'Bear', kind: 'unique' }) },
+    ],
+  },
+
   'MH': {
     blizzard: true,
     region: 'Gale',

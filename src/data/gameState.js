@@ -66,7 +66,7 @@ export function classSkillSlotCount(level) {
 // already work). Not level-gated like CLASS_SKILL_SLOT_LEVELS — always this
 // many slots, some may just be empty if the unit doesn't know enough yet.
 // Every entry completedMissions can hold, including M7a (no battle of its own).
-export const TOTAL_MISSIONS = 29;
+export const TOTAL_MISSIONS = 30;
 
 export const MAX_EQUIPPED_SPECIALS = 4;
 export const MAX_EQUIPPED_SKILLS = 3;
@@ -433,6 +433,13 @@ export const FULL_ROSTER = [
   { id:'sela',  name:'Sela Vorne',     initials:'SE', color:0x44cccc, element:'Water',
     chainId:null, t1Sport:'football_soccer', t1Role:'goalkeeper_soccer', t2Sport:null, t2Role:null, t3Sport:null, t3Role:null,
     level:1, xp:0, speed:9,  strength:8,  stamina:12, endurance:13, moveSpeed:3, talents:['Endurance','Stamina'] },
+  // Kael and Trice join after Frostbite Pass, the road from Altroes to Gale.
+  { id:'kael',  name:'Kael Druno',     initials:'KA', color:0xff8844, element:'Wind',
+    chainId:'netballer', t1Sport:'netball', t1Role:'goal_attack', t2Sport:'volleyball', t2Role:'spiker', t3Sport:'basketball', t3Role:'ace_attack_bball',
+    level:1, xp:0, speed:10, strength:9,  stamina:11, endurance:9,  moveSpeed:4, talents:['Stamina','Endurance'] },
+  { id:'trice', name:'Trice Ballow',   initials:'TR', color:0xaa44ff, element:'Earth',
+    chainId:null, t1Sport:'basketball', t1Role:'ace_defence_bball', t2Sport:null, t2Role:null, t3Sport:null, t3Role:null,
+    level:1, xp:0, speed:10, strength:9,  stamina:10, endurance:10, moveSpeed:5, talents:['Strength','Endurance'] },
   { id:'zora',  name:'Zora Fen',       initials:'ZO', color:0xff44aa, element:'Lightning',
     chainId:'runner_striker', t1Sport:'running', t1Role:'runner', t2Sport:'football_soccer', t2Role:'striker', t3Sport:'rugby', t3Role:'ace_attacker_rugby',
     level:1, xp:0, speed:15, strength:7,  stamina:8,  endurance:7,  moveSpeed:6, talents:['Speed','Speed'] },

@@ -157,7 +157,10 @@ export const NODES = [
   // dangling side-battle whose entire premise no longer exists didn't
   // seem worth asking about — flagged in this session's memory in case
   // that reads as the wrong call. The main chain now ends at M5 (Gale).
-  { id:'M5',  x:781, y:371, arc:'Tournament', name:'Gale',               connectsFrom:'M4' },
+  // Frostbite Pass (2026-11-03) — the road from Altroes into Gale, put back
+  // after the map was condensed so the story doesn't jump straight to Gale.
+  { id:'FP',  x:729, y:432, short:'Pass', arc:'Tournament', name:'Frostbite Pass',     connectsFrom:'M4' },
+  { id:'M5',  x:781, y:371, arc:'Tournament', name:'Gale',               connectsFrom:'FP' },
   // Two more hub cities branching off Gale (2026-07-11 sixth follow-up) —
   // "north of m5... Artfall academy... recruit martial arts units" and
   // "zester to the east... recruit performance class." Same plain-hub
@@ -330,6 +333,16 @@ const NEW_AREA_INTRO = {
       { speaker: 'Narrator', color: '#888899', text: 'Past Artfall, the mountains sharpen into jagged peaks — locals call it the Alpha King\'s hunting ground.' },
       { speaker: 'Reno',     color: '#4488ff', text: '...Let\'s see if the stories are true.' },
       { speaker: '__PARTY_2__', text: 'Stories always grow in the telling. Let\'s hope this one did.' },
+    ],
+  },
+  FP: {
+    location: 'FROSTBITE PASS  ·  The Road to Gale',
+    backdrop: BACKDROPS.galeWilds,
+    lines: [
+      { speaker: 'Narrator', color: '#888899', text: 'With both Trials won, Altroes sends you north to Gale for its tournament. The storms of home thin out as the road climbs, and the rain turns to snow.' },
+      { speaker: 'Reno',     color: '#4488ff', text: '...So this is the way to Gale. Colder than I pictured.' },
+      { speaker: 'Narrator', color: '#888899', text: 'Halfway up the pass, an overturned cart blocks the road. Tracks circle it in the snow, and something is still prowling nearby.' },
+      { speaker: '__PARTY_2__', text: 'Someone was travelling with that cart. If they\'re still out here, we have to hurry.' },
     ],
   },
   // Monster Hunt (2026-07-11) — repeatable score-attack quest NE of Zester.
@@ -553,8 +566,13 @@ export class WorldMapScene extends Phaser.Scene {
     // Alpha King Dragon boss node (DK), and the Monster Hunt node (MH,
     // 2026-07-11 follow-up) all unlock alongside it — same "pushed
     // together" treatment A1a/A1b get alongside A1.
-    if (!state.unlockedMissions.includes('M5')
+    // Both Trials open Frostbite Pass; clearing the Pass opens Gale. Saves
+    // that reached Gale before the Pass existed keep Gale and get the Pass too.
+    if (!state.unlockedMissions.includes('FP')
       && state.completedMissions.includes('AT1') && state.completedMissions.includes('AT2')) {
+      state.unlockedMissions.push('FP');
+    }
+    if (!state.unlockedMissions.includes('M5') && state.completedMissions.includes('FP')) {
       state.unlockedMissions.push('M5', 'AF', 'ZE', 'DK', 'MH');
     }
 
@@ -1183,6 +1201,24 @@ export class WorldMapScene extends Phaser.Scene {
     // special-case (none of these have one). No battle attached to any
     // of them — all pure city/recruit stops. M8 (Lametus Capital) gets
     // its OWN branch below since it has a one-time story beat first.
+    // Gale's first visit (2026-11-03) plays a short arrival scene before
+    // the hub. Saves that already won the Gale Tournament skip it.
+    if (node.id === 'M5' && !state.missionIntroShown.includes('M5') && !state.completedMissions.includes('GT')) {
+      state.missionIntroShown.push('M5');
+      this.scene.start('StoryScene', {
+        location: 'GALE  ·  The Snow Capital',
+        backdrop: BACKDROPS.galeCastle,
+        lines: resolvePartyLines([
+          { speaker: 'Narrator', color: '#888899', text: 'The pass opens onto a white valley. Gale\'s castle rises out of the snow, its towers hung with tournament banners.' },
+          { speaker: 'Reno',     color: '#4488ff', text: '...We made it. A whole new kingdom.' },
+          { speaker: 'Narrator', color: '#888899', text: 'Word travels ahead of you: the team that won the Altroes Trials has arrived. Gale\'s champions will want to see that for themselves.' },
+          { speaker: '__PARTY_2__', text: 'Then let\'s get ready. Artfall trains fighters to the north, and Zester\'s performers are east.' },
+          { speaker: '__PARTY_3__', text: 'And the locals say the wilds past them are crawling with monsters. Plenty of work before any tournament.' },
+        ]),
+        nextScene: 'HubScene', nextSceneData: { nodeId: 'M5' },
+      });
+      return;
+    }
     if (['M5', 'AF', 'ZE', 'A3', 'A4'].includes(node.id)) {
       this.scene.start('HubScene', { nodeId: node.id });
       return;

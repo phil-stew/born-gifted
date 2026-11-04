@@ -37,6 +37,7 @@ export function currentObjective() {
       : 'Finish the Ester and Hilbert Academy quests';
   }
   if (!done('AT1') || !done('AT2')) return 'Win both Trials at Arena Atlros';
+  if (!done('FP') && !unlocked('M5')) return 'Cross Frostbite Pass to Gale';
   if (!done('GT')) return allGaleQuestsDone(state) ? 'Win the Gale Tournament at Artfall' : "Finish Gale's quests";
   if (!done('M6')) return 'Clear Blightreach';
   if (!done('M7')) return 'Head to The Grand Arena';
