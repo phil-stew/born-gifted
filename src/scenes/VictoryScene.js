@@ -507,10 +507,14 @@ export class VictoryScene extends Phaser.Scene {
     }).setOrigin(0.5);
 
     // ── Party XP rows ─────────────────────────────────────────────────────
-    let y = 138;
+    // Centred column; rows shrink to fit a bigger roster above the
+    // level-up notice and button.
+    const rowsBottom = height - (this.levelUps.length > 0 ? 130 : 76);
+    const rowH = Math.max(26, Math.min(64, Math.floor((rowsBottom - 124) / state.party.length)));
+    let y = 124;
     for (const unit of state.party) {
-      this.drawUnitRow(unit, y, width, totalXP);
-      y += 72;
+      this.drawUnitRow(unit, y, width, rowH);
+      y += rowH;
     }
 
     // ── Level up notice ───────────────────────────────────────────────────
@@ -570,44 +574,40 @@ export class VictoryScene extends Phaser.Scene {
     });
   }
 
-  drawUnitRow(unit, y, width, xpGained) {
-    const lx = 40, barW = Math.min(480, width - 420), barH = 14;
+  // One hero's XP row: name, level, XP bar and count, centred on screen.
+  drawUnitRow(unit, y, width, rowH) {
+    const barW = Math.min(360, width - 460), barH = 14;
+    const NAME_W = 190, LABEL_W = 150;
+    const lx = Math.round((width - (NAME_W + barW + LABEL_W)) / 2);
     const level   = unit.level;
     const xpPrev  = unit.xp;                // already updated by addXP
     const needed  = xpToNext(level);
     const pct     = Math.min(xpPrev / needed, 1);
+    const cy = y + rowH / 2;
+    const wasLevelUp = this.levelUps?.some(lu => lu.unit === unit);
 
-    // Color badge
+    // Color badge, then name with level beside it
     const gfx = this.add.graphics();
     gfx.fillStyle(unit.color, 1);
-    gfx.fillCircle(lx, y + 20, 12);
+    gfx.fillCircle(lx + 10, cy, 9);
+    this.add.text(lx + 26, cy, unit.name.split(' ')[0], {
+      fontSize: '19px', fontFamily: 'monospace', color: '#ffffff',
+    }).setOrigin(0, 0.5);
+    this.add.text(lx + NAME_W - 8, cy, `Lv.${level}`, {
+      fontSize: '17px', fontFamily: 'monospace', color: '#cccccc',
+    }).setOrigin(1, 0.5);
 
-    // Name + level
-    this.add.text(lx + 20, y + 2, `${unit.name}`, {
-      fontSize: '20px', fontFamily: 'monospace', color: '#ffffff',
-    });
-    this.add.text(lx + 20, y + 28, `Lv.${level}`, {
-      fontSize: '17px', fontFamily: 'monospace', color: '#bbbbbb',
-    });
-
-    // XP bar background
+    // XP bar
+    const bx = lx + NAME_W;
     gfx.fillStyle(0x222233, 1);
-    gfx.fillRect(lx + 200, y + 16, barW, barH);
-    // XP fill
+    gfx.fillRect(bx, cy - barH / 2, barW, barH);
     gfx.fillStyle(0x44aaff, 1);
-    gfx.fillRect(lx + 200, y + 16, barW * pct, barH);
+    gfx.fillRect(bx, cy - barH / 2, barW * pct, barH);
 
-    // XP label
-    this.add.text(lx + 200 + barW + 10, y + 12, `${xpPrev}/${needed}`, {
-      fontSize: '17px', fontFamily: 'monospace', color: '#aaaacc',
-    });
-
-    // LEVEL UP badge
-    const wasLevelUp = this.levelUps?.some(lu => lu.unit === unit);
-    if (wasLevelUp) {
-      this.add.text(lx + 200, y + 36, 'LEVEL UP!', {
-        fontSize: '17px', fontFamily: 'monospace', fontStyle: 'bold', color: '#ffdd44',
-      });
-    }
+    // XP count, with a level-up tag after it
+    this.add.text(bx + barW + 10, cy, `${xpPrev}/${needed}${wasLevelUp ? '  ▲ LV UP' : ''}`, {
+      fontSize: '16px', fontFamily: 'monospace', color: wasLevelUp ? '#ffdd44' : '#aaaacc',
+    }).setOrigin(0, 0.5);
   }
+
 }

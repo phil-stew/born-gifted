@@ -994,7 +994,7 @@ button.ui-quest-card { color: inherit; font: inherit; text-align: left; cursor: 
 
   .ui-loot .ui-topbar { padding-top: 4px; padding-bottom: 4px; }
   .ui-loot .ui-title-gold { font-size: calc(17px * var(--font-scale, 1)); }
-  .ui-loot .ui-quest-list { grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 6px; padding-top: 6px; padding-bottom: 6px; }
+  .ui-loot .ui-quest-list { gap: 6px; padding-top: 6px; padding-bottom: 6px; }
   .ui-loot .ui-quest-card { padding: 5px 10px; border-radius: var(--ui-radius-sm); }
   .ui-loot .ui-quest-name { font-size: calc(14px * var(--font-scale, 1)); margin-bottom: 0; }
   .ui-loot .ui-quest-text { font-size: calc(12px * var(--font-scale, 1)); }
@@ -1142,3 +1142,7 @@ button.ui-quest-card { color: inherit; font: inherit; text-align: left; cursor: 
   .ui-party .ui-card-sub, .ui-prebattle .ui-card-sub { margin-top: 0; }
   .ui-prebattle .ui-card-name { font-size: calc(14px * var(--font-scale, 1)); }
 }
+
+/* Loot: one centred column (2026-11-03). */
+.ui-loot .ui-quest-list { grid-template-columns: minmax(0, 340px); justify-content: center; }
+.ui-loot .ui-quest-card { text-align: center; }
