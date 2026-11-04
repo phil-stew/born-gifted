@@ -365,6 +365,10 @@ export class VictoryScene extends Phaser.Scene {
     this.isFirstClear  = !state.completedMissions.includes(this.missionId);
   }
 
+  preload() {
+    if (!this.textures.exists('mapbackg')) this.load.image('mapbackg', 'world/title/mapbackg.webp');
+  }
+
   create() {
     const { width, height } = this.scale;
     const totalXP = this.xpEarned;
@@ -475,8 +479,11 @@ export class VictoryScene extends Phaser.Scene {
     }
 
     // ── Background ────────────────────────────────────────────────────────
+    // World map shows faintly through, matching Party and Loot (2026-11-03).
+    const map = this.add.image(width / 2, height / 2, 'mapbackg');
+    map.setScale(Math.max(width / map.width, height / map.height));
     const bg = this.add.graphics();
-    bg.fillStyle(0x0a0a18, 1);
+    bg.fillStyle(0x07080f, 0.5);
     bg.fillRect(0, 0, width, height);
 
     // Gold accent line
@@ -551,6 +558,10 @@ export class VictoryScene extends Phaser.Scene {
     const btnLabel = this.allDrops.length > 0 ? 'LOOT  ▶'
       : this.levelUps.length > 0 ? 'LEVEL UP  ▶'
       : (cutscene ? 'CONTINUE  ▶' : 'WORLD MAP  ▶');
+    // Outline every label so it reads over the map.
+    this.children.list.filter(o => o.type === 'Text')
+      .forEach(t => t.setStroke('#000000', Math.max(t.style.strokeThickness, 4)));
+
     drawButton(this, {
       x: width / 2, y: height - 32, w: 300, h: 52, label: btnLabel,
       fontSize: '22px', bg: 0x224422, bgHover: 0x2e582e, border: 0x44aa44, accent: 0xffff88,

@@ -4,6 +4,7 @@ import { DIFFICULTIES, setDifficultyKey } from '../data/difficulty.js';
 import { playSfx, SFX } from '../audio/sound.js';
 import { mount, unmount, onClick, esc } from '../ui/domUI.js';
 import { drawBackButton } from '../ui/canvasButton.js';
+import { BACKDROPS } from '../data/storyBackdrops.js';
 
 const DEFAULT_NAME = 'Reno Sirblanc';
 
@@ -34,21 +35,31 @@ export class CharacterCreationScene extends Phaser.Scene {
     this.chosenTalents = [];
   }
 
+  preload() {
+    const v = BACKDROPS.village;
+    if (!this.textures.exists(v.key)) this.load.image(v.key, v.path);
+  }
+
   create() {
     const { width, height } = this.scale;
     this.W = width; this.H = height;
     this.S = width >= 1000 ? 1.5 : 1;
 
+    // The hero's home village behind every step (2026-11-03).
+    const village = this.add.image(width / 2, height / 2, BACKDROPS.village.key);
+    village.setScale(Math.max(width / village.width, height / village.height));
     this.bg = this.add.graphics();
-    this.bg.fillStyle(0x0a0a18, 1);
+    this.bg.fillStyle(0x07080f, 0.5);
     this.bg.fillRect(0, 0, width, height);
 
     this.headerText = this.add.text(width / 2, 24, '', {
       fontSize: '26px', fontFamily: 'Georgia, serif', fontStyle: 'bold', color: '#ffffff',
+      stroke: '#000000', strokeThickness: 5,
     }).setOrigin(0.5);
 
     this.subText = this.add.text(width / 2, 44, '', {
-      fontSize: '18px', fontFamily: 'monospace', color: '#aabbdd',
+      fontSize: '18px', fontFamily: 'monospace', color: '#ccddff',
+      stroke: '#000000', strokeThickness: 4,
       align: 'center', wordWrap: { width: width - 60 },
     }).setOrigin(0.5, 0);
 
@@ -73,7 +84,7 @@ export class CharacterCreationScene extends Phaser.Scene {
 
   renderNameStep() {
     mount(`
-      <div class="ui-screen" style="align-items:center; justify-content:center;">
+      <div class="ui-screen ui-see-through" style="align-items:center; justify-content:center;">
         <div class="ui-modal">
           <div class="ui-modal-title">WHO ARE YOU?</div>
           <div class="ui-modal-sub">Name your protagonist — this is who the story follows.</div>

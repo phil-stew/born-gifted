@@ -121,8 +121,8 @@ canvas {
 .ui-prebattle .ui-topbar { background: rgba(8, 8, 15, 0.55); }
 .ui-prebattle .ui-title { color: var(--ui-text); }
 
-/* Party and Index let the world map show faintly behind their panels. */
-.ui-party, .ui-index {
+/* Party, Index and Loot let the world map show faintly behind their panels. */
+.ui-party, .ui-index, .ui-loot {
   --ui-panel: rgba(26, 26, 46, 0.5);
   --ui-panel-raised: rgba(36, 36, 60, 0.6);
   --ui-text: #ffffff;
@@ -135,7 +135,7 @@ canvas {
     var(--ui-bg-deep);
 }
 
-.ui-party .ui-topbar, .ui-index .ui-topbar, .ui-index .ui-index-tabbar {
+.ui-party .ui-topbar, .ui-index .ui-topbar, .ui-index .ui-index-tabbar, .ui-loot .ui-topbar {
   background: rgba(8, 8, 15, 0.55);
 }
 
