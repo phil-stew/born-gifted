@@ -33,6 +33,77 @@ const CUTSCENE_AFTER = {
       { speaker:'Instructor', color:'#ddcc88', text:'Welcome to the Academy. Meet me back at the Capital.' },
     ],
   },
+  // Blightreach win (2026-11-03): the party talks through what they saw,
+  // then heads for the Grand Arena (M7).
+  M6: {
+    location: 'LAMETUS  ·  The Trial Grounds',
+    backdrop: BACKDROPS.lametusWilds,
+    lines: [
+      { speaker:'Narrator', color:'#888899', text:'The last monster drops, and the strange glow fades from its eyes. Up close, it looks almost confused, as if it had just woken up.' },
+      { speaker:'__PARTY_2__', text:'They weren\'t fighting like animals. They moved together, like someone was giving orders.' },
+      { speaker:'Reno',     color:'#4488ff', text:'...Someone was. And they knew we were coming.' },
+      { speaker:'Narrator', color:'#888899', text:'A Lametus official finds you at the edge of the grounds, pale and out of breath. The trial counts, they say. Your final match is at the Grand Arena.' },
+      { speaker:'__PARTY_3__', text:'Then we go to the arena. If whoever did this shows up, we\'ll be ready.' },
+    ],
+  },
+  // The Noble Deity's seven trials (2026-11-03): one line from her after
+  // each, with its God Tier weapon.
+  T1: {
+    location: 'LAMETUS  ·  Trial of Athletics',
+    backdrop: BACKDROPS.lametusTrainingField,
+    lines: [
+      { speaker:'Noble Deity', color:'#ffdd66', text:'Not bad. You kept moving when anyone else would have stopped. Take this; it was made for legs like yours.' },
+      { speaker:'Narrator', color:'#888899', text:'A God Tier weapon joins your gear. Every trial you clear brings you closer to facing The Corrupted One again.' },
+    ],
+  },
+  T2: {
+    location: 'LAMETUS  ·  Trial of Martial Arts',
+    backdrop: BACKDROPS.lametusTrainingField,
+    lines: [
+      { speaker:'Noble Deity', color:'#ffdd66', text:'Discipline and nerve. You didn\'t flinch once. This weapon will hit as hard as you do.' },
+      { speaker:'Narrator', color:'#888899', text:'A God Tier weapon joins your gear. Every trial you clear brings you closer to facing The Corrupted One again.' },
+    ],
+  },
+  T3: {
+    location: 'LAMETUS  ·  Trial of Performance',
+    backdrop: BACKDROPS.lametusTrainingField,
+    lines: [
+      { speaker:'Noble Deity', color:'#ffdd66', text:'Graceful, even under pressure. I was almost entertained. Almost. Here, take it.' },
+      { speaker:'Narrator', color:'#888899', text:'A God Tier weapon joins your gear. Every trial you clear brings you closer to facing The Corrupted One again.' },
+    ],
+  },
+  T4: {
+    location: 'LAMETUS  ·  Trial of Target',
+    backdrop: BACKDROPS.lametusTrainingField,
+    lines: [
+      { speaker:'Noble Deity', color:'#ffdd66', text:'Steady hands. Keep them that steady when it\'s him you\'re aiming at.' },
+      { speaker:'Narrator', color:'#888899', text:'A God Tier weapon joins your gear. Every trial you clear brings you closer to facing The Corrupted One again.' },
+    ],
+  },
+  T5: {
+    location: 'LAMETUS  ·  Trial of Ball',
+    backdrop: BACKDROPS.lametusTrainingField,
+    lines: [
+      { speaker:'Noble Deity', color:'#ffdd66', text:'Fast hands, faster thinking. You read that trial like a playbook. This is yours.' },
+      { speaker:'Narrator', color:'#888899', text:'A God Tier weapon joins your gear. Every trial you clear brings you closer to facing The Corrupted One again.' },
+    ],
+  },
+  T6: {
+    location: 'LAMETUS  ·  Trial of Bat & Ball',
+    backdrop: BACKDROPS.lametusTrainingField,
+    lines: [
+      { speaker:'Noble Deity', color:'#ffdd66', text:'Your timing is finally worth something. Don\'t waste this weapon.' },
+      { speaker:'Narrator', color:'#888899', text:'A God Tier weapon joins your gear. Every trial you clear brings you closer to facing The Corrupted One again.' },
+    ],
+  },
+  T7: {
+    location: 'LAMETUS  ·  Trial of Racquet',
+    backdrop: BACKDROPS.lametusTrainingField,
+    lines: [
+      { speaker:'Noble Deity', color:'#ffdd66', text:'Nothing got past you. Good. He won\'t give you second chances either.' },
+      { speaker:'Narrator', color:'#888899', text:'A God Tier weapon joins your gear. Every trial you clear brings you closer to facing The Corrupted One again.' },
+    ],
+  },
   // Academy and Gale quest wins (2026-11-03) — short first-clear lines so
   // each quest closes with a word from the school or town that asked.
   A1a: {

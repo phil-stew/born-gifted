@@ -304,6 +304,47 @@ const ACADEMY_INTRO = {
       { speaker: 'Reno',     color: '#4488ff', text: '...Sounds like Hilbert needs us as much as we need it.' },
     ],
   },
+  // Gale's academy and town, and Lametus's two academies (2026-11-03).
+  AF: {
+    location: 'GALE  ·  Artfall Academy',
+    backdrop: BACKDROPS.galeArena,
+    lines: [
+      { speaker: 'Narrator', color: '#888899', text: 'Artfall Academy is carved into the mountainside. In the snow-packed yard, students spar barefoot, their breath steaming in the cold.' },
+      { speaker: 'Grandmaster Artfall', color: '#ddcc88', text: 'The team from Altroes. Artfall trains Martial Arts: boxers, karateka, fighters who don\'t back down. Recruit here if your team needs one.' },
+      { speaker: 'Grandmaster Artfall', color: '#ddcc88', text: 'Gale\'s Tournament is held here once a challenger has proven themselves. Help Gale with its troubles first. The Alpha King Dragon in the peaks would be a good start.' },
+      { speaker: 'Reno',     color: '#4488ff', text: '...A dragon king. Of course.' },
+    ],
+  },
+  ZE: {
+    location: 'GALE  ·  Zester',
+    backdrop: BACKDROPS.galeTown,
+    lines: [
+      { speaker: 'Narrator', color: '#888899', text: 'Zester is all music and lanterns, a town of performers who dance in the streets to keep warm. Even the snow seems to fall in time.' },
+      { speaker: 'Zester Elder', color: '#ddcc88', text: 'Welcome, travellers! Zester trains Performance: dancers, gymnasts, cheerleaders. Don\'t laugh. Our performers can turn a fight around.' },
+      { speaker: 'Zester Elder', color: '#ddcc88', text: 'Our hunters are struggling, though. The wilds past town are overrun. If you can thin the monsters out, the bounty is yours.' },
+      { speaker: '__PARTY_2__', text: 'Music, lanterns and a monster bounty. I like this place.' },
+    ],
+  },
+  A3: {
+    location: 'LAMETUS  ·  Wrenfield Academy',
+    backdrop: BACKDROPS.lametusTrainingField,
+    lines: [
+      { speaker: 'Narrator', color: '#888899', text: 'Wrenfield Academy\'s fields are lined with targets: some stuffed, some painted, some impossibly far away. Arrows and darts thud into them all morning.' },
+      { speaker: 'Headmaster Wrenfield', color: '#ddcc88', text: 'Target sports: archers, dart throwers, paintballers. Wrenfield students hit what they aim at. Recruit one if you need range.' },
+      { speaker: 'Headmaster Wrenfield', color: '#ddcc88', text: 'You\'re here for the Final Tournament? Then you need proof of a trial. Stonewake Pass is just north of here, if the golems let you through.' },
+      { speaker: 'Reno',     color: '#4488ff', text: '...North it is.' },
+    ],
+  },
+  A4: {
+    location: 'LAMETUS  ·  Calder Academy',
+    backdrop: BACKDROPS.schoolTraining,
+    lines: [
+      { speaker: 'Narrator', color: '#888899', text: 'Calder Academy rings with the snap of strings and the crack of sticks. Students rally on every court, and nobody ever seems to miss.' },
+      { speaker: 'Headmistress Calder', color: '#ddcc88', text: 'Racquet sports: tennis, lacrosse, golf. Reflexes and control. If your team needs someone who can return anything, you\'ll find them here.' },
+      { speaker: 'Headmistress Calder', color: '#ddcc88', text: 'Strange times. The monsters around Lametus have turned bold. Whatever you\'re planning, plan it fast.' },
+      { speaker: '__PARTY_2__', text: 'Everyone keeps telling us that.' },
+    ],
+  },
 };
 
 const NEW_AREA_INTRO = {
@@ -480,7 +521,7 @@ const NEW_AREA_INTRO = {
     backdrop: BACKDROPS.lametusTrainingField,
     lines: [
       { speaker: 'Narrator', color: '#888899', text: 'The Deity\'s first trial tests raw speed and endurance — no shortcuts, no tricks, just outlasting whoever she sends.' },
-      { speaker: 'Reno',     color: '#4488ff', text: '...One down, six to go. Let\'s move.' },
+      { speaker: 'Reno',     color: '#4488ff', text: '...Seven trials. Let\'s start with this one.' },
       { speaker: '__PARTY_2__', text: 'Keep the pace steady. She wants to see how long we last.' },
     ],
   },
@@ -1303,6 +1344,15 @@ export class WorldMapScene extends Phaser.Scene {
       return;
     }
     if (['M5', 'AF', 'ZE', 'A3', 'A4'].includes(node.id)) {
+      const intro = ACADEMY_INTRO[node.id];
+      if (intro && !state.missionIntroShown.includes(node.id)) {
+        state.missionIntroShown.push(node.id);
+        this.scene.start('StoryScene', {
+          location: intro.location, backdrop: intro.backdrop, lines: resolvePartyLines(intro.lines),
+          nextScene: 'HubScene', nextSceneData: { nodeId: node.id },
+        });
+        return;
+      }
       this.scene.start('HubScene', { nodeId: node.id });
       return;
     }
