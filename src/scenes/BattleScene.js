@@ -5143,6 +5143,7 @@ export class BattleScene extends Phaser.Scene {
   startEnemyTurn() {
     if (this.phase === 'victory' || this.phase === 'defeat') return;
     this.phase = 'enemy_turn';
+    this.lastMove = null; // a move can only be undone in the turn it was made
     this.showPhaseBanner('ENEMY TURN');
     this.redraw();
 
