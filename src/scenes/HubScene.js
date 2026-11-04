@@ -76,13 +76,13 @@ export class HubScene extends Phaser.Scene {
     bg.fillRect(0, 0, width, artH);
 
     if (this.backdrop && this.textures.exists(this.backdrop.key)) {
-      const img = this.add.image(width / 2, artH / 2, this.backdrop.key);
-      const scale = Math.max(width / img.width, artH / img.height);
-      img.setScale(scale);
-      const mask = this.add.graphics();
-      mask.fillRect(0, 0, width, artH);
-      img.setMask(mask.createGeometryMask());
-      this.add.rectangle(width / 2, artH / 2, width, artH, 0x05050a, 0.28);
+      // The picture fills the whole screen, buttons on top (2026-11-03: the
+      // black band under it is gone), darker toward the bottom behind them.
+      const img = this.add.image(width / 2, height / 2, this.backdrop.key);
+      img.setScale(Math.max(width / img.width, height / img.height));
+      const shade = this.add.graphics();
+      shade.fillGradientStyle(0x05050a, 0x05050a, 0x05050a, 0x05050a, 0.15, 0.15, 0.6, 0.6);
+      shade.fillRect(0, 0, width, height);
     } else {
       this.drawIllustration(bg, width, height);
     }
