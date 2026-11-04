@@ -59,43 +59,31 @@ export class PreBattleScene extends Phaser.Scene {
     return spriteFrameDataURL(this, heroKey(spriteKey), firstFrame(spriteKey));
   }
 
-  // How this hero's element lines up against this fight's enemies. Matches
-  // elementMultiplier in BattleScene: +50% vs an enemy it beats, and that
-  // works both ways, so an enemy that beats the hero hits it +50% too.
-  matchupHTML(unit) {
-    const enemies = (this.battleData.enemyUnits ?? []).filter(e => e.element);
-    const strong = enemies.filter(e => e.alwaysWeak || ELEMENT_BEATS[unit.element] === e.element).length;
-    const weak = enemies.filter(e => ELEMENT_BEATS[e.element] === unit.element).length;
-    return `
-      <div class="ui-pb-matchup">
-        <span>${elementIcon(unit.element)} ${esc(unit.element ?? '')}</span>
-        ${strong && this.showHints ? `<span class="good">▲${strong}</span>` : ''}
-        ${weak && this.showHints ? `<span class="bad">▼${weak}</span>` : ''}
-        ${this.showHints ? this.designationHTML(unit) : ''}
-      </div>
-      ${this.showHints ? this.warningHTML(unit) : ''}`;
-  }
-
-  // Same triangle as designationMultiplier in BattleScene. A unit that both
-  // beats and loses to an enemy cancels out to neutral there, so neither counts.
-  designationHTML(unit) {
+  // Party-list style card (2026-11-03): the matchup squeezed into a few marks
+  // beside the checkbox — element icon, ▲/▼ enemy counts (element and type
+  // together), and ⚠ when the hero is under-levelled or has something to equip.
+  tagsHTML(unit) {
+    const enemies = this.battleData.enemyUnits ?? [];
     const mine = currentDesignations(unit);
     const beats = (a, b) => a.some(d => b.includes(DESIGNATION_BEATS[d]));
-    const enemies = (this.battleData.enemyUnits ?? []).map(e => e.designations ?? []);
-    const strong = enemies.filter(e => beats(mine, e) && !beats(e, mine)).length;
-    const weak = enemies.filter(e => beats(e, mine) && !beats(mine, e)).length;
+    let strong = 0, weak = 0;
+    for (const e of enemies) {
+      if (e.element && (e.alwaysWeak || ELEMENT_BEATS[unit.element] === e.element)) strong++;
+      if (e.element && ELEMENT_BEATS[e.element] === unit.element) weak++;
+      const ed = e.designations ?? [];
+      if (beats(mine, ed) && !beats(ed, mine)) strong++;
+      if (beats(ed, mine) && !beats(mine, ed)) weak++;
+    }
+    const top = Math.max(0, ...enemies.filter(e => !e.oneShotKill).map(e => e.level));
+    const gap = top - unit.level;
+    const warn = gap >= LOW_LEVEL_GAP ? `⚠ -${gap} Lv` : remindersFor(unit).length ? '⚠' : '';
     return `
-      <span>${mine.map(d => `${designationIcon(d)} ${esc(DESIGNATION_NAMES[d] ?? d)}`).join(' ')}</span>
-      ${strong ? `<span class="good">▲${strong}</span>` : ''}
-      ${weak ? `<span class="bad">▼${weak}</span>` : ''}`;
-  }
-
-  warningHTML(unit) {
-    const top = Math.max(0, ...(this.battleData.enemyUnits ?? []).filter(e => !e.oneShotKill).map(e => e.level));
-    const text = top - unit.level >= LOW_LEVEL_GAP
-      ? `${top - unit.level} levels below the enemies`
-      : remindersFor(unit)[0]?.text;
-    return text ? `<div class="ui-pb-warn">⚠ ${esc(text)}</div>` : '';
+      <div class="ui-pb-tags">
+        <span>${elementIcon(unit.element)}</span>
+        ${this.showHints && strong ? `<span class="good">▲${strong}</span>` : ''}
+        ${this.showHints && weak ? `<span class="bad">▼${weak}</span>` : ''}
+        ${this.showHints && warn ? `<span class="warn">${warn}</span>` : ''}
+      </div>`;
   }
 
   cardHTML(unit) {
@@ -107,8 +95,8 @@ export class PreBattleScene extends Phaser.Scene {
         <div class="ui-card-body">
           <div class="ui-card-name">${esc(unit.name.split(' ')[0])}</div>
           <div class="ui-card-sub">Lv.${unit.level} &nbsp;${esc(roleDisplayLabel(unit))}</div>
-          ${this.matchupHTML(unit)}
         </div>
+        ${this.tagsHTML(unit)}
         <div class="ui-badge">${selected ? '✅' : '⬜'}</div>
       </div>
     `;
@@ -159,7 +147,7 @@ export class PreBattleScene extends Phaser.Scene {
           <div class="ui-panel ui-list-panel">
             <div class="ui-pb-head">Your team &middot; ${this.selectedIds.length} / ${this.cap}${full ? ' (max)' : ''}</div>
             ${this.showHints ? '<div class="ui-pb-tip">▲ deals extra damage to that many enemies, ▼ takes extra</div>' : ''}
-            <div class="ui-pb-team">${listHTML}</div>
+            ${listHTML}
           </div>
           <div class="ui-panel ui-list-panel">
             <div class="ui-pb-head">Enemies &middot; ${this.battleData.enemyUnits?.length ?? 0}</div>

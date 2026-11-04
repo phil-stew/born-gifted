@@ -1117,23 +1117,16 @@ button.ui-quest-card { color: inherit; font: inherit; text-align: left; cursor: 
 .ui-dismiss-btn { display: block; margin: 10px 0 0 auto; padding: 6px 12px; font-size: calc(12px * var(--font-scale, 1)); text-align: center; }
 .ui-forge .ui-detail-tabs.ui-tabs-wrap { flex-wrap: wrap; }
 
-/* Six heroes on screen (2026-11-03): two columns on the Pre-Battle team
-   list, tighter cards on the Party list. */
-.ui-pb-team { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 4px; }
-.ui-pb-team .ui-card { padding: 4px 6px; gap: 6px; min-height: 0; }
-.ui-pb-team .ui-portrait-thumb { width: 30px; height: 30px; }
-.ui-pb-team .ui-badge { font-size: 14px; }
+/* Pre-Battle team cards match the Party list (2026-11-03): name and class,
+   with the matchup as small marks beside the checkbox. */
+.ui-pb-tags { display: flex; gap: 6px; align-items: center; flex: none; font-size: calc(13px * var(--font-scale, 1)); font-weight: 700; }
+.ui-pb-tags .good { color: #6fdc8c; }
+.ui-pb-tags .bad { color: #ff8877; }
+.ui-pb-tags .warn { color: #ffb066; }
 @media (max-height: 500px) {
-  .ui-party .ui-list-panel { gap: 3px; }
-  .ui-party .ui-card { padding: 3px 8px; }
-  .ui-party .ui-portrait-thumb { width: 30px; height: 30px; }
-  .ui-party .ui-card-sub { margin-top: 0; }
-  .ui-prebattle .ui-pb-team .ui-portrait-thumb { width: 30px; height: 30px; }
-  .ui-prebattle .ui-pb-team .ui-card-name { font-size: calc(14px * var(--font-scale, 1)); }
-  .ui-prebattle .ui-pb-team .ui-card-sub, .ui-prebattle .ui-pb-team .ui-pb-matchup, .ui-prebattle .ui-pb-team .ui-pb-warn { font-size: calc(11px * var(--font-scale, 1)); }
+  .ui-party .ui-list-panel, .ui-prebattle .ui-list-panel { gap: 3px; }
+  .ui-party .ui-card, .ui-prebattle .ui-card { padding: 3px 8px; }
+  .ui-party .ui-portrait-thumb, .ui-prebattle .ui-portrait-thumb { width: 30px; height: 30px; }
+  .ui-party .ui-card-sub, .ui-prebattle .ui-card-sub { margin-top: 0; }
+  .ui-prebattle .ui-card-name { font-size: calc(14px * var(--font-scale, 1)); }
 }
-.ui-pb-team .ui-card-sub, .ui-pb-team .ui-pb-warn { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.ui-pb-team .ui-pb-matchup { flex-wrap: nowrap; overflow: hidden; white-space: nowrap; gap: 2px 6px; }
-.ui-pb-team .ui-card { position: relative; }
-.ui-pb-team .ui-badge { position: absolute; top: 3px; right: 4px; }
-.ui-pb-team .ui-card-body { padding-right: 16px; }
