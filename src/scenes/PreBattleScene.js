@@ -79,7 +79,7 @@ export class PreBattleScene extends Phaser.Scene {
     const warn = gap >= LOW_LEVEL_GAP ? `⚠ -${gap} Lv` : remindersFor(unit).length ? '⚠' : '';
     return `
       <div class="ui-pb-tags">
-        <span>${elementIcon(unit.element)}</span>
+        <span>${elementIcon(unit.element)}${mine.map(d => designationIcon(d)).join('')}</span>
         ${this.showHints && strong ? `<span class="good">▲${strong}</span>` : ''}
         ${this.showHints && weak ? `<span class="bad">▼${weak}</span>` : ''}
         ${this.showHints && warn ? `<span class="warn">${warn}</span>` : ''}
@@ -102,10 +102,9 @@ export class PreBattleScene extends Phaser.Scene {
     `;
   }
 
-  // M7's scripted loss hides its absurd numbers rather than showing 999999.
+  // M7's scripted loss hides its level rather than showing a number.
   enemyHTML(enemy) {
     const unknown = enemy.oneShotKill;
-    const stat = (label, value) => `<span class="ui-pb-stat">${label} <b>${unknown ? '???' : value}</b></span>`;
     const gear = Object.values(enemy.equip ?? {}).find(Boolean)?.rarity;
     const weakTo = Object.keys(ELEMENT_BEATS).find(el => ELEMENT_BEATS[el] === enemy.element);
     const weakDesig = Object.keys(DESIGNATION_BEATS).find(d => enemy.designations?.includes(DESIGNATION_BEATS[d]));
@@ -118,9 +117,7 @@ export class PreBattleScene extends Phaser.Scene {
         <div class="ui-card-body">
           <div class="ui-card-name">${esc(enemy.name)}</div>
           <div class="ui-card-sub">Lv.${unknown ? '???' : enemy.level}${enemy.element ? ` &middot; ${elementIcon(enemy.element)} ${esc(enemy.element)}` : ''}${!this.showHints ? '' : enemy.alwaysWeak ? ' &middot; <span class="ui-pb-good">Weak to all</span>' : weakTo ? ` &middot; <span class="ui-pb-good">Weak to ${elementIcon(weakTo)} ${esc(weakTo)}${weakDesig ? `, ${designationIcon(weakDesig)} ${esc(DESIGNATION_NAMES[weakDesig])}` : ''}</span>` : ''}</div>
-          <div class="ui-pb-stats">
-            ${stat('HP', enemy.maxHp)}${gear ? `<span class="ui-pb-stat">${RARITY_LABEL[gear] ?? esc(gear)} gear</span>` : ''}
-          </div>
+          ${gear ? `<div class="ui-pb-stats"><span class="ui-pb-stat">${RARITY_LABEL[gear] ?? esc(gear)} gear</span></div>` : ''}
         </div>
       </div>
     `;
