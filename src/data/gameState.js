@@ -999,7 +999,29 @@ export function recruitWithChoice(id, { t1Sport, t1Role, talents, element }) {
 // MAX_BATTLE_PARTY_SIZE of them fight in any one battle.
 export const MAX_ROSTER_SIZE = 20;
 
-let genericRecruitCounter = 1;
+// Next free recruit_N id. A plain counter restarted at 1 on every page load,
+// so recruits made in different sessions shared ids (2026-11-03 bug: three
+// heroes that couldn't be told apart).
+function nextRecruitId() {
+  const used = new Set(state.party.map(u => u.id));
+  let n = 1;
+  while (used.has(`recruit_${n}`)) n++;
+  return `recruit_${n}`;
+}
+
+// Gives every later copy of a repeated id a fresh one (saves made before
+// nextRecruitId existed).
+function fixDuplicateIds(party) {
+  const seen = new Set();
+  for (const u of party) {
+    if (seen.has(u.id)) {
+      let n = 1;
+      while (party.some(o => o.id === `recruit_${n}`)) n++;
+      u.id = `recruit_${n}`;
+    }
+    seen.add(u.id);
+  }
+}
 // Recruit a brand-new, player-named unit (as opposed to recruitWithChoice,
 // which reactivates one of the fixed FULL_ROSTER story characters) —
 // generated id/initials/color, everything else chosen the same way a
@@ -1013,7 +1035,7 @@ export function recruitNewUnit({ name, t1Sport, t1Role, talents, element }) {
   const COLOR_POOL = [0x4488ff, 0x44cc44, 0x44cccc, 0xff8844, 0xaa44ff, 0xff44aa, 0xffdd44, 0x66ddaa];
   const initials = (name.trim().slice(0, 2) || '??').toUpperCase();
   const unit = {
-    id: `recruit_${genericRecruitCounter++}`,
+    id: nextRecruitId(),
     name: name.trim() || 'Recruit',
     initials,
     color: COLOR_POOL[Math.floor(Math.random() * COLOR_POOL.length)],
@@ -1292,6 +1314,7 @@ export function loadGame(slot) {
         hasActed:  false, hasMoved: false,
       };
     });
+    fixDuplicateIds(state.party);
     state.inventory         = (data.inventory ?? []).filter(i => !REMOVED_ITEMS.has(i.id)).map(toBaseClassItem).map(renameOldSlotLabel).map(capOldSpLine);
     for (const u of state.party) Object.values(u.equip).forEach(i => capOldSpLine(renameOldSlotLabel(toBaseClassItem(i))));
     state.tytrate           = data.tytrate           ?? 150;

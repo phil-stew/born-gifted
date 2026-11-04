@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { state, maxBattlePartySize, maxHp, roleDisplayLabel, currentRoleId, currentDesignations, ELEMENT_BEATS, elementIcon, DESIGNATION_BEATS, DESIGNATION_NAMES, designationIcon } from '../data/gameState.js';
+import { state, maxBattlePartySize, roleDisplayLabel, currentRoleId, currentDesignations, ELEMENT_BEATS, elementIcon, DESIGNATION_BEATS, DESIGNATION_NAMES, designationIcon } from '../data/gameState.js';
 import { loadHeroSprites, stripHeroBackground, heroKey, firstFrame, spriteKeyForRole } from '../data/heroSprites.js';
 import { mount, unmount, onClick, spriteFrameDataURL, esc } from '../ui/domUI.js';
 import { BACKDROPS } from '../data/storyBackdrops.js';
@@ -106,7 +106,7 @@ export class PreBattleScene extends Phaser.Scene {
         ${url ? `<img class="ui-portrait-thumb" src="${url}" alt="">` : `<div class="ui-portrait-thumb" style="background:${'#' + unit.color.toString(16).padStart(6, '0')}"></div>`}
         <div class="ui-card-body">
           <div class="ui-card-name">${esc(unit.name.split(' ')[0])}</div>
-          <div class="ui-card-sub">Lv.${unit.level} &nbsp;${esc(roleDisplayLabel(unit))} &nbsp;&middot;&nbsp; HP ${maxHp(unit)}</div>
+          <div class="ui-card-sub">Lv.${unit.level} &nbsp;${esc(roleDisplayLabel(unit))}</div>
           ${this.matchupHTML(unit)}
         </div>
         <div class="ui-badge">${selected ? '✅' : '⬜'}</div>
@@ -131,7 +131,7 @@ export class PreBattleScene extends Phaser.Scene {
           <div class="ui-card-name">${esc(enemy.name)}</div>
           <div class="ui-card-sub">Lv.${unknown ? '???' : enemy.level}${enemy.element ? ` &middot; ${elementIcon(enemy.element)} ${esc(enemy.element)}` : ''}${!this.showHints ? '' : enemy.alwaysWeak ? ' &middot; <span class="ui-pb-good">Weak to all</span>' : weakTo ? ` &middot; <span class="ui-pb-good">Weak to ${elementIcon(weakTo)} ${esc(weakTo)}${weakDesig ? `, ${designationIcon(weakDesig)} ${esc(DESIGNATION_NAMES[weakDesig])}` : ''}</span>` : ''}</div>
           <div class="ui-pb-stats">
-            ${stat('HP', enemy.maxHp)}${stat('STR', enemy.strength)}${stat('SPD', enemy.speed)}${stat('END', enemy.endurance)}${gear ? `<span class="ui-pb-stat">${RARITY_LABEL[gear] ?? esc(gear)} gear</span>` : ''}
+            ${stat('HP', enemy.maxHp)}${gear ? `<span class="ui-pb-stat">${RARITY_LABEL[gear] ?? esc(gear)} gear</span>` : ''}
           </div>
         </div>
       </div>

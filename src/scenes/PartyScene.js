@@ -124,7 +124,6 @@ export class PartyScene extends Phaser.Scene {
   cardHTML(unit) {
     const active = unit.id === this.selId;
     const url = this.portraitURL(unit);
-    const hp = maxHp(unit);
     const pending = pendingPromotion(unit);
     return `
       <div class="ui-card ${active ? 'active' : ''}" data-select="${unit.id}">
@@ -132,8 +131,6 @@ export class PartyScene extends Phaser.Scene {
         <div class="ui-card-body">
           <div class="ui-card-name">${esc(unit.name.split(' ')[0])}</div>
           <div class="ui-card-sub">Lv.${unit.level} &nbsp;${esc(roleDisplayLabel(unit))}</div>
-          <div class="ui-bar"><div class="ui-bar-fill" style="width:100%;background:#4ecc6e"></div></div>
-          <div class="ui-card-sub" style="margin-top:4px;">HP ${hp}</div>
         </div>
         ${pending ? '<div class="ui-badge">🏆</div>' : ''}
       </div>
