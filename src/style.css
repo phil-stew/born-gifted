@@ -1147,4 +1147,6 @@ button.ui-quest-card { color: inherit; font: inherit; text-align: left; cursor: 
 .ui-loot .ui-quest-list { grid-template-columns: minmax(0, 340px); justify-content: center; }
 .ui-loot .ui-quest-card { text-align: center; }
 .ui-loot-card { display: flex; align-items: center; justify-content: center; gap: 10px; }
+/* Loot items are a list, not buttons: no box behind them. */
+.ui-loot .ui-loot-card { background: none; border: none; box-shadow: none; padding-top: 2px; padding-bottom: 2px; }
 .ui-loot-icon { width: 40px; height: 40px; object-fit: contain; flex: none; image-rendering: pixelated; display: flex; align-items: center; justify-content: center; font-size: 22px; }
