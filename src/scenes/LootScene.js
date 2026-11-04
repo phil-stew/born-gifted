@@ -1,7 +1,10 @@
 import Phaser from 'phaser';
-import { rarityColor } from '../data/items.js';
+import { rarityColor, gearItemFrame, materialFrameName, ICON_SHEET_STRIP, registerGearFrames, MATERIAL_ICON_FRAME } from '../data/items.js';
+import { stripBackgroundByKey } from '../data/heroSprites.js';
 import { STACK_CAP } from '../data/gameState.js';
-import { mount, unmount, onClick, esc } from '../ui/domUI.js';
+import { mount, unmount, onClick, iconDataURL, esc } from '../ui/domUI.js';
+
+const LOOT_ICON_SIZE = 40;
 
 // Split out of VictoryScene (2026-07-08 feedback: a big haul routinely ran
 // past the level-up notice/Continue button, which sit at fixed
@@ -21,15 +24,46 @@ export class LootScene extends Phaser.Scene {
     this.nextSceneData  = data.nextSceneData  ?? {};
   }
 
+  preload() {
+    if (!this.textures.exists('gears'))     this.load.image('gears',     'gears/gearitems.png');
+    if (!this.textures.exists('materials')) this.load.image('materials', 'items/rawmaterials.png');
+  }
+
+  // Same icon sheets as the Inventory screen.
+  registerIcons() {
+    stripBackgroundByKey(this, 'gears',     ICON_SHEET_STRIP);
+    stripBackgroundByKey(this, 'materials', ICON_SHEET_STRIP);
+    registerGearFrames(this);
+    if (this.textures.exists('materials')) {
+      const tex = this.textures.get('materials');
+      for (const [id, [x, y, w, h]] of Object.entries(MATERIAL_ICON_FRAME)) {
+        const name = `material_${id}`;
+        if (!tex.has(name)) tex.add(name, 0, x, y, w, h);
+      }
+    }
+  }
+
+  iconHTML(item) {
+    const [key, frame] = item.type === 'material' ? ['materials', materialFrameName(item.id)]
+      : item.slot ? ['gears', gearItemFrame(item)] : [null, null];
+    const ok = frame && this.textures.exists(key) && this.textures.get(key).has(frame);
+    const url = ok ? iconDataURL(this, key, frame, LOOT_ICON_SIZE) : null;
+    return url ? `<img class="ui-loot-icon" src="${url}" alt="">` : '<span class="ui-loot-icon">✦</span>';
+  }
+
   create() {
+    this.registerIcons();
     const cardsHTML = this.allDrops.map(({ item, count }) => {
       const isMat = item.type === 'material';
       const color = '#' + (isMat ? 0xaacc88 : rarityColor(item.rarity)).toString(16).padStart(6, '0');
       const tag = isMat ? 'Material' : item.rarity.charAt(0).toUpperCase() + item.rarity.slice(1);
       return `
-        <div class="ui-quest-card" style="border-color:${color}">
-          <div class="ui-quest-name" style="color:${color}">${esc(item.name)}${count > 1 ? ` ×${count}` : ''}</div>
-          <div class="ui-quest-text">${tag}</div>
+        <div class="ui-quest-card ui-loot-card" style="border-color:${color}">
+          ${this.iconHTML(item)}
+          <div>
+            <div class="ui-quest-name" style="color:${color}">${esc(item.name)}${count > 1 ? ` ×${count}` : ''}</div>
+            <div class="ui-quest-text">${tag}</div>
+          </div>
         </div>`;
     }).join('');
 

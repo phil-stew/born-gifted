@@ -1146,3 +1146,5 @@ button.ui-quest-card { color: inherit; font: inherit; text-align: left; cursor: 
 /* Loot: one centred column (2026-11-03). */
 .ui-loot .ui-quest-list { grid-template-columns: minmax(0, 340px); justify-content: center; }
 .ui-loot .ui-quest-card { text-align: center; }
+.ui-loot-card { display: flex; align-items: center; justify-content: center; gap: 10px; }
+.ui-loot-icon { width: 40px; height: 40px; object-fit: contain; flex: none; image-rendering: pixelated; display: flex; align-items: center; justify-content: center; font-size: 22px; }

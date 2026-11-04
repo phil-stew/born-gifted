@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { isTowerFloor, isRandomTowerFloor, towerFloorOf, towerReward, winTowerFloor } from '../data/tower.js';
-import { state, addItem, addXP, xpToNext, completeMission, roleDisplayLabel, TRIAL_CLASS, sportById, currentSport, resolvePartyLines } from '../data/gameState.js';
+import { state, addItem, addXP, xpToNext, completeMission, roleDisplayLabel, TRIAL_CLASS, sportById, currentSport, resolvePartyLines, currentRoleId } from '../data/gameState.js';
+import { loadHeroSprites, stripHeroBackground, heroKey, firstFrame, spriteKeyForRole } from '../data/heroSprites.js';
 import { getMissionMaterials, getKillDrops, rollHealHerbDrop, rollGreenHerbDrop, rollBracketedDrop, rollGodTierClassItem } from '../data/items.js';
 import { BACKDROPS } from '../data/storyBackdrops.js';
 import { isCaveMission, isGreenMission } from './BattleScene.js';
@@ -367,6 +368,7 @@ export class VictoryScene extends Phaser.Scene {
 
   preload() {
     if (!this.textures.exists('mapbackg')) this.load.image('mapbackg', 'world/title/mapbackg.webp');
+    loadHeroSprites(this, state.party.map(u => spriteKeyForRole(currentRoleId(u))).filter(Boolean));
   }
 
   create() {
@@ -586,10 +588,17 @@ export class VictoryScene extends Phaser.Scene {
     const cy = y + rowH / 2;
     const wasLevelUp = this.levelUps?.some(lu => lu.unit === unit);
 
-    // Color badge, then name with level beside it
+    // Portrait (or a colour dot if the art isn't there), then name and level
     const gfx = this.add.graphics();
-    gfx.fillStyle(unit.color, 1);
-    gfx.fillCircle(lx + 10, cy, 9);
+    const cls = spriteKeyForRole(currentRoleId(unit));
+    if (cls) stripHeroBackground(this, cls);
+    if (cls && this.textures.exists(heroKey(cls))) {
+      const img = this.add.image(lx + 10, cy, heroKey(cls), firstFrame(cls));
+      img.setScale(Math.min(rowH - 4, 40) / img.height);
+    } else {
+      gfx.fillStyle(unit.color, 1);
+      gfx.fillCircle(lx + 10, cy, 9);
+    }
     this.add.text(lx + 26, cy, unit.name.split(' ')[0], {
       fontSize: '19px', fontFamily: 'monospace', color: '#ffffff',
     }).setOrigin(0, 0.5);
