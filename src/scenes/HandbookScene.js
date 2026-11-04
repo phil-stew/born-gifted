@@ -3,21 +3,21 @@ import {
   ELEMENT_CYCLE, ELEMENT_BEATS, elementIcon,
   DESIGNATION_CYCLE, DESIGNATION_NAMES, DESIGNATION_BEATS, DESIGNATION_ICONS,
 } from '../data/gameState.js';
-import { drawBackButton, outlineSceneText } from '../ui/canvasButton.js';
+import { mount, unmount, onClick, esc } from '../ui/domUI.js';
 
 const GLOSSARY = [
   { term: 'Tier',        def: 'A monster or unit\'s power band (T1/T2/T3). Higher-tier monsters hit harder and have more HP.' },
-  { term: 'Boss',        def: 'A mission-ending monster with sharply boosted stats (see Bosses below) and a name of its own.' },
-  { term: 'Unique',      def: 'A rarer, mid-boosted monster with a randomly rolled name — encountered outside of a mission\'s final fight.' },
-  { term: 'Designation', def: 'A unit or monster\'s combat role (Combat/Ranged/Defender/Support) — see the triangle below.' },
+  { term: 'Boss',        def: 'A mission-ending monster with sharply boosted stats and a name of its own.' },
+  { term: 'Unique',      def: 'A rarer, mid-boosted monster with a randomly rolled name, met outside a mission\'s final fight.' },
+  { term: 'Designation', def: 'A unit or monster\'s combat role (Combat/Ranged/Defender/Support), see the triangle above.' },
   { term: 'Talent',      def: 'One of 2 stat-growth picks made at character creation. Picking the same talent twice quadruples that stat\'s growth per level.' },
-  { term: 'Class Skill',  def: 'A permanent passive buff, equipped into one of up to 3 slots unlocked at levels 5/10/20.' },
+  { term: 'Class Skill', def: 'A permanent passive buff, equipped into one of up to 3 slots unlocked at levels 5/10/20.' },
 ];
 
 // Element weakness cycle + designation triangle + a short glossary — opened
-// from the Capital hub once capitalQuest reaches 'exam_ready' (Phase 3/7,
-// M0-M4 redesign). Almost entirely a presentation screen over data that
-// already existed in gameState.js — no new game logic beyond the content.
+// from the Capital hub once capitalQuest reaches 'exam_ready'. DOM page in the
+// Index's see-through style (2026-11-03: the old canvas layout was built for a
+// taller screen and overlapped itself on phones).
 export class HandbookScene extends Phaser.Scene {
   constructor() { super({ key: 'HandbookScene' }); }
 
@@ -25,155 +25,45 @@ export class HandbookScene extends Phaser.Scene {
     this.hubData = data?.hubData ?? { nodeId: 'M3' };
   }
 
-  preload() {
-    if (!this.textures.exists('mapbackg')) this.load.image('mapbackg', 'world/title/mapbackg.webp');
-  }
-
   create() {
-    const { width, height } = this.scale;
+    const elements = ELEMENT_CYCLE.map(el =>
+      `<li>${elementIcon(el)} <b>${esc(el)}</b> beats ${elementIcon(ELEMENT_BEATS[el])} ${esc(ELEMENT_BEATS[el])}</li>`).join('');
+    const types = DESIGNATION_CYCLE.map(d =>
+      `<li>${DESIGNATION_ICONS[d]} <b>${esc(DESIGNATION_NAMES[d])}</b> beats ${DESIGNATION_ICONS[DESIGNATION_BEATS[d]]} ${esc(DESIGNATION_NAMES[DESIGNATION_BEATS[d]])}</li>`).join('');
+    const glossary = GLOSSARY.map(g => `
+      <div class="ui-index-ability">
+        <div class="ui-card-name">${esc(g.term)}</div>
+        <div class="ui-card-sub">${esc(g.def)}</div>
+      </div>`).join('');
 
-    const map = this.add.image(width / 2, height / 2, 'mapbackg');
-    map.setScale(Math.max(width / map.width, height / map.height));
-    const bg = this.add.graphics();
-    bg.fillStyle(0x07080f, 0.6);
-    bg.fillRect(0, 0, width, height);
-    outlineSceneText(this);
-    bg.fillStyle(0x0c0c1a, 0.7);
-    bg.fillRect(0, 0, width, 40);
-    bg.lineStyle(1, 0x222244, 1);
-    bg.lineBetween(0, 40, width, 40);
-
-    this.add.text(width / 2, 20, 'HANDBOOK', {
-      fontSize: '16px', fontFamily: 'monospace', fontStyle: 'bold', color: '#ffdd66',
-    }).setOrigin(0.5);
-
-    // Back button moved into the header (2026-07-11, "have the back button
-    // at top of menues") — was bottom-left, now top-left alongside the title.
-    drawBackButton(this, { label: 'BACK', onClick: () => this.scene.start('HubScene', this.hubData) });
-
-    this.buildElementWheel(70, 66);
-    this.buildDesignationTriangle(width - 260, 66);
-    this.buildGlossary(70, 350, width - 140);
-
-    this.cameras.main.fadeIn(300, 0, 0, 0);
-  }
-
-  buildElementWheel(x, y) {
-    const w = 220, h = 220;
-    this.add.text(x + w / 2, y - 14, 'ELEMENT WEAKNESSES', {
-      fontSize: '17px', fontFamily: 'monospace', fontStyle: 'bold', color: '#aaaacc',
-    }).setOrigin(0.5, 0);
-
-    const cx = x + w / 2, cy = y + h / 2 + 6, r = 78;
-    const n = ELEMENT_CYCLE.length;
-    const gfx = this.add.graphics();
-    gfx.lineStyle(2, 0x334466, 0.7);
-
-    const pos = ELEMENT_CYCLE.map((_, i) => {
-      const a = -Math.PI / 2 + (i * 2 * Math.PI) / n;
-      return { x: cx + r * Math.cos(a), y: cy + r * Math.sin(a) };
-    });
-
-    ELEMENT_CYCLE.forEach((el, i) => {
-      const from = pos[i], to = pos[(i + 1) % n];
-      gfx.beginPath();
-      gfx.moveTo(from.x, from.y);
-      gfx.lineTo(to.x, to.y);
-      gfx.strokePath();
-      // Arrowhead midway along the segment, pointing toward `to`.
-      const mx = (from.x + to.x) / 2, my = (from.y + to.y) / 2;
-      const ang = Math.atan2(to.y - from.y, to.x - from.x);
-      gfx.fillStyle(0x4488cc, 0.9);
-      gfx.fillTriangle(
-        mx + 6 * Math.cos(ang), my + 6 * Math.sin(ang),
-        mx + 6 * Math.cos(ang + 2.5), my + 6 * Math.sin(ang + 2.5),
-        mx + 6 * Math.cos(ang - 2.5), my + 6 * Math.sin(ang - 2.5),
-      );
-    });
-
-    ELEMENT_CYCLE.forEach((el, i) => {
-      const p = pos[i];
-      const dot = this.add.graphics();
-      dot.fillStyle(0x14142a, 1);
-      dot.fillCircle(p.x, p.y, 26);
-      dot.lineStyle(1.5, 0x445577, 1);
-      dot.strokeCircle(p.x, p.y, 26);
-      this.add.text(p.x, p.y - 6, elementIcon(el), { fontSize: '16px' }).setOrigin(0.5);
-      this.add.text(p.x, p.y + 14, el, { fontSize: '13px', fontFamily: 'monospace', color: '#aaaacc' }).setOrigin(0.5);
-    });
-
-    this.add.text(cx, y + h + 8, 'Beats the next element clockwise (1.5× dmg dealt, 0.8× dmg taken when beaten).', {
-      fontSize: '13px', fontFamily: 'monospace', color: '#556677', wordWrap: { width: w + 20 }, align: 'center',
-    }).setOrigin(0.5, 0);
-  }
-
-  buildDesignationTriangle(x, y) {
-    const w = 240, h = 220;
-    this.add.text(x + w / 2, y - 14, 'DESIGNATION TRIANGLE', {
-      fontSize: '17px', fontFamily: 'monospace', fontStyle: 'bold', color: '#aaaacc',
-    }).setOrigin(0.5, 0);
-
-    const cx = x + w / 2, cy = y + h / 2 + 10, r = 70;
-    const n = DESIGNATION_CYCLE.length;
-    const gfx = this.add.graphics();
-    gfx.lineStyle(2, 0xaa5544, 0.7);
-
-    const pos = DESIGNATION_CYCLE.map((_, i) => {
-      const a = -Math.PI / 2 + (i * 2 * Math.PI) / n;
-      return { x: cx + r * Math.cos(a), y: cy + r * Math.sin(a) };
-    });
-
-    DESIGNATION_CYCLE.forEach((d, i) => {
-      const from = pos[i], to = pos[(i + 1) % n];
-      gfx.beginPath();
-      gfx.moveTo(from.x, from.y);
-      gfx.lineTo(to.x, to.y);
-      gfx.strokePath();
-      const mx = (from.x + to.x) / 2, my = (from.y + to.y) / 2;
-      const ang = Math.atan2(to.y - from.y, to.x - from.x);
-      gfx.fillStyle(0xcc6644, 0.9);
-      gfx.fillTriangle(
-        mx + 6 * Math.cos(ang), my + 6 * Math.sin(ang),
-        mx + 6 * Math.cos(ang + 2.5), my + 6 * Math.sin(ang + 2.5),
-        mx + 6 * Math.cos(ang - 2.5), my + 6 * Math.sin(ang - 2.5),
-      );
-    });
-
-    DESIGNATION_CYCLE.forEach((d, i) => {
-      const p = pos[i];
-      const dot = this.add.graphics();
-      dot.fillStyle(0x2a1414, 1);
-      dot.fillCircle(p.x, p.y, 28);
-      dot.lineStyle(1.5, 0x774433, 1);
-      dot.strokeCircle(p.x, p.y, 28);
-      this.add.text(p.x, p.y - 8, DESIGNATION_ICONS[d], { fontSize: '18px' }).setOrigin(0.5);
-      this.add.text(p.x, p.y + 14, DESIGNATION_NAMES[d], { fontSize: '13px', fontFamily: 'monospace', color: '#ccaa99' }).setOrigin(0.5);
-    });
-
-    // Support sits outside the triangle, called out separately.
-    this.add.text(cx, cy + r + 34, `${DESIGNATION_ICONS.S}  Support — outside the triangle, boosts/heals allies instead of fighting the cycle.`, {
-      fontSize: '13px', fontFamily: 'monospace', color: '#556677', wordWrap: { width: w + 20 }, align: 'center',
-    }).setOrigin(0.5, 0);
-  }
-
-  buildGlossary(x, y, w) {
-    this.add.text(x, y, 'GLOSSARY', {
-      fontSize: '17px', fontFamily: 'monospace', fontStyle: 'bold', color: '#aaaacc',
-    });
-
-    let gy = y + 22;
-    const colW = w / 2 - 12;
-    GLOSSARY.forEach((g, i) => {
-      const col = i % 2, row = Math.floor(i / 2);
-      const gx = x + col * (colW + 24);
-      const rowY = gy + row * 46;
-      this.add.text(gx, rowY, g.term, {
-        fontSize: '16px', fontFamily: 'monospace', fontStyle: 'bold', color: '#ffcc88',
-      });
-      this.add.text(gx, rowY + 16, g.def, {
-        fontSize: '13px', fontFamily: 'monospace', color: '#7788aa',
-        wordWrap: { width: colW }, lineSpacing: 2,
-      });
-    });
+    mount(`
+      <div class="ui-screen ui-index">
+        <div class="ui-topbar">
+          <button class="ui-navbtn" data-nav="back">◀ Back</button>
+          <div class="ui-title">HANDBOOK</div>
+          <div style="width:110px"></div>
+        </div>
+        <div class="ui-body ui-index-body">
+          <div class="ui-panel ui-index-panel" data-scroll-id="handbook">
+            <div class="ui-section">
+              <div class="ui-section-label">Element Weaknesses</div>
+              <ul class="ui-index-list">${elements}</ul>
+              <div class="ui-card-sub">An element deals 1.5× damage to the one it beats, and takes 0.8× from it.</div>
+            </div>
+            <div class="ui-section">
+              <div class="ui-section-label">Designation Triangle</div>
+              <ul class="ui-index-list">${types}</ul>
+              <div class="ui-card-sub">${DESIGNATION_ICONS.S} Support sits outside the triangle: it boosts and heals allies instead.</div>
+            </div>
+            <div class="ui-section">
+              <div class="ui-section-label">Glossary</div>
+              ${glossary}
+            </div>
+          </div>
+        </div>
+      </div>
+    `);
+    onClick('[data-nav="back"]', () => this.scene.start('HubScene', this.hubData));
+    this.events.once('shutdown', unmount);
   }
 }
