@@ -1116,3 +1116,24 @@ button.ui-quest-card { color: inherit; font: inherit; text-align: left; cursor: 
 .ui-tower-abandon { background: rgba(255, 255, 255, 0.1); color: var(--ui-text); }
 .ui-dismiss-btn { display: block; margin: 10px 0 0 auto; padding: 6px 12px; font-size: calc(12px * var(--font-scale, 1)); text-align: center; }
 .ui-forge .ui-detail-tabs.ui-tabs-wrap { flex-wrap: wrap; }
+
+/* Six heroes on screen (2026-11-03): two columns on the Pre-Battle team
+   list, tighter cards on the Party list. */
+.ui-pb-team { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 4px; }
+.ui-pb-team .ui-card { padding: 4px 6px; gap: 6px; min-height: 0; }
+.ui-pb-team .ui-portrait-thumb { width: 30px; height: 30px; }
+.ui-pb-team .ui-badge { font-size: 14px; }
+@media (max-height: 500px) {
+  .ui-party .ui-list-panel { gap: 3px; }
+  .ui-party .ui-card { padding: 3px 8px; }
+  .ui-party .ui-portrait-thumb { width: 30px; height: 30px; }
+  .ui-party .ui-card-sub { margin-top: 0; }
+  .ui-prebattle .ui-pb-team .ui-portrait-thumb { width: 30px; height: 30px; }
+  .ui-prebattle .ui-pb-team .ui-card-name { font-size: calc(14px * var(--font-scale, 1)); }
+  .ui-prebattle .ui-pb-team .ui-card-sub, .ui-prebattle .ui-pb-team .ui-pb-matchup, .ui-prebattle .ui-pb-team .ui-pb-warn { font-size: calc(11px * var(--font-scale, 1)); }
+}
+.ui-pb-team .ui-card-sub, .ui-pb-team .ui-pb-warn { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ui-pb-team .ui-pb-matchup { flex-wrap: nowrap; overflow: hidden; white-space: nowrap; gap: 2px 6px; }
+.ui-pb-team .ui-card { position: relative; }
+.ui-pb-team .ui-badge { position: absolute; top: 3px; right: 4px; }
+.ui-pb-team .ui-card-body { padding-right: 16px; }

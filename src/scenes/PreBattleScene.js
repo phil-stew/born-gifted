@@ -159,7 +159,7 @@ export class PreBattleScene extends Phaser.Scene {
           <div class="ui-panel ui-list-panel">
             <div class="ui-pb-head">Your team &middot; ${this.selectedIds.length} / ${this.cap}${full ? ' (max)' : ''}</div>
             ${this.showHints ? '<div class="ui-pb-tip">▲ deals extra damage to that many enemies, ▼ takes extra</div>' : ''}
-            ${listHTML}
+            <div class="ui-pb-team">${listHTML}</div>
           </div>
           <div class="ui-panel ui-list-panel">
             <div class="ui-pb-head">Enemies &middot; ${this.battleData.enemyUnits?.length ?? 0}</div>
