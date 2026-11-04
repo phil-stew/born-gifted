@@ -281,6 +281,31 @@ function lighten(color) {
 // dedicated painterly art yet. M6-M11 and their M13/M14 side battles were
 // removed 2026-07-11 ("going to rewrite"); M12/M15 (Lametus) were removed
 // the same day too ("remove m12") — the main chain now ends at M5 (Gale).
+// First visit to each Altroes academy (2026-11-03): the head of the school
+// introduces it and its three quests.
+const ACADEMY_INTRO = {
+  A1: {
+    location: 'ESTER ACADEMY',
+    backdrop: BACKDROPS.school,
+    lines: [
+      { speaker: 'Narrator', color: '#888899', text: 'Ester Academy sits on the volcanic ridge, its training fields scorched black. Students sprint laps in the heat as you walk through the gates.' },
+      { speaker: 'Headmaster Ester', color: '#ddcc88', text: 'So you\'re the one sitting the Capital\'s exam. Ester trains Athletics: runners, skaters, jumpers. If you need a teammate, you\'ll find good ones here.' },
+      { speaker: 'Headmaster Ester', color: '#ddcc88', text: 'And if you\'re after more than an exam, Ester has problems of its own. A dragon nests on our ridge, and a boulder has buried our training road. Help with those, and Ester will vouch for you.' },
+      { speaker: 'Reno',     color: '#4488ff', text: '...Noted. We\'ll be back.' },
+    ],
+  },
+  A2: {
+    location: 'HILBERT ACADEMY',
+    backdrop: BACKDROPS.capital,
+    lines: [
+      { speaker: 'Narrator', color: '#888899', text: 'Hilbert Academy spreads across the low lands, all wide pitches and batting cages. The crack of bats echoes off the walls.' },
+      { speaker: 'Headmistress Hilbert', color: '#ddcc88', text: 'Welcome to Hilbert. We train Bat & Ball and Ball sports, and our students work best as a team. Recruit here if you need one.' },
+      { speaker: 'Headmistress Hilbert', color: '#ddcc88', text: 'Our quest board is full, though. Lions raid our carts, a Goblin King is building an army, and we lost a team in the caves. Clear them, and Hilbert will stand behind you.' },
+      { speaker: 'Reno',     color: '#4488ff', text: '...Sounds like Hilbert needs us as much as we need it.' },
+    ],
+  },
+};
+
 const NEW_AREA_INTRO = {
   // Dragon's Roost (Ester Academy's "defeat 1 dragon and two wyverns"
   // quest, A1a) — never had an intro cutscene at all until this pass
@@ -296,6 +321,44 @@ const NEW_AREA_INTRO = {
       { speaker: 'Narrator', color: '#888899', text: 'The roost sits high on a volcanic ridge overlooking Ester Academy — the air shimmers with heat, and something large is circling above.' },
       { speaker: 'Reno',     color: '#4488ff', text: '...A dragon. And it brought company.' },
       { speaker: '__PARTY_2__', text: 'Then we split them up. Nobody takes the dragon alone.' },
+    ],
+  },
+  // Ester's other quest and Hilbert's three (2026-11-03) — these used to
+  // start with no story at all.
+  A1b: {
+    location: 'ALTROES  ·  The Great Boulder',
+    backdrop: BACKDROPS.altroesVolcano,
+    lines: [
+      { speaker: 'Narrator', color: '#888899', text: 'A boulder the size of a house has rolled down from the volcano and sealed Ester\'s training road. The academy wants it gone in ten rounds, before the next quake brings more down.' },
+      { speaker: 'Reno',     color: '#4488ff', text: '...Ten rounds to smash a mountain. Sure.' },
+      { speaker: '__PARTY_2__', text: 'Everyone hits it at once. No holding back.' },
+    ],
+  },
+  A2a: {
+    location: "ALTROES  ·  Lion's Pride",
+    backdrop: BACKDROPS.wilds,
+    lines: [
+      { speaker: 'Narrator', color: '#888899', text: 'South of Hilbert, the tall grass goes quiet. The pride that\'s been raiding the academy\'s supply carts answers to one lion bigger than the rest.' },
+      { speaker: 'Reno',     color: '#4488ff', text: '...Take down the King, and the pride scatters.' },
+      { speaker: '__PARTY_2__', text: 'Stay close. Lions hunt the one who wanders off.' },
+    ],
+  },
+  A2b: {
+    location: 'ALTROES  ·  Goblin Warcamp',
+    backdrop: BACKDROPS.wilds,
+    lines: [
+      { speaker: 'Narrator', color: '#888899', text: 'Smoke rises from a camp of crude tents. The Goblin King keeps calling more of his kind to his side, and Hilbert\'s scouts can\'t get near it.' },
+      { speaker: 'Reno',     color: '#4488ff', text: '...More will keep coming. We go for the King.' },
+      { speaker: '__PARTY_2__', text: 'Cut a path, then end it fast.' },
+    ],
+  },
+  A2c: {
+    location: 'ALTROES  ·  Cave Depths',
+    backdrop: BACKDROPS.cave,
+    lines: [
+      { speaker: 'Narrator', color: '#888899', text: 'Beneath the Northern Cave, a tunnel no one had mapped drops into the dark. Hilbert lost a survey team down here, and whatever got them hasn\'t left.' },
+      { speaker: 'Reno',     color: '#4488ff', text: '...No idea what\'s waiting down there.' },
+      { speaker: '__PARTY_2__', text: 'Then we keep our eyes open and our backs together.' },
     ],
   },
   // Altroes Trials + the next school's tournament (2026-07-11) — same
@@ -1111,7 +1174,7 @@ export class WorldMapScene extends Phaser.Scene {
         state.missionIntroShown.push(node.id);
         state.currentMission = node.id;
         this.scene.start('StoryScene', {
-          location: intro.location, backdrop: intro.backdrop, lines: intro.lines,
+          location: intro.location, backdrop: intro.backdrop, lines: resolvePartyLines(intro.lines),
           nextScene: 'BattleScene', nextSceneData: {},
         });
       } else {
@@ -1128,8 +1191,17 @@ export class WorldMapScene extends Phaser.Scene {
       }
       if (isCompleted) {
         this.showDifficultyPicker(node);
+        return;
+      }
+      state.currentMission = node.id;
+      const intro = NEW_AREA_INTRO[node.id];
+      if (intro && !state.missionIntroShown.includes(node.id)) {
+        state.missionIntroShown.push(node.id);
+        this.scene.start('StoryScene', {
+          location: intro.location, backdrop: intro.backdrop, lines: resolvePartyLines(intro.lines),
+          nextScene: 'BattleScene', nextSceneData: {},
+        });
       } else {
-        state.currentMission = node.id;
         this.scene.start('BattleScene');
       }
       return;
@@ -1166,9 +1238,12 @@ export class WorldMapScene extends Phaser.Scene {
           // shot) to altroesArena (grandarena.png) — a real arena backdrop
           // for a mission literally named "Arena Atlros."
           backdrop: BACKDROPS.altroesArena,
-          lines: [
+          lines: resolvePartyLines([
+            { speaker: 'Narrator', color: '#888899', text: 'The stands of Arena Atlros are packed. Every hopeful in the region has come to watch the Academy exam, and the instructor waits alone in the sand.' },
+            { speaker: 'Instructor', color: '#ddcc88', text: 'No monsters today. To pass, you beat me. Show me how you fight as a team.' },
             { speaker: 'Reno', color: '#4488ff', text: '...Never thought I\'d have to fight our own instructor.' },
-          ],
+            { speaker: '__PARTY_2__', text: 'Then let\'s give the crowd something to remember.' },
+          ]),
           nextScene: 'BattleScene', nextSceneData: {},
         });
       } else {
@@ -1183,14 +1258,22 @@ export class WorldMapScene extends Phaser.Scene {
       // A single recruit (Drace) is available during 'recruit_pending' —
       // the fuller "pick who to recruit" academy roster is Phase 7 work.
       // sportClass narrows RecruitClassScene's sport picker per HUB_CONFIGS.
-      if (state.capitalQuest === 'recruit_pending' && state.party.length < 2) {
-        this.scene.start('RecruitClassScene', {
+      const next = state.capitalQuest === 'recruit_pending' && state.party.length < 2
+        ? { scene: 'RecruitClassScene', data: {
           recruitIds: ['drace'],
           sportClass: HUB_CONFIGS[node.id]?.recruitPool,
           nextScene: 'WorldMapScene', nextSceneData: {},
+        } }
+        : { scene: 'HubScene', data: { nodeId: node.id } };
+      const intro = ACADEMY_INTRO[node.id];
+      if (!state.missionIntroShown.includes(node.id)) {
+        state.missionIntroShown.push(node.id);
+        this.scene.start('StoryScene', {
+          location: intro.location, backdrop: intro.backdrop, lines: resolvePartyLines(intro.lines),
+          nextScene: next.scene, nextSceneData: next.data,
         });
       } else {
-        this.scene.start('HubScene', { nodeId: node.id });
+        this.scene.start(next.scene, next.data);
       }
       return;
     }
@@ -1456,6 +1539,26 @@ export class WorldMapScene extends Phaser.Scene {
           });
         },
         onNo: () => this.scene.start('WorldMapScene'),
+      });
+      return;
+    }
+
+    // After the exam (2026-11-03): one scene sends the party to help both
+    // academies, which is what opens the Trials.
+    if (state.capitalQuest === 'done' && !state.unlockedMissions.includes('AT1')
+      && !state.missionIntroShown.includes('M3exam')) {
+      state.missionIntroShown.push('M3exam');
+      this.scene.start('StoryScene', {
+        location: 'THE CAPITAL  ·  Gates',
+        backdrop: BACKDROPS.capital,
+        lines: resolvePartyLines([
+          { speaker: 'Instructor', color: '#ddcc88', text: 'You passed. Officially, you\'re Academy students now. Unofficially, that was the easy part.' },
+          { speaker: 'Instructor', color: '#ddcc88', text: 'Altroes holds its Trials at Arena Atlros, but only for students both academies vouch for. Ester and Hilbert each have three quests on their boards.' },
+          { speaker: 'Instructor', color: '#ddcc88', text: 'Finish all six, then come back here. If you\'re as good as you looked in that arena, the Trials will be waiting.' },
+          { speaker: 'Reno',     color: '#4488ff', text: '...Six quests. Let\'s get started.' },
+          { speaker: '__PARTY_2__', text: 'Ester\'s up on the ridge, Hilbert\'s down in the low lands. Pick one.' },
+        ]),
+        nextScene: 'WorldMapScene', nextSceneData: {},
       });
       return;
     }

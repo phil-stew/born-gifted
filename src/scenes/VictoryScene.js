@@ -33,6 +33,65 @@ const CUTSCENE_AFTER = {
       { speaker:'Instructor', color:'#ddcc88', text:'Welcome to the Academy. Meet me back at the Capital.' },
     ],
   },
+  // Academy and Gale quest wins (2026-11-03) — short first-clear lines so
+  // each quest closes with a word from the school or town that asked.
+  A1a: {
+    location: "ALTROES  ·  Dragon's Roost",
+    backdrop: BACKDROPS.altroesVolcano,
+    lines: [
+      { speaker:'Narrator', color:'#888899', text:'The dragon crashes onto the ridge and doesn\'t get up. Down below, Ester\'s students cheer from the training fields.' },
+      { speaker:'Reno',     color:'#4488ff', text:'...One down for Ester.' },
+    ],
+  },
+  A1b: {
+    location: 'ALTROES  ·  The Great Boulder',
+    backdrop: BACKDROPS.altroesVolcano,
+    lines: [
+      { speaker:'Narrator', color:'#888899', text:'The boulder splits apart and rolls off the road in pieces. Ester\'s runners are back on their track by evening.' },
+      { speaker:'__PARTY_2__', text:'Remind me never to make a boulder angry.' },
+    ],
+  },
+  A2a: {
+    location: "ALTROES  ·  Lion's Pride",
+    backdrop: BACKDROPS.wilds,
+    lines: [
+      { speaker:'Narrator', color:'#888899', text:'With the King down, the rest of the pride melts back into the grass. Hilbert\'s supply carts roll again by morning.' },
+      { speaker:'Reno',     color:'#4488ff', text:'...That\'s one for Hilbert.' },
+    ],
+  },
+  A2b: {
+    location: 'ALTROES  ·  Goblin Warcamp',
+    backdrop: BACKDROPS.wilds,
+    lines: [
+      { speaker:'Narrator', color:'#888899', text:'The Goblin King falls, and his army scatters into the hills. Without him, the camp is just a pile of empty tents.' },
+      { speaker:'__PARTY_2__', text:'No more reinforcements. Good riddance.' },
+    ],
+  },
+  A2c: {
+    location: 'ALTROES  ·  Cave Depths',
+    backdrop: BACKDROPS.cave,
+    lines: [
+      { speaker:'Narrator', color:'#888899', text:'The depths fall quiet. Scratched into the wall, you find the lost survey team\'s last map. Hilbert will want it back.' },
+      { speaker:'Reno',     color:'#4488ff', text:'...At least now they\'ll know what happened.' },
+    ],
+  },
+  DK: {
+    location: 'GALE  ·  The Frozen Peaks',
+    backdrop: BACKDROPS.galeWilds,
+    lines: [
+      { speaker:'Narrator', color:'#888899', text:'The Alpha King Dragon falls into the snow with a roar that echoes down every valley in Gale. Artfall\'s fighters will hear about this before nightfall.' },
+      { speaker:'Reno',     color:'#4488ff', text:'...So the stories were true.' },
+      { speaker:'__PARTY_2__', text:'And now they\'ll be telling one about us.' },
+    ],
+  },
+  MH: {
+    location: 'GALE  ·  Monster Hunt',
+    backdrop: BACKDROPS.galeWilds,
+    lines: [
+      { speaker:'Narrator', color:'#888899', text:'The hunters of Zester count the tracks you left behind and whistle. The bounty is paid, and the board stays open for anyone who wants another go.' },
+      { speaker:'Reno',     color:'#4488ff', text:'...Same time tomorrow?' },
+    ],
+  },
   // Frostbite Pass (2026-11-03) — the two travellers from the overturned
   // cart turn out to be Kael and Trice, and join (RECRUITS_AFTER.FP).
   FP: {
