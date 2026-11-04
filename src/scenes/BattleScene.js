@@ -18,7 +18,7 @@ import { BACKDROPS } from '../data/storyBackdrops.js';
 import { preloadSfx, playSfx, playStinger, SFX } from '../audio/sound.js';
 import { preloadMusic, playMusic } from '../audio/music.js';
 import { getDifficultyConfig } from '../data/difficulty.js';
-import { battleInfoOn, BATTLE_SPEEDS, getBattleSpeed, setBattleSpeed, fastPlayOn } from '../data/battleHints.js';
+import { battleInfoOn, BATTLE_SPEEDS, getBattleSpeed, BATTLE_ZOOMS, getBattleZoom, setBattleZoom, setBattleSpeed, fastPlayOn } from '../data/battleHints.js';
 
 // M1 first-time control tutorial (2026-08-06, "some people struggle to
 // know how to move and attack") — shown once ever (a plain localStorage
@@ -104,6 +104,8 @@ const MISSION_ENEMY_LEVEL = {
   TG: 26, FT: 28,
 };
 const BOSS_LEVEL_BONUS = 2;
+// Gap between battle menu rows, in pixels.
+const MENU_ROW_GAP = 12;
 // Newbie only: regular monsters below this level fight without skills.
 const NEWBIE_MONSTER_SKILL_LEVEL = 16;
 // Fast Play gestures: taps closer together than this count as a double/triple
@@ -1289,7 +1291,6 @@ export class BattleScene extends Phaser.Scene {
     this.xpEarned       = 0;
     this.actionMenu     = null;
     this.statusPopup    = null;
-    this.emptyTileMenu  = null;
     this.lastMove       = null;
     this.activeAbility  = null;
     // The Corrupted One's monsters (M6, 2026-07-17) all share ONE locked
@@ -1362,6 +1363,7 @@ export class BattleScene extends Phaser.Scene {
       u.label = this.add.text(0, 0, u.initials, {
         fontSize: '11px', fontFamily: 'monospace', fontStyle: 'bold', color: '#ffffff',
       }).setOrigin(0.5).setDepth(1000);
+      u.label.zoomLayer = 'board';
       const className = spriteKeyForRole(u.roleId);
       const hKey = heroKey(className);
       const idleAnim = `${hKey}-idle`;
@@ -1468,6 +1470,8 @@ export class BattleScene extends Phaser.Scene {
 
     this.drawReferenceHud(width);
     this.drawSpeedButton(width);
+    this.drawTurnButtons(width);
+    this.setupZoom();
 
     // Exit button
     const exitBtn = this.add.text(8, 2, '✕ RETREAT', {
@@ -1480,25 +1484,37 @@ export class BattleScene extends Phaser.Scene {
       if (this.battleOver) return;
       playSfx(this, SFX.battleClick);
       this.cameras.main.fadeOut(400, 0, 0, 0);
+      this.uiCam?.fadeOut(400, 0, 0, 0);
+      this.bgCam?.fadeOut(400, 0, 0, 0);
       this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start('WorldMapScene'));
     });
 
     // ── Input ─────────────────────────────────────────────────────────────
+    // Board input works in board (zoomed camera) coordinates.
     this.input.on('pointermove', ptr => {
-      if (this.fastDrag) this.fastDragMove(ptr);
+      if (this.panDrag) { this.panMove(ptr); return; }
+      const w = this.worldPoint(ptr);
+      if (this.fastDrag) this.fastDragMove(w);
       if (this.phase === 'enemy_turn' || this.phase === 'victory' || this.phase === 'defeat') return;
-      const t = this.screenToGrid(ptr.x, ptr.y);
+      const t = this.screenToGrid(w.x, w.y);
       this.hoveredTile = this.inBounds(t) ? t : null;
       this.redraw();
     });
 
     this.input.on('pointerdown', ptr => {
-      if (this.phase === 'enemy_turn' || this.phase === 'victory' || this.phase === 'defeat') return;
-      if (this.fastPlayActive() && this.fastPointerDown(ptr)) return;
+      if (this.phase === 'victory' || this.phase === 'defeat') return;
+      const w = this.worldPoint(ptr);
+      if (this.phase === 'enemy_turn') { this.startPan(ptr); return; }
+      if (this.fastPlayActive() && this.fastPointerDown(w)) return;
       this.fastPlayQuiet = null;
-      this.handleClick(ptr.x, ptr.y);
+      // Open ground with nothing selected: drag to look around when zoomed.
+      if (this.phase === 'player_turn' && !this.fastUnitAt(w.x, w.y)) this.startPan(ptr);
+      this.handleClick(w.x, w.y);
     });
-    this.input.on('pointerup', ptr => { if (this.fastDrag) this.fastDragEnd(ptr); });
+    this.input.on('pointerup', ptr => {
+      if (this.panDrag) { this.panDrag = null; return; }
+      if (this.fastDrag) this.fastDragEnd(this.worldPoint(ptr));
+    });
 
     // enemyFirst (M6, 2026-07-17, "the monsters attack so in the M6 battle
     // the enemy will go first") — an ambush: the corrupted monsters get the
@@ -1963,7 +1979,7 @@ export class BattleScene extends Phaser.Scene {
       this.selectedUnit = d.unit;
       this.moveRange = d.unit.hasMoved ? new Set() : this.getReachableTiles(d.unit);
       this.phase = 'unit_selected';
-      this.fastDragG ??= this.add.graphics().setDepth(3500);
+      if (!this.fastDragG) { this.fastDragG = this.add.graphics().setDepth(3500); this.fastDragG.zoomLayer = 'board'; }
     }
     const g = this.fastDragG;
     const { x, y } = this.gridToScreen(d.unit.col, d.unit.row);
@@ -2135,7 +2151,6 @@ export class BattleScene extends Phaser.Scene {
     if (this.phase === 'player_turn') {
       if (occupant?.team === 'player' && !occupant.isDone) { this.hideActionMenu(); this.selectUnit(occupant); }
       else if (occupant?.team === 'enemy') this.showUnitStatus(occupant);
-      else if (!occupant) this.showEmptyTileMenu(sx, sy);
 
     } else if (this.phase === 'unit_selected') {
       // "Move" was chosen — waiting for a tile
@@ -2216,80 +2231,6 @@ export class BattleScene extends Phaser.Scene {
     this.phase = 'player_turn';
   }
 
-  // Empty-tile menu (2026-08-04) — clicking open ground during player_turn
-  // (no unit selected, no tile occupant) offers a way to bail out of the
-  // turn early or walk back a movement mistake, without having to select
-  // a specific unit first.
-  showEmptyTileMenu(sx, sy) {
-    this.hideActionMenu();
-    const { width, height } = this.scale;
-    const IH = 50, PAD = 8, MW = 280;
-    // Undo only offered while it's still a clean, fully-reversible
-    // rollback — position only, nothing else touched the board since
-    // (the moved unit hasn't also attacked/used an ability, and is alive).
-    const canUndo = !!this.lastMove && !this.lastMove.unit.isDead && !this.lastMove.unit.hasActed;
-    const items = [
-      { icon: '⏭', label: 'End Player Turn', disabled: false, action: () => this.endPlayerTurnEarly() },
-      { icon: '↺', label: 'Undo Last Move',   disabled: !canUndo, action: () => this.undoLastMoveAndResetTurn() },
-    ];
-    const MH = items.length * IH + PAD * 2;
-    const toRight = sx + 20 + MW < width - 4;
-    const mx = toRight ? sx + 20 : sx - 20 - MW;
-    const my = Math.min(Math.max(sy - MH / 2, 38), height - MH - 36);
-
-    const con = this.add.container(mx, my).setDepth(4000);
-    this.emptyTileMenu = con;
-    const RADIUS = 10;
-
-    const shadow = this.add.graphics();
-    shadow.fillStyle(0x000000, 0.32);
-    shadow.fillRoundedRect(4, 6, MW, MH, RADIUS);
-    con.add(shadow);
-
-    const bg = this.add.graphics();
-    bg.fillStyle(0x0d1428, 0.3);
-    bg.fillRoundedRect(0, 0, MW, MH, RADIUS);
-    bg.lineStyle(1.5, 0x4477cc, 0.75);
-    bg.strokeRoundedRect(0, 0, MW, MH, RADIUS);
-    bg.fillStyle(0x4477cc, 0.6);
-    bg.fillRoundedRect(0, 0, MW, 3, { tl: RADIUS, tr: RADIUS, bl: 0, br: 0 });
-    con.add(bg);
-
-    items.forEach(({ icon, label, disabled, action }, i) => {
-      const iy = PAD + i * IH;
-      const g = this.add.graphics();
-      const draw = (h) => {
-        g.clear();
-        if (h && !disabled) {
-          g.fillStyle(0x2a4a90, 0.5);
-          g.fillRoundedRect(2, iy + 2, MW - 4, IH - 4, 6);
-          g.fillStyle(0x88aaff, 0.9);
-          g.fillRoundedRect(2, iy + 2, 3, IH - 4, 2);
-        }
-      };
-      draw(false);
-      con.add(g);
-
-      const tc = disabled ? '#8a8aa8' : '#ffffff';
-      con.add(this.add.text(12, iy + IH / 2, `${icon}  ${label}`, {
-        fontSize: '20px', fontFamily: 'monospace', fontStyle: disabled ? 'normal' : 'bold', color: tc,
-        stroke: '#000000', strokeThickness: disabled ? 0 : 3,
-      }).setOrigin(0, 0.5));
-
-      if (!disabled) {
-        const z = this.add.zone(MW / 2, iy + IH / 2, MW, IH).setInteractive({ useHandCursor: true });
-        z.on('pointerover', () => draw(true));
-        z.on('pointerout',  () => draw(false));
-        z.on('pointerdown', (ptr, lx, ly, evt) => {
-          evt.stopPropagation();
-          playSfx(this, SFX.battleClick);
-          action();
-        });
-        con.add(z);
-      }
-    });
-  }
-
   // Ends the whole player phase immediately — marks every not-yet-done
   // player unit `isDone` (they simply don't act this turn) and hands off
   // to the enemy, same as if every unit had individually chosen Wait.
@@ -2307,7 +2248,7 @@ export class BattleScene extends Phaser.Scene {
   // that unit's turn (hasMoved/hasActed/isDone all reset) — a position-only
   // rollback, NOT a full battle-state undo: any damage already dealt this
   // turn (by this unit or any other) is untouched. Only reachable while
-  // canUndo held in showEmptyTileMenu — the unit hasn't acted since moving.
+  // canUndo() holds — the unit hasn't acted since moving.
   undoLastMoveAndResetTurn() {
     const lm = this.lastMove;
     if (!lm || lm.unit.isDead || lm.unit.hasActed) return;
@@ -3047,7 +2988,7 @@ export class BattleScene extends Phaser.Scene {
     this.phase = 'unit_menu';
 
     const { width, height } = this.scale;
-    const { x: ux, y: uy } = this.gridToScreen(unit.col, unit.row);
+    const { x: ux, y: uy } = this.unitScreenPos(unit);
     // Only the player-selected battle loadout, not every known ability — see
     // getEquippedSpecialAbilities/getEquippedSkillAbilities in abilities.js
     // (2026-07-07: capped at MAX_EQUIPPED_SPECIALS/MAX_EQUIPPED_SKILLS,
@@ -3062,7 +3003,8 @@ export class BattleScene extends Phaser.Scene {
     const IH = level === 'top' ? 58 : 45, PAD = 8;
     const ITEMS = level === 'action' ? this.buildActionItems(unit, specials, skills) : this.buildMenuItems(unit);
     const HDR = 26; // the name header gets its own row above the first item
-    const MW = 222, MH = HDR + ITEMS.length * IH + PAD * 2;
+    const GAP = this.menuGap(ITEMS.length, IH, HDR + PAD * 2), RP = IH + GAP;
+    const MW = 222, MH = HDR + ITEMS.length * RP - GAP + PAD * 2;
 
     // Position beside unit: right if space, left otherwise
     const toRight = ux + 60 + MW < width - 4;
@@ -3111,7 +3053,8 @@ export class BattleScene extends Phaser.Scene {
     con.add(nameHdr);
 
     ITEMS.forEach(({ label, icon, sub, disabled, separator, action }, i) => {
-      const iy = PAD + HDR + i * IH;
+      const iy = PAD + HDR + i * RP;
+      if (!separator && !disabled) this.menuRowBack(con, MW, iy, IH);
 
       if (separator) {
         const sepG = this.add.graphics();
@@ -3321,12 +3264,13 @@ export class BattleScene extends Phaser.Scene {
     this.phase = 'unit_menu';
 
     const { width, height } = this.scale;
-    const { x: ux, y: uy } = this.gridToScreen(unit.col, unit.row);
+    const { x: ux, y: uy } = this.unitScreenPos(unit);
 
     // Sized 1.5x the original (2026-08-28, "make the in battle menu bigger
     // 1.5X") — same scaling pass as showActionMenu above.
     const IH = 45, PAD = 6;
-    const MW = 300, MH = (abilities.length + 1) * IH + PAD * 2;
+    const GAP = this.menuGap(abilities.length + 1, IH, PAD * 2), RP = IH + GAP;
+    const MW = 300, MH = (abilities.length + 1) * RP - GAP + PAD * 2;
     const toRight = ux + 60 + MW < width - 4;
     const mx = toRight ? ux + 60 : ux - 60 - MW;
     const my = Math.min(Math.max(uy - MH / 2, 38), height - MH - 36);
@@ -3369,7 +3313,8 @@ export class BattleScene extends Phaser.Scene {
     con.add(bz);
 
     abilities.forEach((ab, i) => {
-      const iy = PAD + (i + 1) * IH;
+      const iy = PAD + (i + 1) * RP;
+      this.menuRowBack(con, MW, iy, IH);
       const canUse = this.abilityUsable(unit, ab);
       const g = this.add.graphics();
       const draw = (h) => {
@@ -3492,14 +3437,15 @@ export class BattleScene extends Phaser.Scene {
     this.phase = 'unit_menu';
 
     const { width, height } = this.scale;
-    const { x: ux, y: uy } = this.gridToScreen(unit.col, unit.row);
+    const { x: ux, y: uy } = this.unitScreenPos(unit);
     const groups = this.usableItemGroups();
 
     // Sized 1.5x the original (2026-08-28, "make the in battle menu bigger
     // 1.5X") — same scaling pass as showActionMenu above.
     const IH = 45, PAD = 6;
     const rowCount = Math.max(groups.length, 1);
-    const MW = 300, MH = (rowCount + 1) * IH + PAD * 2;
+    const GAP = this.menuGap(rowCount + 1, IH, PAD * 2), RP = IH + GAP;
+    const MW = 300, MH = (rowCount + 1) * RP - GAP + PAD * 2;
     const toRight = ux + 60 + MW < width - 4;
     const mx = toRight ? ux + 60 : ux - 60 - MW;
     const my = Math.min(Math.max(uy - MH / 2, 38), height - MH - 36);
@@ -3548,7 +3494,8 @@ export class BattleScene extends Phaser.Scene {
     }
 
     groups.forEach(({ item, count }, i) => {
-      const iy = PAD + (i + 1) * IH;
+      const iy = PAD + (i + 1) * RP;
+      this.menuRowBack(con, MW, iy, IH);
       const g = this.add.graphics();
       const draw = (h) => {
         g.clear();
@@ -3592,13 +3539,14 @@ export class BattleScene extends Phaser.Scene {
     this.phase = 'unit_menu';
 
     const { width, height } = this.scale;
-    const { x: ux, y: uy } = this.gridToScreen(actor.col, actor.row);
+    const { x: ux, y: uy } = this.unitScreenPos(actor);
     const targets = this.playerUnits.filter(u => !u.isDead);
 
     // Sized 1.5x the original (2026-08-28, "make the in battle menu bigger
     // 1.5X") — same scaling pass as showActionMenu above.
     const IH = 51, PAD = 6;
-    const MW = 315, MH = (targets.length + 1) * IH + PAD * 2;
+    const GAP = this.menuGap(targets.length + 1, IH, PAD * 2), RP = IH + GAP;
+    const MW = 315, MH = (targets.length + 1) * RP - GAP + PAD * 2;
     const toRight = ux + 60 + MW < width - 4;
     const mx = toRight ? ux + 60 : ux - 60 - MW;
     const my = Math.min(Math.max(uy - MH / 2, 38), height - MH - 36);
@@ -3641,7 +3589,8 @@ export class BattleScene extends Phaser.Scene {
     con.add(bz);
 
     targets.forEach((target, i) => {
-      const iy = PAD + (i + 1) * IH;
+      const iy = PAD + (i + 1) * RP;
+      this.menuRowBack(con, MW, iy, IH);
       const g = this.add.graphics();
       const draw = (h) => {
         g.clear();
@@ -3704,6 +3653,161 @@ export class BattleScene extends Phaser.Scene {
     this.applyBattleSpeed();
     this.events.once('shutdown', () => { this.anims.globalTimeScale = 1; });
   }
+  // End Turn and Undo, under the speed button (2026-11-03: these used to
+  // live in a menu that opened on any tap of empty ground).
+  drawTurnButtons(width) {
+    const mk = (y, label, color, onTap) => {
+      const btn = this.add.text(width - 6, y, label, {
+        fontSize: '18px', fontFamily: 'monospace', fontStyle: 'bold', color,
+        backgroundColor: '#08101ecc', padding: { x: 10, y: 8 },
+      }).setOrigin(1, 0).setDepth(1002).setInteractive({ useHandCursor: true });
+      btn.on('pointerdown', (ptr, lx, ly, evt) => {
+        evt.stopPropagation();
+        if (btn.alpha < 1) return;
+        playSfx(this, SFX.battleClick);
+        onTap();
+      });
+      return btn;
+    };
+    this.endTurnBtn = mk(148, '⏭ End Turn', '#ffffff', () => {
+      if (this.phase === 'player_turn' || this.phase === 'unit_menu' || this.phase === 'unit_selected') this.endPlayerTurnEarly();
+    });
+    this.undoBtn = mk(194, '↺ Undo', '#aaccff', () => this.undoLastMoveAndResetTurn());
+    this.updateTurnButtons();
+  }
+
+  canUndo() {
+    return !!this.lastMove && !this.lastMove.unit.isDead && !this.lastMove.unit.hasActed;
+  }
+
+  updateTurnButtons() {
+    if (!this.endTurnBtn) return;
+    const myTurn = ['player_turn', 'unit_menu', 'unit_selected'].includes(this.phase);
+    this.endTurnBtn.setAlpha(myTurn ? 1 : 0.35);
+    this.undoBtn.setAlpha(myTurn && this.canUndo() ? 1 : 0.35);
+  }
+
+  // ── Zoom ──────────────────────────────────────────────────────────────────
+  // Three cameras: a fixed one for the backdrop, the zoomable board camera
+  // (this.cameras.main from here on) and a fixed one on top for the HUD and
+  // menus. update() sorts every object onto one of them: depth -999 and
+  // below is backdrop; below 999 is board, plus damage numbers (2000),
+  // projectiles (3000 images) and anything tagged zoomLayer:'board'.
+  setupZoom() {
+    const { width, height } = this.scale;
+    this.bgCam = this.cameras.main;
+    const boardCam = this.cameras.add(0, 0, width, height);
+    this.uiCam = this.cameras.add(0, 0, width, height);
+    this.cameras.main = boardCam;
+    this.boardZoom = getBattleZoom();
+    const corners = [[0, 0], [COLS - 1, 0], [0, ROWS - 1], [COLS - 1, ROWS - 1]].map(([c, r]) => this.gridToScreen(c, r));
+    this.boardRect = {
+      x0: Math.min(...corners.map(p => p.x)), x1: Math.max(...corners.map(p => p.x)),
+      y0: Math.min(...corners.map(p => p.y)), y1: Math.max(...corners.map(p => p.y)) + TH2 * 2,
+    };
+    const mk = (x, label, step) => {
+      const btn = this.add.text(x, 66, label, {
+        fontSize: '22px', fontFamily: 'monospace', fontStyle: 'bold', color: '#ffffff',
+        backgroundColor: '#08101ecc', padding: { x: 14, y: 6 },
+      }).setOrigin(0, 0).setDepth(1002).setInteractive({ useHandCursor: true });
+      btn.on('pointerdown', (ptr, lx, ly, evt) => {
+        evt.stopPropagation();
+        const i = BATTLE_ZOOMS.indexOf(this.boardZoom) + step;
+        if (i < 0 || i >= BATTLE_ZOOMS.length) return;
+        playSfx(this, SFX.battleClick);
+        this.setZoom(BATTLE_ZOOMS[i]);
+      });
+      return btn;
+    };
+    const minus = mk(10, '−', -1);
+    mk(10 + minus.width + 8, '+', 1);
+    this.applyZoom();
+  }
+
+  setZoom(z) {
+    this.boardZoom = z;
+    setBattleZoom(z);
+    const focus = this.selectedUnit && !this.selectedUnit.isDead ? this.gridToScreen(this.selectedUnit.col, this.selectedUnit.row) : null;
+    this.applyZoom(focus);
+    this.hideActionMenu();
+    if (this.phase === 'unit_menu' && this.selectedUnit) this.showActionMenu(this.selectedUnit);
+    this.redraw();
+  }
+
+  // Zoom around the board centre, or a focus point when given; zoomed in,
+  // the view is kept over the board.
+  applyZoom(focus = null) {
+    const cam = this.cameras.main;
+    cam.setZoom(this.boardZoom);
+    if (this.boardZoom <= 1) { cam.setScroll(0, 0); return; }
+    const { width, height } = this.scale;
+    const cx = focus ? focus.x : cam.scrollX + width / 2;
+    const cy = focus ? focus.y + TH2 : cam.scrollY + height / 2;
+    this.setViewCentre(cx, cy);
+  }
+
+  setViewCentre(cx, cy) {
+    const cam = this.cameras.main;
+    const { width, height } = this.scale;
+    const r = this.boardRect;
+    cx = Math.min(Math.max(cx, r.x0), r.x1);
+    cy = Math.min(Math.max(cy, r.y0), r.y1);
+    cam.setScroll(cx - width / 2, cy - height / 2);
+  }
+
+  startPan(ptr) {
+    if (this.boardZoom <= 1) return;
+    const cam = this.cameras.main;
+    this.panDrag = { x: ptr.x, y: ptr.y, cx: cam.scrollX + this.scale.width / 2, cy: cam.scrollY + this.scale.height / 2 };
+  }
+
+  panMove(ptr) {
+    const d = this.panDrag;
+    const z = this.boardZoom;
+    this.setViewCentre(d.cx - (ptr.x - d.x) / z, d.cy - (ptr.y - d.y) / z);
+  }
+
+  // Screen point -> board point, and board point -> screen point.
+  worldPoint(ptr) {
+    const cam = this.cameras.main;
+    const { width, height } = this.scale;
+    return {
+      x: (ptr.x - width / 2) / cam.zoom + width / 2 + cam.scrollX,
+      y: (ptr.y - height / 2) / cam.zoom + height / 2 + cam.scrollY,
+    };
+  }
+
+  toScreen(x, y) {
+    const cam = this.cameras.main;
+    const { width, height } = this.scale;
+    return {
+      x: (x - cam.scrollX - width / 2) * cam.zoom + width / 2,
+      y: (y - cam.scrollY - height / 2) * cam.zoom + height / 2,
+    };
+  }
+
+  unitScreenPos(unit) {
+    const { x, y } = this.gridToScreen(unit.col, unit.row);
+    return this.toScreen(x, y);
+  }
+
+  zoomLayerOf(obj) {
+    if (obj.zoomLayer) return obj.zoomLayer;
+    const d = obj.depth;
+    if (d <= -999) return 'backdrop';
+    if (d < 999 || d === 2000 || (d === 3000 && obj.type === 'Image')) return 'board';
+    return 'ui';
+  }
+
+  update() {
+    if (!this.uiCam) return;
+    const bg = this.bgCam.id, board = this.cameras.main.id, ui = this.uiCam.id;
+    // cameraFilter lists the cameras that skip the object.
+    const skip = { backdrop: board | ui, board: bg | ui, ui: bg | board };
+    for (const obj of this.children.list) obj.cameraFilter = skip[this.zoomLayerOf(obj)];
+    this.updateTurnButtons();
+  }
+
   applyBattleSpeed() {
     const s = this.battleSpeed;
     this.time.timeScale = s;
@@ -3762,7 +3866,7 @@ export class BattleScene extends Phaser.Scene {
   showUnitStatus(unit) {
     if (this.statusPopup) { this.statusPopup.destroy(true); this.statusPopup = null; }
 
-    const { x: ux, y: uy } = this.gridToScreen(unit.col, unit.row);
+    const { x: ux, y: uy } = this.unitScreenPos(unit);
     const { width, height } = this.scale;
     const designations = unit.designations ?? [];
     const PW = 290, PH = 200;
@@ -3878,6 +3982,7 @@ export class BattleScene extends Phaser.Scene {
     // same fading-expand technique WorldMapScene's node markers use.
     this.tutorialPulse = this.add.circle(0, 0, 22, 0xffee88, 0)
       .setStrokeStyle(3, 0xffee88, 0.95).setDepth(4999).setVisible(false);
+    this.tutorialPulse.zoomLayer = 'board';
     this.tweens.add({
       targets: this.tutorialPulse, scaleX: 1.6, scaleY: 1.6, alpha: 0,
       duration: 900, repeat: -1, ease: 'Sine.easeOut',
@@ -3941,10 +4046,24 @@ export class BattleScene extends Phaser.Scene {
     }
   }
 
+  // Space between battle menu rows (2026-11-03, easier to tap), shrunk when
+  // the screen is too short to fit the full gap.
+  menuGap(rows, IH, extra) {
+    const fit = Math.floor((this.scale.height - 74 - extra) / rows) - IH;
+    return Math.max(0, Math.min(MENU_ROW_GAP, fit));
+  }
+
+  // Faint backing behind one menu row so the gaps read as separate buttons.
+  menuRowBack(con, w, y, h) {
+    const g = this.add.graphics();
+    g.fillStyle(0xffffff, 0.07);
+    g.fillRoundedRect(3, y + 2, w - 6, h - 4, 9);
+    con.add(g);
+  }
+
   hideActionMenu() {
     if (this.actionMenu)   { this.actionMenu.destroy(true);   this.actionMenu   = null; }
     if (this.statusPopup)  { this.statusPopup.destroy(true);  this.statusPopup  = null; }
-    if (this.emptyTileMenu){ this.emptyTileMenu.destroy(true);this.emptyTileMenu= null; }
     if (this.abilityDetail && !this.abilityDetail.withCancel) this.hideAbilityDetail();
   }
 
@@ -4068,7 +4187,7 @@ export class BattleScene extends Phaser.Scene {
       const left = con.x, right = con.x + W;
       const covered = [...this.playerUnits, ...this.enemyUnits].some(o => {
         if (o.isDead) return false;
-        const p = this.gridToScreen(o.col, o.row);
+        const p = this.unitScreenPos(o);
         return p.x > left - 30 && p.x < right + 30 && p.y + TH2 + 40 > con.y;
       });
       if (covered) con.y = 40;

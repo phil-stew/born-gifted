@@ -57,6 +57,18 @@ export function setBattleSpeed(speed) {
   try { localStorage.setItem(SPEED_KEY, String(speed)); } catch { /* setting just won't persist */ }
 }
 
+// Battle zoom, kept between battles.
+const ZOOM_KEY = 'born-gifted-battle-zoom';
+export const BATTLE_ZOOMS = [0.8, 1, 1.25, 1.5, 1.75, 2];
+
+export function getBattleZoom() {
+  try { const z = Number(localStorage.getItem(ZOOM_KEY)); return BATTLE_ZOOMS.includes(z) ? z : 1; } catch { return 1; }
+}
+
+export function setBattleZoom(zoom) {
+  try { localStorage.setItem(ZOOM_KEY, String(zoom)); } catch { /* setting just won't persist */ }
+}
+
 // Fast Play: drag heroes to move or attack, double-tap an enemy, triple-tap
 // open ground to end the turn. Off unless turned on in Settings.
 const FAST_PLAY_KEY = 'born-gifted-fast-play';
