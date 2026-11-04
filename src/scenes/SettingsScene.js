@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { drawButton, drawBackButton } from '../ui/canvasButton.js';
+import { drawButton, drawBackButton, outlineSceneText } from '../ui/canvasButton.js';
 import { drawSlider } from '../ui/canvasSlider.js';
 import { playSfx, SFX } from '../audio/sound.js';
 import { getSfxVolume, setSfxVolume, getMusicVolume } from '../audio/settings.js';
@@ -20,11 +20,19 @@ export class SettingsScene extends Phaser.Scene {
     this.returnData  = data?.returnData  ?? { skipCrawl: true };
   }
 
+  preload() {
+    if (!this.textures.exists('mapbackg')) this.load.image('mapbackg', 'world/title/mapbackg.webp');
+  }
+
   create() {
     const { width, height } = this.scale;
     const cx = width / 2;
 
-    this.add.rectangle(cx, height / 2, width, height, 0x0a0a18);
+    // World map faintly behind, like Party and Victory (2026-11-03).
+    const map = this.add.image(width / 2, height / 2, 'mapbackg');
+    map.setScale(Math.max(width / map.width, height / map.height));
+    this.add.rectangle(cx, height / 2, width, height, 0x07080f, 0.6);
+    outlineSceneText(this);
 
     // Back button at the top, per this project's standing menu convention.
     drawBackButton(this, { label: 'BACK', onClick: () => this.scene.start(this.returnScene, this.returnData) });

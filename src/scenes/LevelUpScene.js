@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { pendingPromotion, t3SportOptions, sportById, chainById, promoteUnit, roleDisplayLabel, statGrowthMult } from '../data/gameState.js';
-import { drawButton } from '../ui/canvasButton.js';
+import { drawButton, outlineSceneText } from '../ui/canvasButton.js';
 import { playSfx, playStinger, SFX } from '../audio/sound.js';
 
 // Player-allocated stat points (2026-08-13, "on level up let's have players
@@ -39,6 +39,7 @@ export class LevelUpScene extends Phaser.Scene {
   }
 
   create() {
+    outlineSceneText(this);
     this.showCurrent();
   }
 
@@ -58,6 +59,10 @@ export class LevelUpScene extends Phaser.Scene {
     }
   }
 
+  preload() {
+    if (!this.textures.exists('mapbackg')) this.load.image('mapbackg', 'world/title/mapbackg.webp');
+  }
+
   showCurrent() {
     // Destroy previous content
     this.children.list.slice().forEach(c => c.destroy());
@@ -65,8 +70,10 @@ export class LevelUpScene extends Phaser.Scene {
     const { width, height } = this.scale;
     const lu = this.levelUps[this.index];
 
+    const map = this.add.image(width / 2, height / 2, 'mapbackg');
+    map.setScale(Math.max(width / map.width, height / map.height));
     const bg = this.add.graphics();
-    bg.fillStyle(0x0a0a18, 1);
+    bg.fillStyle(0x07080f, 0.55);
     bg.fillRect(0, 0, width, height);
 
     // Glow circle background

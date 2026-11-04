@@ -3,7 +3,7 @@ import {
   ELEMENT_CYCLE, ELEMENT_BEATS, elementIcon,
   DESIGNATION_CYCLE, DESIGNATION_NAMES, DESIGNATION_BEATS, DESIGNATION_ICONS,
 } from '../data/gameState.js';
-import { drawBackButton } from '../ui/canvasButton.js';
+import { drawBackButton, outlineSceneText } from '../ui/canvasButton.js';
 
 const GLOSSARY = [
   { term: 'Tier',        def: 'A monster or unit\'s power band (T1/T2/T3). Higher-tier monsters hit harder and have more HP.' },
@@ -25,13 +25,20 @@ export class HandbookScene extends Phaser.Scene {
     this.hubData = data?.hubData ?? { nodeId: 'M3' };
   }
 
+  preload() {
+    if (!this.textures.exists('mapbackg')) this.load.image('mapbackg', 'world/title/mapbackg.webp');
+  }
+
   create() {
     const { width, height } = this.scale;
 
+    const map = this.add.image(width / 2, height / 2, 'mapbackg');
+    map.setScale(Math.max(width / map.width, height / map.height));
     const bg = this.add.graphics();
-    bg.fillStyle(0x07080f, 1);
+    bg.fillStyle(0x07080f, 0.6);
     bg.fillRect(0, 0, width, height);
-    bg.fillStyle(0x0c0c1a, 1);
+    outlineSceneText(this);
+    bg.fillStyle(0x0c0c1a, 0.7);
     bg.fillRect(0, 0, width, 40);
     bg.lineStyle(1, 0x222244, 1);
     bg.lineBetween(0, 40, width, 40);

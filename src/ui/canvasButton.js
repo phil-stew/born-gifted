@@ -26,6 +26,16 @@ export function addButtonArt(scene, key, x, y, w, h) {
   return img;
 }
 
+// Gives every top-level text in the scene a black outline, including text
+// added later, so labels stay readable over a picture background.
+export function outlineSceneText(scene) {
+  scene.events.on('update', () => {
+    for (const t of scene.children.list) {
+      if (t.type === 'Text' && t.style.strokeThickness < 3) t.setStroke('#000000', 4);
+    }
+  });
+}
+
 // Draws a single rounded, shadowed, accent-striped button centered at (x,y).
 // With `image` (a loaded texture key) the picture fills the button under a
 // dark wash, and the label turns white with an outline.
