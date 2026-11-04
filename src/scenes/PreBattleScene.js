@@ -79,7 +79,8 @@ export class PreBattleScene extends Phaser.Scene {
     const warn = gap >= LOW_LEVEL_GAP ? `⚠ -${gap} Lv` : remindersFor(unit).length ? '⚠' : '';
     return `
       <div class="ui-pb-tags">
-        <span>${elementIcon(unit.element)}${mine.map(d => designationIcon(d)).join('')}</span>
+        <span>${elementIcon(unit.element)}</span>
+        <span>${mine.map(d => designationIcon(d)).join(' ')}</span>
         ${this.showHints && strong ? `<span class="good">▲${strong}</span>` : ''}
         ${this.showHints && weak ? `<span class="bad">▼${weak}</span>` : ''}
         ${this.showHints && warn ? `<span class="warn">${warn}</span>` : ''}
