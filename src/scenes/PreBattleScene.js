@@ -5,10 +5,6 @@ import { mount, unmount, onClick, spriteFrameDataURL, esc } from '../ui/domUI.js
 import { BACKDROPS } from '../data/storyBackdrops.js';
 import { NODES } from './WorldMapScene.js';
 import { battleHintsOn } from '../data/battleHints.js';
-import { remindersFor } from '../ui/loadoutReminder.js';
-
-// A hero this far below the toughest enemy gets a warning on the Pre-Battle screen.
-const LOW_LEVEL_GAP = 5;
 
 // This screen can come up before ANY mission in any of the 3 kingdoms (it's
 // a roster-cap gate, not a story beat — see the class comment below), so
@@ -59,19 +55,13 @@ export class PreBattleScene extends Phaser.Scene {
     return spriteFrameDataURL(this, heroKey(spriteKey), firstFrame(spriteKey));
   }
 
-  // Party-list style card (2026-11-03): element and type icons beside the
-  // checkbox, and ⚠ when the hero is under-levelled or has something to equip.
+  // Party-list style card (2026-11-03): element and type icons beside the checkbox.
   tagsHTML(unit) {
-    const enemies = this.battleData.enemyUnits ?? [];
     const mine = currentDesignations(unit);
-    const top = Math.max(0, ...enemies.filter(e => !e.oneShotKill).map(e => e.level));
-    const gap = top - unit.level;
-    const warn = gap >= LOW_LEVEL_GAP ? `⚠ -${gap} Lv` : remindersFor(unit).length ? '⚠' : '';
     return `
       <div class="ui-pb-tags">
         <span>${elementIcon(unit.element)}</span>
         <span>${mine.map(d => designationIcon(d)).join(' ')}</span>
-        ${this.showHints && warn ? `<span class="warn">${warn}</span>` : ''}
       </div>`;
   }
 
