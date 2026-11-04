@@ -1160,20 +1160,18 @@ export class BattleScene extends Phaser.Scene {
 
   create() {
     // Every battle stops at the Pre-Battle screen first. It rolls the enemies
-    // here so random rosters and archetypes match what the player previewed,
-    // then starts this scene again with those units and the chosen team.
+    // here so random rosters and archetypes match what the player previewed.
+    // This scene then builds the real board with those enemies and no heroes
+    // (previewMode) and shows the Pre-Battle screen over it; Start Battle
+    // starts this scene again with the same enemies and the chosen team.
+    // Terrain is seeded per stage, so the board doesn't change in between.
+    this.previewMode = !this._initData.enemyUnits || !!this._initData.preview;
     if (!this._initData.enemyUnits) {
       const missionId = state.currentMission ?? 'M1';
       const missionCfg = MISSION_CONFIGS[missionId] ?? MISSION_CONFIGS['M1'];
       this.setEnemyContext(missionId, missionCfg);
-      const enemyUnits = this.rollEnemyUnits(missionCfg);
-      this.stripEnemySprites(missionCfg); // the preview's enemy icons need this
+      this._initData = { ...this._initData, enemyUnits: this.rollEnemyUnits(missionCfg) };
       this.ensureRockTexture();
-      this.scene.start('PreBattleScene', {
-        battleData: { ...this._initData, enemyUnits },
-        rules: this.missionRules(missionCfg, enemyUnits),
-      });
-      return;
     }
 
     const { width, height } = this.scale;
@@ -1227,8 +1225,8 @@ export class BattleScene extends Phaser.Scene {
     // is never half-loaded/animated while still excluded from playerUnits
     // below. Consumes (and clears) battlePartyIds so the next battle always
     // re-prompts on a still-oversized roster instead of reusing this pick.
-    const battleParty = getBattleParty(state);
-    state.battlePartyIds = null;
+    const battleParty = this.previewMode ? [] : getBattleParty(state);
+    if (!this.previewMode) state.battlePartyIds = null;
 
     // ── Strip sprite backgrounds, then build animations ───────────────────
     for (const u of battleParty) {
@@ -1525,12 +1523,28 @@ export class BattleScene extends Phaser.Scene {
     // "Turn 2" once the ambush round finishes (startPlayerTurn always
     // increments turnCount), which is fine here since Turn 1 IS the ambush.
     if (missionCfg.weather) this.setWeather(missionCfg.weather, Infinity);
+    if (this.previewMode) { this.showPreBattle(missionCfg); return; }
     if (missionCfg.enemyFirst) {
       this.startEnemyTurn();
     } else {
       this.showPhaseBanner('PLAYER TURN');
       this.redraw();
     }
+  }
+
+  // The board stays on screen, still and untouchable, behind the Pre-Battle
+  // panels; the HUD layer is hidden.
+  showPreBattle(missionCfg) {
+    this.phase = 'preview';
+    this.input.enabled = false;
+    this.uiCam?.setVisible(false);
+    this.redraw();
+    const { preview, pbSelectedIds, ...battleData } = this._initData;
+    this.scene.launch('PreBattleScene', {
+      battleData,
+      rules: this.missionRules(missionCfg, battleData.enemyUnits),
+      selectedIds: pbSelectedIds,
+    });
   }
 
   missionObjective(cfg) {

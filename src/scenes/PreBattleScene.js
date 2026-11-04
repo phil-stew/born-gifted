@@ -2,18 +2,8 @@ import Phaser from 'phaser';
 import { state, maxBattlePartySize, roleDisplayLabel, currentRoleId, currentDesignations, ELEMENT_BEATS, elementIcon, DESIGNATION_BEATS, DESIGNATION_NAMES, designationIcon } from '../data/gameState.js';
 import { loadHeroSprites, stripHeroBackground, heroKey, firstFrame, spriteKeyForRole } from '../data/heroSprites.js';
 import { mount, unmount, onClick, spriteFrameDataURL, esc } from '../ui/domUI.js';
-import { BACKDROPS } from '../data/storyBackdrops.js';
 import { NODES } from './WorldMapScene.js';
 import { battleHintsOn } from '../data/battleHints.js';
-
-// This screen can come up before ANY mission in any of the 3 kingdoms (it's
-// a roster-cap gate, not a story beat — see the class comment below), so
-// there's no single "correct" region photo the way a mission-specific
-// StoryScene/HubScene backdrop has. castle2.png is reused here as the same
-// kind of region-agnostic "just needs SOME backdrop" fallback ShopScene's
-// own _drawFantasyBg already leans on for its generic shops (2026-07-04
-// Shop reskin) — same image, so no extra asset load either.
-const BG_URL = '/' + BACKDROPS.capital.path;
 
 const RARITY_LABEL = { common: 'Common', uncommon: 'Uncommon', rare: 'Rare', epic: 'Epic', legendary: 'Legendary' };
 
@@ -41,6 +31,13 @@ export class PreBattleScene extends Phaser.Scene {
   }
 
   create() {
+    // The battle board is drawn behind this screen. Coming back from the Party
+    // screen, it has to be rebuilt first; it then opens this screen again.
+    if (!this.scene.isActive('BattleScene')) {
+      this.scene.start('BattleScene', { ...this.battleData, preview: true, pbSelectedIds: this.selectedIds });
+      return;
+    }
+    this.scene.bringToTop();
     state.party.forEach(u => {
       const cn = spriteKeyForRole(currentRoleId(u));
       if (cn) stripHeroBackground(this, cn);
@@ -111,8 +108,7 @@ export class PreBattleScene extends Phaser.Scene {
 
     mount(`
       <div class="ui-screen ui-prebattle" style="background:
-          linear-gradient(rgba(7,8,15,0.35), rgba(7,8,15,0.35)),
-          url('${BG_URL}') center/cover;">
+          rgba(7,8,15,0.2);">
         <div class="ui-topbar">
           <button class="ui-navbtn" data-nav="back">◀ Cancel</button>
           <div class="ui-title">${esc(title)}</div>
@@ -142,15 +138,19 @@ export class PreBattleScene extends Phaser.Scene {
       if ((missionId === 'M0a' || missionId === 'M0b') && state.completedMissions.includes(missionId)) {
         state.repeatCounts[missionId] = Math.max(0, (state.repeatCounts[missionId] ?? 0) - 1);
       }
+      this.scene.stop('BattleScene');
       this.scene.start('WorldMapScene');
     });
 
-    onClick('[data-nav="party"]', () => this.scene.start('PartyScene', {
-      returnTo: {
-        scene: 'PreBattleScene', label: 'Pre-Battle',
-        data: { battleData: this.battleData, rules: this.rules, selectedIds: this.selectedIds },
-      },
-    }));
+    onClick('[data-nav="party"]', () => {
+      this.scene.stop('BattleScene');
+      this.scene.start('PartyScene', {
+        returnTo: {
+          scene: 'PreBattleScene', label: 'Pre-Battle',
+          data: { battleData: this.battleData, rules: this.rules, selectedIds: this.selectedIds },
+        },
+      });
+    });
 
     onClick('[data-toggle]', (e, node) => {
       const id = node.dataset.toggle;
