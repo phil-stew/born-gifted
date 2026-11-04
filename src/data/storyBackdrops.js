@@ -64,4 +64,5 @@ export const BACKDROPS = {
   // uses (Gale never got dedicated town art; Lametus did, so no reason
   // not to use it). townwell/townshop.png still unused.
   lametusTown:         { key: 'bd-lametustown',    path: LAMETUS + 'town.webp' },
+  lametusShop:         { key: 'bd-lametusshop',    path: LAMETUS + 'townshop.webp' }, // Shop/Inventory button art
 };

@@ -15,7 +15,20 @@ import { playSfx, SFX } from '../audio/sound.js';
 // with a finger on a real phone screen.
 const MIN_TOUCH = 44;
 
+// Places a picture cropped to fill a w×h box centred at (x,y) — the art
+// behind picture buttons (2026-11-03). Returns null if the texture isn't loaded.
+export function addButtonArt(scene, key, x, y, w, h) {
+  if (!key || !scene.textures.exists(key)) return null;
+  const img = scene.add.image(x, y, key);
+  const s = Math.max(w / img.width, h / img.height);
+  const cw = w / s, ch = h / s;
+  img.setCrop((img.width - cw) / 2, (img.height - ch) / 2, cw, ch).setScale(s);
+  return img;
+}
+
 // Draws a single rounded, shadowed, accent-striped button centered at (x,y).
+// With `image` (a loaded texture key) the picture fills the button under a
+// dark wash, and the label turns white with an outline.
 // Returns { container, redraw, setActive } so callers can restyle it (e.g.
 // toggle `active` for a selected tab) without rebuilding from scratch.
 export function drawButton(scene, {
@@ -32,6 +45,7 @@ export function drawButton(scene, {
   active = false,
   depth = 0,
   onClick = null,
+  image = null,
 }) {
   const con = scene.add.container(0, 0).setDepth(depth);
 
@@ -40,11 +54,19 @@ export function drawButton(scene, {
   shadow.fillRoundedRect(x - w / 2 + 2, y - h / 2 + 3, w, h, radius);
   con.add(shadow);
 
+  const art = addButtonArt(scene, image, x, y, w, h);
+  if (art) {
+    con.add(art);
+    textColor = '#ffffff';
+    textHoverColor = '#ffffff';
+  }
+
   const g = scene.add.graphics();
   let isActive = active;
   const draw = (hover) => {
     g.clear();
-    g.fillStyle(isActive || hover ? bgHover : bg, 1);
+    if (art) g.fillStyle(0x000000, isActive || hover ? 0.2 : 0.45);
+    else g.fillStyle(isActive || hover ? bgHover : bg, 1);
     g.fillRoundedRect(x - w / 2, y - h / 2, w, h, radius);
     g.lineStyle(1.5, border, isActive ? 1 : 0.7);
     g.strokeRoundedRect(x - w / 2, y - h / 2, w, h, radius);
@@ -59,6 +81,7 @@ export function drawButton(scene, {
   const txt = scene.add.text(x, y, label, {
     fontSize, fontFamily: 'monospace', fontStyle: 'bold',
     color: isActive ? textHoverColor : textColor,
+    ...(art ? { stroke: '#000000', strokeThickness: 4 } : {}),
   }).setOrigin(0.5);
   con.add(txt);
 

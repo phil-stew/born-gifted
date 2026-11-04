@@ -347,6 +347,12 @@ const ACADEMY_INTRO = {
   },
 };
 
+// Pictures behind the bottom bar's buttons (2026-11-03).
+const BAR_ART = {
+  party: BACKDROPS.lametusTrainingField, inventory: BACKDROPS.lametusShop,
+  save: BACKDROPS.village, index: BACKDROPS.school, skillBook: BACKDROPS.schoolTraining,
+};
+
 const NEW_AREA_INTRO = {
   // Dragon's Roost (Ester Academy's "defeat 1 dragon and two wyverns"
   // quest, A1a) — never had an intro cutscene at all until this pass
@@ -619,6 +625,9 @@ export class WorldMapScene extends Phaser.Scene {
     // hero sprites loaded in BattleScene; WorldMap needs none
     if (!this.textures.exists('mapscenery')) this.load.image('mapscenery', 'tiles/mapasset/treesrock.png');
     if (!this.textures.exists('mapbackg'))   this.load.image('mapbackg', 'world/title/mapbackg.webp');
+    for (const bd of Object.values(BAR_ART)) {
+      if (!this.textures.exists(bd.key)) this.load.image(bd.key, bd.path);
+    }
   }
 
   _registerSceneryFrames() {
@@ -911,19 +920,19 @@ export class WorldMapScene extends Phaser.Scene {
     drawButton(this, {
       x: 60, y: height - 24, w: 92, h: 32, label: 'PARTY',
       bg: 0x161630, bgHover: 0x223060, border: 0x3344aa, accent: 0xaaaaff,
-      textColor: '#aaaaff', depth: 20,
+      textColor: '#aaaaff', depth: 20, image: BAR_ART.party.key,
       onClick: () => this.scene.start('PartyScene'),
     });
     drawButton(this, {
       x: 180, y: height - 24, w: 110, h: 32, label: 'INVENTORY',
       bg: 0x221a0e, bgHover: 0x332510, border: 0xaa7733, accent: 0xffaa44,
-      textColor: '#ffaa44', depth: 20,
+      textColor: '#ffaa44', depth: 20, image: BAR_ART.inventory.key,
       onClick: () => this.scene.start('InventoryScene'),
     });
     drawButton(this, {
       x: 310, y: height - 24, w: 84, h: 32, label: 'SAVE',
       bg: 0x132213, bgHover: 0x1c331c, border: 0x338833, accent: 0x88cc88,
-      textColor: '#88cc88', depth: 20,
+      textColor: '#88cc88', depth: 20, image: BAR_ART.save.key,
       onClick: () => { saveGame(); this.showToast('Game saved'); },
     });
     drawButton(this, {
@@ -943,7 +952,7 @@ export class WorldMapScene extends Phaser.Scene {
     drawButton(this, {
       x: 530, y: height - 24, w: 84, h: 32, label: 'INDEX',
       bg: 0x1a0e22, bgHover: 0x271533, border: 0x774499, accent: 0xcc99ee,
-      textColor: '#cc99ee', depth: 20,
+      textColor: '#cc99ee', depth: 20, image: BAR_ART.index.key,
       onClick: () => this.scene.start('IndexScene'),
     });
     // Settings (2026-08-03 — previously title-screen-only). Icon-only to
@@ -960,7 +969,7 @@ export class WorldMapScene extends Phaser.Scene {
       drawButton(this, {
         x: 690, y: height - 24, w: 112, h: 32, label: 'SKILL BOOK',
         bg: 0x0e2222, bgHover: 0x153333, border: 0x338888, accent: 0x77dddd,
-        textColor: '#77dddd', depth: 20,
+        textColor: '#77dddd', depth: 20, image: BAR_ART.skillBook.key,
         onClick: () => this.scene.start('SkillBookScene'),
       });
     }

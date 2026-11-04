@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { state, MAX_ROSTER_SIZE } from '../data/gameState.js';
 import { BACKDROPS } from '../data/storyBackdrops.js';
 import { HUB_CONFIGS, recruitClassesFor } from '../data/hubConfigs.js';
-import { drawBackButton } from '../ui/canvasButton.js';
+import { drawBackButton, addButtonArt } from '../ui/canvasButton.js';
 import { playMusic } from '../audio/music.js';
 import { playSfx, SFX } from '../audio/sound.js';
 import { hubBattles } from './HubBattlesScene.js';
@@ -14,6 +14,13 @@ import { hubBattles } from './HubBattlesScene.js';
 // snowbuilds.png existed on disk with no caller; Gale's hub was falling
 // back to the generic vector illustration exactly the way Lametus
 // Capital did before it got fixed the same way.
+// Each hub's region, for the Battles button's wilds picture.
+const HUB_REGION_WILDS = {
+  M0: BACKDROPS.wilds, M3: BACKDROPS.wilds, A1: BACKDROPS.wilds, A2: BACKDROPS.wilds,
+  M5: BACKDROPS.galeWilds, AF: BACKDROPS.galeWilds, ZE: BACKDROPS.galeWilds,
+  M8: BACKDROPS.lametusWilds, A3: BACKDROPS.lametusWilds, A4: BACKDROPS.lametusWilds,
+};
+
 const TOWN_BACKDROP = {
   'Hidden Village':   BACKDROPS.villageRevisit,
   'Lametus Capital':  BACKDROPS.lametusTown,
@@ -36,9 +43,19 @@ export class HubScene extends Phaser.Scene {
       : TOWN_BACKDROP[this.hubName];
   }
 
+  // Picture behind each service button (2026-11-03).
+  serviceArt() {
+    const own = this.backdrop ?? BACKDROPS.capital;
+    return {
+      Shop: BACKDROPS.lametusShop, Forge: BACKDROPS.cave, Recruit: BACKDROPS.schoolTraining,
+      Handbook: BACKDROPS.school, Tasks: own, Quests: own, VillageQuests: own,
+      Battles: HUB_REGION_WILDS[this.nodeId] ?? BACKDROPS.wilds,
+    };
+  }
+
   preload() {
-    if (this.backdrop && !this.textures.exists(this.backdrop.key)) {
-      this.load.image(this.backdrop.key, this.backdrop.path);
+    for (const bd of [this.backdrop, ...Object.values(this.serviceArt())]) {
+      if (bd && !this.textures.exists(bd.key)) this.load.image(bd.key, bd.path);
     }
   }
 
@@ -204,6 +221,7 @@ export class HubScene extends Phaser.Scene {
       Battles:  { idle: 0x1a0d0d, hover: 0x281414, border: 0x883333, text: '#ee7766' },
     };
 
+    const ART = this.serviceArt();
     for (const svc of services) {
       const c = COLORS[svc.key];
       const locked = svc.locked ?? false;
@@ -211,10 +229,13 @@ export class HubScene extends Phaser.Scene {
       const shadow = this.add.graphics();
       shadow.fillStyle(0x000000, 0.3);
       shadow.fillRoundedRect(myBx + 2, by + 3, btnW, btnH, 8);
+      // The service's picture under a dark wash; locked buttons stay dim.
+      const art = addButtonArt(this, ART[svc.key]?.key, myBx + btnW / 2, by + btnH / 2, btnW, btnH);
       const gfx = this.add.graphics();
       const draw = (hover) => {
         gfx.clear();
-        gfx.fillStyle(locked ? 0x0a0a0a : (hover ? c.hover : c.idle), 1);
+        if (art) gfx.fillStyle(0x000000, locked ? 0.78 : hover ? 0.25 : 0.5);
+        else gfx.fillStyle(locked ? 0x0a0a0a : (hover ? c.hover : c.idle), 1);
         gfx.fillRoundedRect(myBx, by, btnW, btnH, 8);
         gfx.lineStyle(1.5, locked ? 0x222222 : c.border, 1);
         gfx.strokeRoundedRect(myBx, by, btnW, btnH, 8);
@@ -224,10 +245,12 @@ export class HubScene extends Phaser.Scene {
 
       const displayLabel = (svc.label ?? svc.key).toUpperCase();
       this.add.text(myBx + btnW / 2, by + 14, locked ? `🔒  ${displayLabel}` : `${svc.icon}  ${displayLabel}`, {
-        fontSize: '21px', fontFamily: 'monospace', fontStyle: 'bold', color: locked ? '#666677' : c.text,
+        fontSize: '21px', fontFamily: 'monospace', fontStyle: 'bold',
+        color: locked ? '#888899' : art ? '#ffffff' : c.text, stroke: '#000000', strokeThickness: art ? 4 : 0,
       }).setOrigin(0.5, 0);
       this.add.text(myBx + btnW / 2, by + 42, svc.desc, {
-        fontSize: '15px', fontFamily: 'monospace', color: locked ? '#555566' : '#99aabb',
+        fontSize: '15px', fontFamily: 'monospace', color: locked ? '#777788' : art ? '#e6ecf5' : '#99aabb',
+        stroke: '#000000', strokeThickness: art ? 3 : 0,
       }).setOrigin(0.5, 0);
 
       if (!locked) {
