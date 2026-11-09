@@ -9,7 +9,8 @@ import { getItem } from '../data/items.js';
 import { playMusic } from '../audio/music.js';
 import { playSfx, SFX } from '../audio/sound.js';
 import { showLoadoutReminder } from '../ui/loadoutReminder.js';
-import { currentObjective } from '../data/objective.js';
+import { objectiveHint } from '../data/objective.js';
+import { mount, unmount, onClick, esc } from '../ui/domUI.js';
 
 // Background art (mapbackg.webp, see drawBackground) is a fixed 1024×1024
 // source image, always drawn "cover"-fit against whatever the live canvas
@@ -921,12 +922,39 @@ export class WorldMapScene extends Phaser.Scene {
     }
   }
 
+  showMissionHint() {
+    const h = objectiveHint();
+    const steps = h.steps.map(t => `<li>${esc(t)}</li>`).join('');
+    const checklist = h.checklist.map(c =>
+      `<li class="${c.done ? 'is-done' : ''}">${c.done ? '✅' : '⬜'} ${esc(c.text)}</li>`).join('');
+    mount(`
+      <div class="ui-screen ui-see-through ui-hint-screen" data-close="1">
+        <div class="ui-panel ui-hint" data-scroll-id="hint">
+          <div class="ui-hint-label">📜 Main Mission</div>
+          <div class="ui-hint-goal">${esc(h.goal)}</div>
+          <ol class="ui-hint-steps">${steps}</ol>
+          ${checklist ? `<ul class="ui-hint-check">${checklist}</ul>` : ''}
+          <button class="ui-btn ui-btn-primary" data-close="1">Got it</button>
+        </div>
+      </div>
+    `);
+    this.input.enabled = false;
+    onClick('[data-close]', (e, node) => {
+      if (e.target !== node) return;
+      unmount();
+      this.input.enabled = true;
+    });
+  }
+
   drawUI(width, height) {
-    // Main Mission
-    this.add.text(width / 2, 20, `Main Mission: ${currentObjective()}`, {
-      fontSize: '22px', fontFamily: 'monospace', fontStyle: 'bold', color: '#ffee88',
-      stroke: '#000000', strokeThickness: 5,
-    }).setOrigin(0.5).setDepth(20);
+    // Main Mission (2026-11-09): a button that opens step-by-step directions.
+    drawButton(this, {
+      x: width / 2, y: 24, w: 230, h: 36, label: '📜 MAIN MISSION',
+      fontSize: '18px', bg: 0x2a2210, bgHover: 0x3a3018, border: 0xaa8833, accent: 0xffee88,
+      textColor: '#ffee88', textHoverColor: '#ffffff', depth: 20,
+      onClick: () => this.showMissionHint(),
+    });
+    this.events.once('shutdown', unmount);
 
     // Bottom bar background
     const barGfx = this.add.graphics();

@@ -1150,3 +1150,16 @@ button.ui-quest-card { color: inherit; font: inherit; text-align: left; cursor: 
 /* Loot items are a list, not buttons: no box behind them. */
 .ui-loot .ui-loot-card { background: none; border: none; box-shadow: none; padding-top: 2px; padding-bottom: 2px; }
 .ui-loot-icon { width: 40px; height: 40px; object-fit: contain; flex: none; image-rendering: pixelated; display: flex; align-items: center; justify-content: center; font-size: 22px; }
+
+/* World map Main Mission hint (2026-11-09). */
+.ui-hint-screen { display: flex; align-items: center; justify-content: center; padding: 16px; }
+.ui-hint {
+  width: min(520px, 100%); max-height: 90%; padding: 18px 20px;
+  display: flex; flex-direction: column; gap: 10px;
+}
+.ui-hint-label { font-size: calc(13px * var(--font-scale, 1)); color: var(--ui-text-muted); text-transform: uppercase; letter-spacing: 0.08em; }
+.ui-hint-goal { font-size: calc(20px * var(--font-scale, 1)); font-weight: 700; color: #ffee88; }
+.ui-hint-steps { margin: 0; padding-left: 22px; display: flex; flex-direction: column; gap: 6px; font-size: calc(15px * var(--font-scale, 1)); line-height: 1.4; }
+.ui-hint-check { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; font-size: calc(14px * var(--font-scale, 1)); }
+.ui-hint-check .is-done { color: var(--ui-text-muted); }
+.ui-hint .ui-btn { align-self: center; min-width: 140px; margin-top: 4px; }
