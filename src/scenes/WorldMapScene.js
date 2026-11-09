@@ -431,8 +431,8 @@ const NEW_AREA_INTRO = {
     location: 'ALTROES  ·  The Trials',
     backdrop: BACKDROPS.altroesArena,
     lines: [
-      { speaker: 'Narrator', color: '#888899', text: 'One trial down. The second is harder — Altroes doesn\'t make this easy.' },
-      { speaker: '__PARTY_2__', text: 'Harder? Good. The first one felt like a warm-up.' },
+      { speaker: 'Narrator', color: '#888899', text: 'Altroes runs its Trials in two parts, and it doesn\'t make either one easy. Another tournament team waits on the sand.' },
+      { speaker: '__PARTY_2__', text: 'Another team in shiny gear? Good. Let\'s see what they\'ve got.' },
     ],
   },
   // Alpha King Dragon (2026-07-11) — boss node NE of Artfall Academy.
@@ -449,7 +449,7 @@ const NEW_AREA_INTRO = {
     location: 'FROSTBITE PASS  ·  The Road to Gale',
     backdrop: BACKDROPS.galeWilds,
     lines: [
-      { speaker: 'Narrator', color: '#888899', text: 'With both Trials won, Altroes sends you north to Gale for its tournament. The storms of home thin out as the road climbs, and the rain turns to snow.' },
+      { speaker: 'Narrator', color: '#888899', text: 'The road north out of Altroes climbs into the mountains. The storms of home thin out, and the rain turns to snow.' },
       { speaker: 'Reno',     color: '#4488ff', text: '...So this is the way to Gale. Colder than I pictured.' },
       { speaker: 'Narrator', color: '#888899', text: 'Halfway up the pass, an overturned cart blocks the road. Tracks circle it in the snow, and something is still prowling nearby.' },
       { speaker: '__PARTY_2__', text: 'Someone was travelling with that cart. If they\'re still out here, we have to hurry.' },
@@ -695,6 +695,7 @@ export class WorldMapScene extends Phaser.Scene {
     // hook" reasoning as every other quest-gated unlock this arc.
     if (!state.unlockedMissions.includes('GT') && allGaleQuestsDone(state)) {
       state.unlockedMissions.push('GT');
+      this.galeTournamentNews = !state.missionIntroShown.includes('GTopen');
     }
 
     // M6 — The Corrupted One's monsters (2026-07-17, "M6 will be moving the
@@ -717,6 +718,25 @@ export class WorldMapScene extends Phaser.Scene {
     this.drawUI(width, height);
     this.drawHeroMarker();
     showLoadoutReminder(this);
+    // Gale's three quests done (2026-11-09): a herald opens the tournament.
+    if (this.galeTournamentNews) {
+      this.galeTournamentNews = false;
+      state.missionIntroShown.push('GTopen');
+      saveGame();
+      this.scene.start('StoryScene', {
+        location: 'GALE  ·  The Snow Capital',
+        backdrop: BACKDROPS.galeCastle,
+        lines: resolvePartyLines([
+          { speaker: 'Narrator', color: '#888899', text: 'A herald in Gale\'s colours finds you before you\'ve even shaken the snow off your boots.' },
+          { speaker: 'Herald',   color: '#ddcc88', text: 'The Alpha King slain. Zester\'s hunters paid in full. And one of you dressed in gear fit for a champion. Gale has seen enough.' },
+          { speaker: 'Herald',   color: '#ddcc88', text: 'The Gale Tournament is open to you. The arena waits beyond Artfall, and Gale\'s best team will be there in full gear.' },
+          { speaker: 'Reno',     color: '#4488ff', text: '...Then we\'ll be there.' },
+          { speaker: '__PARTY_2__', text: 'Full gear on their side too. Let\'s make sure ours is ready.' },
+        ]),
+        nextScene: 'WorldMapScene', nextSceneData: {},
+      });
+      return;
+    }
     if (this.enterNode) {
       this.sys.settings.data = {}; // Phaser reuses this on a data-less start
       this.onMissionClick(this.nodes.find(n => n.id === this.enterNode));

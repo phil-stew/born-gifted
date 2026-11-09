@@ -24,6 +24,30 @@ const XP_PER_ENEMY = 40;
 // newRecruit/RecruitClassScene flow the way Drace is, so they're
 // effectively cut from the game until/unless that's added back some other
 // way (presumably as part of the M6-M11 rewrite).
+// One Trial won, or both: the second win sends the team north to Gale.
+function trialsWonScene() {
+  const both = ['AT1', 'AT2'].every(id => state.completedMissions.includes(id));
+  return both ? {
+    location: 'ALTROES  ·  The Trials',
+    backdrop: BACKDROPS.altroesArena,
+    lines: [
+      { speaker:'Narrator',  color:'#888899', text:'The second tournament team goes down, and the stands erupt. Both Trials, won.' },
+      { speaker:'Official',  color:'#ddcc88', text:'Altroes hasn\'t seen a team like yours in years. Gale is holding its tournament this season, and they\'ve asked us to send our best.' },
+      { speaker:'Official',  color:'#ddcc88', text:'That\'s you now. The road north runs over Frostbite Pass. Dress warm.' },
+      { speaker:'Reno',      color:'#4488ff', text:'...Gale. Then we head north.' },
+      { speaker:'__PARTY_2__', text:'A tournament in another kingdom. The academies will never believe this.' },
+    ],
+  } : {
+    location: 'ALTROES  ·  The Trials',
+    backdrop: BACKDROPS.altroesArena,
+    lines: [
+      { speaker:'Narrator',  color:'#888899', text:'The tournament team limps off the sand, their fancy gear dented. The crowd is on its feet.' },
+      { speaker:'Reno',      color:'#4488ff', text:'...One Trial down. One to go.' },
+      { speaker:'__PARTY_2__', text:'They\'ll make the next one harder. Let them.' },
+    ],
+  };
+}
+
 const CUTSCENE_AFTER = {
   M4: {
     location: 'ARENA ATLROS',
@@ -164,6 +188,10 @@ const CUTSCENE_AFTER = {
       { speaker:'Reno',     color:'#4488ff', text:'...Same time tomorrow?' },
     ],
   },
+  // Altroes Trials (2026-11-09): fought in either order, so the scene
+  // depends on whether the other one is already won.
+  AT1: () => trialsWonScene(),
+  AT2: () => trialsWonScene(),
   // Frostbite Pass (2026-11-03) — the two travellers from the overturned
   // cart turn out to be Kael and Trice, and join (RECRUITS_AFTER.FP).
   FP: {
@@ -534,7 +562,8 @@ export class VictoryScene extends Phaser.Scene {
     // on victory) — the cutscene's own nextScene/nextSceneData chain is
     // redirected through RecruitClassScene so the class-choice + "joined
     // the team" announcement happens right where the story introduces them.
-    const cutscene = this.isFirstClear ? CUTSCENE_AFTER[this.missionId] : null;
+    const cutsceneDef = this.isFirstClear ? CUTSCENE_AFTER[this.missionId] : null;
+    const cutscene = typeof cutsceneDef === 'function' ? cutsceneDef() : cutsceneDef;
     const recruits = this.isFirstClear ? RECRUITS_AFTER[this.missionId] : null;
     // TG (2026-08-03) is the one mission whose cutscene doesn't end back on
     // WorldMapScene — it ends with the imposter unmasked and drops straight
