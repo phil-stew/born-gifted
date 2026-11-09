@@ -1360,8 +1360,8 @@ export function loadGame(slot) {
   }
 }
 
-// Temporary: new games start at this level instead of 1, for faster playtesting.
-const STARTER_LEVEL = 5;
+// New games start at this level. Was 5 during playtesting.
+const STARTER_LEVEL = 1;
 
 // Build a fresh protagonist from character-creation choices (starting sport
 // + starting role + element + 2 talents, plus an optional player-typed
@@ -1370,7 +1370,7 @@ const STARTER_LEVEL = 5;
 // bookkeeping keys, never shown to the player (see StoryScene's dialogue
 // substitution for how the display name reaches story text). Falls back to
 // the original 'Reno Sirblanc' if left blank. T2/T3 are left unset (pending
-// promotion, chosen later in play) — STARTER_LEVEL (5) is under the T2
+// promotion, chosen later in play) — STARTER_LEVEL is under the T2
 // threshold (10) anyway, so this never leaves a starter mid-tier.
 export function createStarterUnit({ t1Sport, t1Role, talents, element, name }) {
   const chain = getChainForT1Sport(t1Sport);

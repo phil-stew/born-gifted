@@ -20,7 +20,7 @@ export const TOWER_TRACKS = [
 
 // Opens the Tower before the Final Tournament is beaten, for testing.
 // Set to false for release.
-export const TOWER_OPEN_FOR_TESTING = true;
+export const TOWER_OPEN_FOR_TESTING = false;
 
 const FIRST_FLOOR_LEVEL = 30;
 const BOSS_EVERY = 5;
