@@ -661,15 +661,15 @@ export const QUEST_DEFS = {
     check: (s) => s.completedMissions.includes('MH'),
   },
   // Gale's 3rd quest (2026-07-11, "third quest should equipment lendary
-  // gear on all slots... for one unit") — a pure passive state check, no
+  // gear on all slots... for one unit"; Epic since 2026-11-09) — a pure passive state check, no
   // battle, same shape as grow_the_party. "All slots" means all slots
   // THAT UNIT actually has (per gearLayoutForUnit — Performance-class
   // units only have 2, not the full 5), checked against a SINGLE unit
   // rather than spread across the whole party ("one unit").
   gale_legendary_gear: {
-    text: 'Full Legendary Loadout (1 Unit)',
+    text: 'Full Epic Loadout (1 Unit)',
     available: (s) => s.unlockedMissions.includes('M5'),
-    check: (s) => s.party.some(u => gearLayoutForUnit(u).slots.every(slot => u.equip[slot]?.rarity === 'legendary')),
+    check: (s) => s.party.some(u => gearLayoutForUnit(u).slots.every(slot => ['epic', 'legendary', 'god'].includes(u.equip[slot]?.rarity))),
   },
   // Ester Academy's 3 quests (2026-07-11) — "3 quest at ester", same
   // own-nodes-with-accept-step treatment as Hilbert Academy's A2a/A2b/A2c.
