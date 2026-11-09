@@ -84,6 +84,7 @@ const SHOP_RARITY_UNLOCKS = [
   { minLevel: 20, rarity: 'epic',      cost: 900  },
   { minLevel: 30, rarity: 'legendary', cost: 2000 },
 ];
+const LEGENDARY = SHOP_RARITY_UNLOCKS.find(t => t.rarity === 'legendary');
 const SHOP_GEAR_SLOTS = ['weapon', 'footwear', 'handwear', 'chest', 'headwear'];
 // 2 pieces per unlocked rarity tier (random slots, may repeat) — enough to
 // feel like a real upgrade option without flooding the gear list once every
@@ -120,6 +121,12 @@ export class ShopScene extends Phaser.Scene {
         const slot = SHOP_GEAR_SLOTS[Math.floor(Math.random() * SHOP_GEAR_SLOTS.length)];
         return rollGearItem({ slot, rarity: t.rarity, talents, forClass, cost: t.cost });
       }));
+    // Gale's quest asks for a full Legendary set, so Gale always stocks one
+    // Legendary piece per slot, whatever the party's level.
+    if (this.hubData.nodeId === 'M5' && level < LEGENDARY.minLevel) {
+      this.rolledGear.push(...SHOP_GEAR_SLOTS.map(slot =>
+        rollGearItem({ slot, rarity: 'legendary', talents, forClass, cost: LEGENDARY.cost })));
+    }
   }
 
   create() {

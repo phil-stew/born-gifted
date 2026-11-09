@@ -897,7 +897,7 @@ const MISSION_CONFIGS = {
     region: 'Lametus',
     playerPos: { reno:[1,3], drace:[1,4], sela:[1,2], zora:[1,0] },
     enemies: [
-      { col:5, row:5, ...buildMonster({ base: 'Dragon', kind: 'boss', name: 'The Corrupted One', statMult: { speed: 6.2, strength: 9, stamina: 6.2, endurance: 6.2 } }), level: 30, corrupted: true, isCorruptedOneBoss: true },
+      { col:5, row:5, ...buildMonster({ base: 'Dragon', kind: 'boss', name: 'The Corrupted One', statMult: { speed: 6.2, strength: 9, stamina: 6.2, endurance: 6.2 } }), level: 30, corrupted: true, isCorruptedOneBoss: true, godTierOnly: true },
       { col:7, row:2, ...buildMonster({ base: 'Wyvern', kind: 'boss', statMult: { speed: 5.5, strength: 8, stamina: 5.5, endurance: 5.5 } }), level: 30, corrupted: true },
       { col:7, row:8, ...buildMonster({ base: 'Lion', kind: 'boss', statMult: { speed: 5.5, strength: 8, stamina: 5.5, endurance: 5.5 } }), level: 30, corrupted: true },
       { col:8, row:5, ...buildMonster({ base: 'Golem', kind: 'boss', statMult: { speed: 5.5, strength: 21, stamina: 5.9, endurance: 5.9 } }), level: 30, corrupted: true },
@@ -1337,6 +1337,7 @@ export class BattleScene extends Phaser.Scene {
       getEquippedSpecialAbilities(gs); getEquippedSkillAbilities(gs);
       return {
         id: gs.id, name: gs.name, initials: gs.initials, color: gs.color, element: gs.element,
+        godWeapon: gs.equip?.weapon?.rarity === 'god',
         // t2Role/t3Role are carried (not just t1Role) so getUnitSpecials/
         // getUnitSkills/getEquippedPassives — which all walk unlockedRoleIds,
         // itself gated on unit.t1Role/t2Role/t3Role/level — see promoted-tier
@@ -1571,6 +1572,7 @@ export class BattleScene extends Phaser.Scene {
     if (STAGE_CONFIGS[state.currentMission]?.hasWater) rules.push('Water makes units Wet: Lightning ×2, Fire ×½');
     if (enemies.some(e => e.corrupted)) rules.push('Corrupted enemies all target one hero');
     if (enemies.some(e => e.isCorruptedOneBoss)) rules.push('The Corrupted One grows stronger with each ally beside him');
+    if (enemies.some(e => e.godTierOnly)) rules.push('Only heroes with a God Tier weapon can damage The Corrupted One');
     return rules;
   }
 
@@ -2620,6 +2622,7 @@ export class BattleScene extends Phaser.Scene {
     for (let h = 0; h < hits; h++) dmg += Math.round(calcAtk(partner) * followUpMult * desigMult * elemMult);
     dmg = Math.round(dmg * this.passiveDefenseMultiplier(target) * this.difficultyDamageMult(partner));
     dmg = this.absorbShield(target, dmg);
+    dmg = this.godTierGate(partner, target, dmg);
     this.elementReaction(partner, target, followUp);
     this.logHit(partner, target, followUp, dmg);
     target.hp = Math.max(0, target.hp - dmg);
@@ -2650,6 +2653,7 @@ export class BattleScene extends Phaser.Scene {
       * this.partnerAttackMultiplier(attacker));
     dmg = Math.round(dmg * this.passiveDefenseMultiplier(defender) * this.difficultyDamageMult(attacker));
     dmg = this.absorbShield(defender, dmg);
+    dmg = this.godTierGate(attacker, defender, dmg);
     this.elementReaction(attacker, defender, ATTACK);
     if (defender.damageReduction) {
       dmg = Math.max(0, dmg - defender.damageReduction.amount);
@@ -2749,6 +2753,14 @@ export class BattleScene extends Phaser.Scene {
   }
 
   // A Shield soaks damage until it runs out.
+  // The Corrupted One (FT): only a hero holding a God Tier weapon can hurt him.
+  godTierGate(attacker, target, dmg) {
+    if (!target.godTierOnly || attacker.godWeapon || dmg <= 0) return dmg;
+    const { x, y } = this.gridToScreen(target.col, target.row);
+    this.showEffect(x, y + TH2 - 22, 'NO EFFECT', '#bbbbcc');
+    return 0;
+  }
+
   absorbShield(unit, dmg) {
     // Force Field halves the next hit, Screen stops it.
     if (unit.nextHitMult != null) {
@@ -4130,6 +4142,7 @@ export class BattleScene extends Phaser.Scene {
 
   // Expected damage range for one enemy-targeted hit, before shields.
   previewDamage(attacker, ab, target) {
+    if (target.godTierOnly && !attacker.godWeapon) return { lo: 0, hi: 0, tag: 'immune' };
     const dist = this.distanceToUnit(attacker.col, attacker.row, target);
     const mult = distanceMultiplier(ab, dist) * designationMultiplier(attacker, target, ab)
       * elementMultiplier(attacker, target, ab) * this.partnerAttackMultiplier(attacker)
@@ -4150,6 +4163,7 @@ export class BattleScene extends Phaser.Scene {
     if (!u) return '';
     const fmt = (t) => {
       const p = this.previewDamage(u, d.ab, t);
+      if (p.tag === 'immune') return `${t.name.split(' ')[0]} no effect (needs God Tier weapon)`;
       const tag = p.tag === 'strong' ? ' ▲strong' : p.tag === 'weak' ? ' ▼weak' : '';
       return `${t.name.split(' ')[0]} ${p.lo === p.hi ? p.lo : `${p.lo}-${p.hi}`}${tag}`;
     };
@@ -4318,6 +4332,7 @@ export class BattleScene extends Phaser.Scene {
       let dmg = Math.round(calcAtk(unit) * mult * designationMultiplier(unit, target, ability) * elementMultiplier(unit, target, ability) * partnerAtkMult);
       dmg = Math.round(dmg * this.passiveDefenseMultiplier(target) * this.difficultyDamageMult(unit));
       dmg = this.absorbShield(target, dmg);
+      dmg = this.godTierGate(unit, target, dmg);
       this.elementReaction(unit, target, ability);
       this.logHit(unit, target, ability, dmg);
       target.hp = Math.max(0, target.hp - dmg);
@@ -4535,6 +4550,7 @@ export class BattleScene extends Phaser.Scene {
       for (let h = 0; h < hits; h++) dmg += Math.round(calcAtk(unit) * ability.multiplier * desigMult * elemMult);
       dmg = Math.round(dmg * this.passiveDefenseMultiplier(target) * this.difficultyDamageMult(unit));
       dmg = this.absorbShield(target, dmg);
+      dmg = this.godTierGate(unit, target, dmg);
       this.elementReaction(unit, target, ability);
       this.logHit(unit, target, ability, dmg);
       target.hp = Math.max(0, target.hp - dmg);
@@ -4752,7 +4768,7 @@ export class BattleScene extends Phaser.Scene {
   // Burn: BURN_DAMAGE of max HP at the start of each of the unit's next
   // BURN_TURNS turns. Wet units can't catch fire.
   burn(unit) {
-    if (unit.isDead || unit.wetTurns > 0) return;
+    if (unit.isDead || unit.wetTurns > 0 || unit.godTierOnly) return;
     if (!(unit.burnTurns > 0)) {
       const { x, y } = this.gridToScreen(unit.col, unit.row);
       this.showEffect(x, y + TH2 - 22, 'BURNING', '#ff8844');
@@ -5247,6 +5263,7 @@ export class BattleScene extends Phaser.Scene {
       for (let h = 0; h < hits; h++) dmg += Math.round(calcAtk(attacker) * mult * desigMult * hitElemMult() * partnerAtkMult);
       dmg = Math.round(dmg * this.passiveDefenseMultiplier(target) * this.difficultyDamageMult(attacker));
       dmg = this.absorbShield(target, dmg);
+      dmg = this.godTierGate(attacker, target, dmg);
       this.elementReaction(attacker, target, ability);
       this.logHit(attacker, target, ability, dmg);
       target.hp  = Math.max(0, target.hp - dmg);
