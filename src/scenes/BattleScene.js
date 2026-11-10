@@ -1060,6 +1060,7 @@ function affinityMultiplier(a, defender) {
 // Abilities with neither field just use their flat ability.multiplier, so
 // this is a no-op for everything else.
 const RANGE_FALLOFF_DECAY_PER_TILE = 0.85;
+const LEVEL_GAP_DAMAGE = 0.01;
 function distanceMultiplier(ability, dist) {
   if (ability.scaleByRange) return ability.scaleByRange[dist] ?? ability.multiplier ?? 0;
   if (ability.rangeFalloff) return (ability.multiplier ?? 0) * Math.pow(RANGE_FALLOFF_DECAY_PER_TILE, Math.max(0, dist - 1));
@@ -2415,6 +2416,11 @@ export class BattleScene extends Phaser.Scene {
   // (1.0) whenever this battle came from the replay picker instead
   // (this.difficultyCfg is null then — see init()), since that's the
   // separate legacy system and never had a damage-dealt% of its own.
+  // Level gap (2026-11-09): 1% more damage per level above the target,
+  // 1% less per level below.
+  levelGapMult(attacker, target) {
+    return 1 + LEVEL_GAP_DAMAGE * ((attacker.level ?? 1) - (target.level ?? 1));
+  }
   difficultyDamageMult(attacker) {
     if (!this.difficultyCfg) return 1.0;
     return attacker.team === 'enemy' ? this.difficultyCfg.enemyDamageMult : this.difficultyCfg.playerDamageMult;
@@ -2620,7 +2626,7 @@ export class BattleScene extends Phaser.Scene {
     const elemMult = elementMultiplier(partner, target, followUp);
     let dmg = 0;
     for (let h = 0; h < hits; h++) dmg += Math.round(calcAtk(partner) * followUpMult * desigMult * elemMult);
-    dmg = Math.round(dmg * this.passiveDefenseMultiplier(target) * this.difficultyDamageMult(partner));
+    dmg = Math.round(dmg * this.passiveDefenseMultiplier(target) * this.difficultyDamageMult(partner) * this.levelGapMult(partner, target));
     dmg = this.absorbShield(target, dmg);
     dmg = this.godTierGate(partner, target, dmg);
     this.elementReaction(partner, target, followUp);
@@ -2651,7 +2657,7 @@ export class BattleScene extends Phaser.Scene {
 
     let dmg = Math.round(calcAtk(attacker) * designationMultiplier(attacker, defender, ATTACK) * elementMultiplier(attacker, defender, ATTACK)
       * this.partnerAttackMultiplier(attacker));
-    dmg = Math.round(dmg * this.passiveDefenseMultiplier(defender) * this.difficultyDamageMult(attacker));
+    dmg = Math.round(dmg * this.passiveDefenseMultiplier(defender) * this.difficultyDamageMult(attacker) * this.levelGapMult(attacker, defender));
     dmg = this.absorbShield(defender, dmg);
     dmg = this.godTierGate(attacker, defender, dmg);
     this.elementReaction(attacker, defender, ATTACK);
@@ -4146,7 +4152,7 @@ export class BattleScene extends Phaser.Scene {
     const dist = this.distanceToUnit(attacker.col, attacker.row, target);
     const mult = distanceMultiplier(ab, dist) * designationMultiplier(attacker, target, ab)
       * elementMultiplier(attacker, target, ab) * this.partnerAttackMultiplier(attacker)
-      * this.passiveDefenseMultiplier(target) * this.difficultyDamageMult(attacker);
+      * this.passiveDefenseMultiplier(target) * this.difficultyDamageMult(attacker) * this.levelGapMult(attacker, target);
     const base = attacker.strength + Math.round(attacker.speed * 0.5);
     const buff = attacker.atkBuff ?? 1.0;
     const hits = ab.hits ?? 1;
@@ -4330,7 +4336,7 @@ export class BattleScene extends Phaser.Scene {
     const applyHit = (target, mult) => {
       if (target.isDead) return;
       let dmg = Math.round(calcAtk(unit) * mult * designationMultiplier(unit, target, ability) * elementMultiplier(unit, target, ability) * partnerAtkMult);
-      dmg = Math.round(dmg * this.passiveDefenseMultiplier(target) * this.difficultyDamageMult(unit));
+      dmg = Math.round(dmg * this.passiveDefenseMultiplier(target) * this.difficultyDamageMult(unit) * this.levelGapMult(unit, target));
       dmg = this.absorbShield(target, dmg);
       dmg = this.godTierGate(unit, target, dmg);
       this.elementReaction(unit, target, ability);
@@ -4548,7 +4554,7 @@ export class BattleScene extends Phaser.Scene {
       const elemMult = elementMultiplier(unit, target, ability);
       let dmg = 0;
       for (let h = 0; h < hits; h++) dmg += Math.round(calcAtk(unit) * ability.multiplier * desigMult * elemMult);
-      dmg = Math.round(dmg * this.passiveDefenseMultiplier(target) * this.difficultyDamageMult(unit));
+      dmg = Math.round(dmg * this.passiveDefenseMultiplier(target) * this.difficultyDamageMult(unit) * this.levelGapMult(unit, target));
       dmg = this.absorbShield(target, dmg);
       dmg = this.godTierGate(unit, target, dmg);
       this.elementReaction(unit, target, ability);
@@ -5261,7 +5267,7 @@ export class BattleScene extends Phaser.Scene {
         : elemMult;
       let dmg = 0;
       for (let h = 0; h < hits; h++) dmg += Math.round(calcAtk(attacker) * mult * desigMult * hitElemMult() * partnerAtkMult);
-      dmg = Math.round(dmg * this.passiveDefenseMultiplier(target) * this.difficultyDamageMult(attacker));
+      dmg = Math.round(dmg * this.passiveDefenseMultiplier(target) * this.difficultyDamageMult(attacker) * this.levelGapMult(attacker, target));
       dmg = this.absorbShield(target, dmg);
       dmg = this.godTierGate(attacker, target, dmg);
       this.elementReaction(attacker, target, ability);
@@ -5614,7 +5620,7 @@ export class BattleScene extends Phaser.Scene {
     const partnerAtkMult = this.partnerAttackMultiplier(attacker);
     let dmg = 0;
     for (let h = 0; h < hits; h++) dmg += Math.round(calcAtk(attacker) * mult * desigMult * elemMult * partnerAtkMult);
-    dmg = Math.round(dmg * this.passiveDefenseMultiplier(target) * this.difficultyDamageMult(attacker));
+    dmg = Math.round(dmg * this.passiveDefenseMultiplier(target) * this.difficultyDamageMult(attacker) * this.levelGapMult(attacker, target));
     dmg = this.absorbShield(target, dmg);
     this.elementReaction(attacker, target, ability);
     if (attacker.oneShotKill) dmg = target.hp; // see doAttack's oneShotKill comment
