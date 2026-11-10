@@ -419,6 +419,28 @@ const NEW_AREA_INTRO = {
   // 2026-07-18 — swapped from BACKDROPS.wilds to altroesArena (grandarena.png,
   // previously unused) since these are real tournament trials, not a wilds
   // encounter.
+  // Village side quests (2026-11-09): first visit only.
+  M0a: {
+    location: 'HIDDEN VILLAGE  ·  Hidden Cave',
+    backdrop: BACKDROPS.cave,
+    lines: [
+      { speaker: 'Father',   color: '#cc9955', text: 'The smith\'s out of ore again. There\'s a cave north of the village, full of it, if you can get past what lives in there.' },
+      { speaker: 'Narrator', color: '#888899', text: 'The cave mouth breathes cold air. Somewhere in the dark, rocks shift that shouldn\'t.' },
+      { speaker: 'Reno',     color: '#4488ff', text: '...Ore first, questions later. Let\'s go.' },
+      { speaker: '__PARTY_2__', text: 'Stay close. Caves have a way of splitting people up.' },
+    ],
+  },
+  M0b: {
+    location: 'HIDDEN VILLAGE  ·  Wolf\'s Den',
+    backdrop: BACKDROPS.wilds,
+    lines: [
+      { speaker: 'Mother',   color: '#88aacc', text: 'The hunters came back empty-handed again. They say a wolf the size of a cart has taken the old den, and the pack follows him now.' },
+      { speaker: 'Father',   color: '#cc9955', text: 'If he starts hunting near the village, nobody\'s safe. Be careful, Reno.' },
+      { speaker: 'Narrator', color: '#888899', text: 'The forest goes quiet near the den. Huge paw prints are pressed deep into the mud.' },
+      { speaker: 'Reno',     color: '#4488ff', text: '...The King Wolf. Let\'s end this before he finds the village.' },
+      { speaker: '__PARTY_2__', text: 'Watch the escorts. A pack fights together.' },
+    ],
+  },
   AT1: {
     location: 'ALTROES  ·  The Trials',
     backdrop: BACKDROPS.altroesArena,
@@ -922,6 +944,17 @@ export class WorldMapScene extends Phaser.Scene {
     }
   }
 
+  // Starts state.currentMission's battle, after its NEW_AREA_INTRO the first time.
+  startWithIntro(id) {
+    const intro = NEW_AREA_INTRO[id];
+    if (!intro || state.missionIntroShown.includes(id)) { this.scene.start('BattleScene'); return; }
+    state.missionIntroShown.push(id);
+    this.scene.start('StoryScene', {
+      location: intro.location, backdrop: intro.backdrop, lines: resolvePartyLines(intro.lines),
+      nextScene: 'BattleScene', nextSceneData: {},
+    });
+  }
+
   showMissionHint() {
     const h = objectiveHint();
     const steps = h.steps.map(t => `<li>${esc(t)}</li>`).join('');
@@ -1172,7 +1205,7 @@ export class WorldMapScene extends Phaser.Scene {
         }
       } else {
         state.currentMission = 'M0a';
-        this.scene.start('BattleScene');
+        this.startWithIntro('M0a');
       }
       return;
     }
@@ -1192,7 +1225,7 @@ export class WorldMapScene extends Phaser.Scene {
         this.showDifficultyPicker(node);
       } else {
         state.currentMission = 'M0b';
-        this.scene.start('BattleScene');
+        this.startWithIntro('M0b');
       }
       return;
     }

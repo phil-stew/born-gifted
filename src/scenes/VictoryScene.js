@@ -188,6 +188,25 @@ const CUTSCENE_AFTER = {
       { speaker:'Reno',     color:'#4488ff', text:'...Same time tomorrow?' },
     ],
   },
+  // Village side quests (2026-11-09).
+  M0a: {
+    location: 'HIDDEN VILLAGE  ·  Hidden Cave',
+    backdrop: BACKDROPS.cave,
+    lines: [
+      { speaker:'Narrator', color:'#888899', text:'The last of the cave dwellers goes still. In the lamplight, the walls glitter with ore.' },
+      { speaker:'Reno',     color:'#4488ff', text:'...That\'s enough to keep the smith busy for a month.' },
+      { speaker:'__PARTY_2__', text:'Let\'s get it back to the village. Your father will want to hear about this.' },
+    ],
+  },
+  M0b: {
+    location: 'HIDDEN VILLAGE  ·  Wolf\'s Den',
+    backdrop: BACKDROPS.wilds,
+    lines: [
+      { speaker:'Narrator', color:'#888899', text:'The King Wolf drops with a howl that carries all the way to the village. The rest of the pack scatters into the trees.' },
+      { speaker:'Reno',     color:'#4488ff', text:'...He was guarding the den, not hunting us. Still, the village can sleep tonight.' },
+      { speaker:'__PARTY_2__', text:'Word of this will get around. Something tells me he won\'t be the last big one.' },
+    ],
+  },
   // Altroes Trials (2026-11-09): fought in either order, so the scene
   // depends on whether the other one is already won.
   AT1: () => trialsWonScene(),
