@@ -6,7 +6,7 @@ import {
 } from '../data/gameState.js';
 import { buildTerrain } from '../data/terrain.js';
 import {
-  TOWER_TRACKS, towerFloorId, towerFloorLevel, towerFloorPlace, towerStage, towerBeasts, isTowerFloor, rollRandomFloor,
+  TOWER_TRACKS, towerFloorId, towerFloorLevel, ENEMY_LEVEL_CAP, towerFloorPlace, towerStage, towerBeasts, isTowerFloor, rollRandomFloor,
   towerHumanTeam, towerHumanElement, towerHumanSpots, towerHumanGear, towerHumanStats,
 } from '../data/tower.js';
 import { PROJECTILE_SHEET, registerProjectileFrames, projectileFor, projectileDisplaySize, projectileHeading } from '../data/projectiles.js';
@@ -91,7 +91,8 @@ const PRIMARY_STAT_BOOST = 1.3;
 // (see the repeat-scaling block in create()) — capped so this can't climb
 // forever (2026-07-09 feedback: "when king wolf hit lvl 40 lvl increase
 // should stop").
-const REPEAT_LEVEL_CAP = 40;
+// Every enemy tops out at this level, Tower included (2026-11-09).
+const REPEAT_LEVEL_CAP = ENEMY_LEVEL_CAP;
 
 // Enemy level per mission, climbing in story order. Bosses and uniques fight
 // BOSS_LEVEL_BONUS above that. Difficulty and repeat scaling apply on top.
@@ -1668,10 +1669,11 @@ export class BattleScene extends Phaser.Scene {
     const missionLevel = MISSION_ENEMY_LEVEL[this._enemyCtx.missionId];
     const baseLevel = missionLevel == null ? d.level
       : missionLevel + (d.kind === 'boss' || d.kind === 'unique' ? BOSS_LEVEL_BONUS : 0);
-    const levelCap = isTowerFloor(this._enemyCtx.missionId) ? Infinity : REPEAT_LEVEL_CAP;
-    const lv = Math.min(levelCap, scaledLevel(baseLevel) + repeatLevelBonus);
+    const rawLevel = scaledLevel(baseLevel) + repeatLevelBonus;
+    const lv = Math.min(REPEAT_LEVEL_CAP, rawLevel);
     const { primaryStat, element } = rollRegionArchetype(region);
-    const levelGrowth = MONSTER_LEVEL_GROWTH * (lv - 1);
+    // Tower floors past 40 keep getting stronger through stats, not level.
+    const levelGrowth = MONSTER_LEVEL_GROWTH * ((isTowerFloor(this._enemyCtx.missionId) ? rawLevel : lv) - 1);
     const scaled = {
       ...d, team: 'enemy',
       level:     lv,

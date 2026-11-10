@@ -33,6 +33,9 @@ export const isTowerFloor = (id) => /^T[BHT]\d+$/.test(id ?? '');
 export const towerFloorOf = (id) => Number(id.slice(2));
 export const isTowerBossFloor = (floor) => floor % BOSS_EVERY === 0;
 export const towerFloorLevel = (floor) => FIRST_FLOOR_LEVEL + floor - 1;
+// Enemies never show or fight above this level; later floors grow by stats.
+export const ENEMY_LEVEL_CAP = 40;
+export const towerShownLevel = (floor) => Math.min(ENEMY_LEVEL_CAP, towerFloorLevel(floor));
 
 export function towerUnlocked(state) {
   return TOWER_OPEN_FOR_TESTING || state.completedMissions.includes('FT');

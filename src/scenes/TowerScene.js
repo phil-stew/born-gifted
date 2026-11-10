@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { state } from '../data/gameState.js';
 import { mount, unmount, onClick, esc } from '../ui/domUI.js';
 import {
-  TOWER_TRACKS, RANDOM_CLIMBS, towerFloorCount, towerFloorId, towerFloorsCleared, towerFloorLevel, towerFloorPlace,
+  TOWER_TRACKS, RANDOM_CLIMBS, towerFloorCount, towerFloorId, towerFloorsCleared, towerFloorLevel, towerShownLevel, towerFloorPlace,
   towerFloorSummary, towerReward, isTowerBossFloor, startTowerClimb, abandonTowerClimb, settleTowerClimb,
 } from '../data/tower.js';
 import { prepareRandomTowerFloor } from './BattleScene.js';
@@ -50,7 +50,7 @@ export class TowerScene extends Phaser.Scene {
       ['Enemies', towerFloorSummary(this.track, floor)],
       ['Place', place.name],
       ['Weather', place.weatherName],
-      ['Level', `${towerFloorLevel(floor)}${this.bossLabel(floor) ? ' + boss' : ''}`],
+      ['Level', `${towerShownLevel(floor)}${this.bossLabel(floor) ? ' + boss' : ''}`],
       ['Reward', done ? 'Already claimed' : `${towerReward(floor)} Tytrate`],
     ];
     return `
@@ -88,7 +88,7 @@ export class TowerScene extends Phaser.Scene {
       <div class="ui-item-name">Floor ${run.floor} of ${run.target}</div>
       ${note}
       <div class="ui-tower-row"><b>Last save:</b> ${run.saved ? `Floor ${run.saved}` : 'Start'}</div>
-      <div class="ui-tower-row"><b>Level:</b> ${towerFloorLevel(run.floor)}</div>
+      <div class="ui-tower-row"><b>Level:</b> ${towerShownLevel(run.floor)}</div>
       <div class="ui-tower-row"><b>Reward:</b> ${first ? `${towerReward(run.floor)} Tytrate` : 'Already claimed'}</div>
       <button class="ui-action-btn" data-climb-enter="1">Enter Floor</button>
       <button class="ui-action-btn ui-tower-abandon" data-abandon="1">Abandon Climb</button>`;
