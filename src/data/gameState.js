@@ -468,6 +468,7 @@ export const state = {
   // per mission like wildsEntryShown/caveEntryShown above, since there are
   // 8 of these.
   missionIntroShown: [],
+  questXpGranted: [],
   // M1 (wolf battle) doesn't unlock M2 on its own — the player must return
   // to M0 (Hidden Village) to turn it in for the herb/Tytrate reward and the
   // Academy-selection news, which is what actually unlocks M2 (M0-M4
@@ -754,6 +755,41 @@ export function getAcademyQuests(nodeId) {
     const accepted = def.missionId ? !!state.questAccepted[def.missionId] : undefined;
     return { id, text: def.text, done: def.check(state), missionId: def.missionId, accepted };
   }).filter(Boolean);
+}
+
+// One-time XP for every hero on the roster, bench included, the first time
+// each quest is finished (2026-11-11). Roughly one level at that point of the
+// story. Checked live (WorldMapScene/HubScene create), so non-battle quests
+// count too, and older saves catch up on quests already done.
+const QUEST_XP = [
+  { id: 'hidden_cave', text: 'Hidden Cave', xp: 300, check: (s) => s.completedMissions.includes('M0a') },
+  { id: 'kill_king_wolf',         xp: 300 },
+  { id: 'defeat_dragon_wyverns',  xp: 500 },
+  { id: 'rock_damage_race',       xp: 500 },
+  { id: 'grow_the_party',         xp: 500 },
+  { id: 'defeat_king_lion',       xp: 800 },
+  { id: 'goblin_king',            xp: 800 },
+  { id: 'clear_northern_cave',    xp: 800 },
+  { id: 'gale_monster_hunt',      xp: 1500 },
+  { id: 'kill_alpha_king_dragon', xp: 1500 },
+  { id: 'gale_legendary_gear',    xp: 1500 },
+];
+
+// Grants any quest XP not yet paid out. Returns { quests: [{ text, xp }],
+// leveled: ['Name Lv.N', ...] } for the banner, or null if nothing was paid.
+export function grantQuestXP(s = state) {
+  const quests = [];
+  const before = new Map(s.party.map(u => [u.id, u.level]));
+  for (const q of QUEST_XP) {
+    const check = q.check ?? QUEST_DEFS[q.id].check;
+    if (s.questXpGranted.includes(q.id) || !check(s)) continue;
+    s.questXpGranted.push(q.id);
+    s.party.forEach(u => addXP(u, q.xp));
+    quests.push({ text: q.text ?? QUEST_DEFS[q.id].text, xp: q.xp });
+  }
+  if (!quests.length) return null;
+  const leveled = s.party.filter(u => u.level > before.get(u.id)).map(u => `${u.name.split(' ')[0]} Lv.${u.level}`);
+  return { quests, leveled };
 }
 
 // XP required to go from `level` to `level+1`
@@ -1212,6 +1248,7 @@ export function saveGame(slot = state.activeSlot ?? 1) {
       wildsEntryShown: state.wildsEntryShown,
       caveEntryShown: state.caveEntryShown,
       missionIntroShown: [...state.missionIntroShown],
+      questXpGranted: [...state.questXpGranted],
       m1TurnedIn: state.m1TurnedIn,
       capitalQuest: state.capitalQuest,
       capitalCraftCount: state.capitalCraftCount,
@@ -1338,6 +1375,7 @@ export function loadGame(slot) {
     state.wildsEntryShown   = data.wildsEntryShown   ?? false;
     state.caveEntryShown    = data.caveEntryShown    ?? false;
     state.missionIntroShown = data.missionIntroShown ?? [];
+    state.questXpGranted    = data.questXpGranted    ?? [];
     state.m1TurnedIn        = data.m1TurnedIn        ?? false;
     state.capitalQuest      = data.capitalQuest      ?? 'not_started';
     state.capitalCraftCount = data.capitalCraftCount ?? 0;
@@ -1417,6 +1455,7 @@ export function newGame(starterUnit, slot, carryOverGear = []) {
   state.wildsEntryShown   = false;
   state.caveEntryShown    = false;
   state.missionIntroShown = [];
+  state.questXpGranted    = [];
   state.m1TurnedIn        = false;
   state.capitalQuest      = 'not_started';
   state.capitalCraftCount = 0;

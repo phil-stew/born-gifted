@@ -45,6 +45,23 @@ export function bindScene(scene, render) {
   scene.events.once('shutdown', unmount);
 }
 
+// "Quest complete" banner (2026-11-11). Lives on <body>, outside #ui-root, so
+// a scene's mount()/unmount() doesn't wipe it; tap or wait to dismiss.
+export function showQuestXPBanner(paid) {
+  if (!paid) return;
+  const el = document.createElement('div');
+  el.className = 'ui-crafted ui-quest-xp';
+  el.innerHTML = `
+    <div class="ui-crafted-title">✨ Quest complete!</div>
+    ${paid.quests.map(q => `<div class="ui-crafted-item">${esc(q.text)} &middot; +${q.xp} XP</div>`).join('')}
+    <div class="ui-crafted-sub">Every hero on your roster gained the XP</div>
+    ${paid.leveled.length ? `<div class="ui-crafted-sub">Level up: ${esc(paid.leveled.join(', '))}</div>` : ''}`;
+  const close = () => el.remove();
+  el.addEventListener('click', close);
+  document.body.appendChild(el);
+  setTimeout(close, 4000);
+}
+
 // Attaches a click handler to every element matching `selector` inside
 // #ui-root. Re-attach after every mount() since innerHTML replaces nodes.
 export function onClick(selector, handler) {

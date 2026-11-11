@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
-import { state, MAX_ROSTER_SIZE } from '../data/gameState.js';
+import { state, MAX_ROSTER_SIZE, grantQuestXP, saveGame } from '../data/gameState.js';
+import { showQuestXPBanner } from '../ui/domUI.js';
 import { BACKDROPS } from '../data/storyBackdrops.js';
 import { HUB_CONFIGS, recruitClassesFor } from '../data/hubConfigs.js';
 import { drawBackButton, addButtonArt } from '../ui/canvasButton.js';
@@ -66,6 +67,9 @@ export class HubScene extends Phaser.Scene {
   create() {
     const { width, height } = this.scale;
     const artH = height * 0.58;
+
+    const questXP = grantQuestXP();
+    if (questXP) { saveGame(); showQuestXPBanner(questXP); }
 
     playMusic(this, 'hub');
 

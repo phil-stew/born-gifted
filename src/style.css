@@ -1199,3 +1199,4 @@ button.ui-quest-card { color: inherit; font: inherit; text-align: left; cursor: 
   from { opacity: 0; transform: translate(-50%, -50%) scale(0.85); }
   to   { opacity: 1; transform: translate(-50%, -50%) scale(1); }
 }
+.ui-quest-xp { position: fixed; z-index: 50; font-family: var(--ui-font); }

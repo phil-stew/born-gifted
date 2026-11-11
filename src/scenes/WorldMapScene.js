@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { towerUnlocked, isTowerFloor } from '../data/tower.js';
-import { state, addItem, saveGame, allAcademyQuestsDone, allGaleQuestsDone, resolvePartyLines, TOTAL_MISSIONS } from '../data/gameState.js';
+import { state, addItem, saveGame, grantQuestXP, allAcademyQuestsDone, allGaleQuestsDone, resolvePartyLines, TOTAL_MISSIONS } from '../data/gameState.js';
 import { stripBackgroundByKey } from '../data/heroSprites.js';
 import { BACKDROPS } from '../data/storyBackdrops.js';
 import { drawButton, drawCurrency } from '../ui/canvasButton.js';
@@ -10,7 +10,7 @@ import { playMusic } from '../audio/music.js';
 import { playSfx, SFX } from '../audio/sound.js';
 import { showLoadoutReminder } from '../ui/loadoutReminder.js';
 import { objectiveHint } from '../data/objective.js';
-import { mount, unmount, onClick, esc } from '../ui/domUI.js';
+import { mount, unmount, onClick, esc, showQuestXPBanner } from '../ui/domUI.js';
 
 // Background art (mapbackg.webp, see drawBackground) is a fixed 1024×1024
 // source image, always drawn "cover"-fit against whatever the live canvas
@@ -678,6 +678,9 @@ export class WorldMapScene extends Phaser.Scene {
     // only makes the node/quest-menu entry visible; actually entering the
     // battle still requires accepting it at the Hidden Village's Quest Menu
     // (see onMissionClick's M0a/M0b gating on state.questAccepted).
+    // Quest XP first, so its levels count toward the M0b check below.
+    const questXP = grantQuestXP();
+    if (questXP) { saveGame(); showQuestXPBanner(questXP); }
     if (towerUnlocked(state) && !state.unlockedMissions.includes('TT')) state.unlockedMissions.push('TT');
     if (!state.unlockedMissions.includes('M0b') && state.party.some(u => u.level >= 8)) {
       state.unlockedMissions.push('M0b');
