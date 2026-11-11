@@ -1163,3 +1163,39 @@ button.ui-quest-card { color: inherit; font: inherit; text-align: left; cursor: 
 .ui-hint-check { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; font-size: calc(14px * var(--font-scale, 1)); }
 .ui-hint-check .is-done { color: var(--ui-text-muted); }
 .ui-hint .ui-btn { align-self: center; min-width: 140px; margin-top: 4px; }
+
+/* Forge: "Crafted successfully" banner over the panels. */
+.ui-crafted {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 5;
+  min-width: min(320px, 85vw);
+  max-width: 90vw;
+  padding: 16px 22px;
+  text-align: center;
+  background: rgba(20, 16, 10, 0.94);
+  border: 2px solid #e8b04a;
+  border-radius: 14px;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.55);
+  color: #f6ecd8;
+  cursor: pointer;
+  animation: ui-crafted-pop 0.25s ease-out;
+}
+.ui-crafted-title {
+  font-size: calc(20px * var(--font-scale, 1));
+  font-weight: 700;
+  color: #ffd57a;
+  margin-bottom: 8px;
+}
+.ui-crafted-item { font-size: calc(16px * var(--font-scale, 1)); }
+.ui-crafted-sub {
+  margin-top: 6px;
+  font-size: calc(13px * var(--font-scale, 1));
+  opacity: 0.75;
+}
+@keyframes ui-crafted-pop {
+  from { opacity: 0; transform: translate(-50%, -50%) scale(0.85); }
+  to   { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}

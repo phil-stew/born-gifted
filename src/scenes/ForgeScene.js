@@ -18,6 +18,7 @@ export class ForgeScene extends Phaser.Scene {
 
   init(data) {
     this.hubData      = data.hubData ?? {};
+    this.craftedItem  = null;
     this.unitIndex    = 0;
     this.selectedSlot = null;
     this.mode           = 'reinforce'; // 'reinforce' | 'craft'
@@ -187,10 +188,12 @@ export class ForgeScene extends Phaser.Scene {
             ${craft ? this.craftDetailHTML(unit) : this.reinforceDetailHTML(unit)}
           </div>
         </div>
+        ${this.craftedHTML()}
       </div>
     `);
 
     onClick('[data-nav="back"]', () => this.scene.start('HubScene', this.hubData));
+    onClick('[data-crafted]', () => this.clearCrafted());
     onClick('[data-mode]', (e, node) => {
       this.mode = node.dataset.mode;
       this.selectedSlot = null;
@@ -227,6 +230,32 @@ export class ForgeScene extends Phaser.Scene {
     onClick('[data-craft]', () => this.craftItem(unit, this.selectedRecipe, this.selectedResultSlot));
   }
 
+  // "Crafted successfully" banner, shown for a few seconds or until tapped.
+  craftedHTML() {
+    const item = this.craftedItem;
+    if (!item) return '';
+    return `
+      <div class="ui-crafted" data-crafted="1">
+        <div class="ui-crafted-title">✨ Crafted successfully!</div>
+        <div class="ui-crafted-item">${rarityBadgeHTML(item.rarity)} ${esc(item.name)}</div>
+        <div class="ui-crafted-sub">Added to your inventory</div>
+      </div>`;
+  }
+
+  showCrafted(item) {
+    this.craftedItem = item;
+    this.craftedTimer?.remove();
+    this.craftedTimer = this.time.delayedCall(2500, () => this.clearCrafted());
+  }
+
+  clearCrafted() {
+    this.craftedTimer?.remove();
+    this.craftedTimer = null;
+    if (!this.craftedItem) return;
+    this.craftedItem = null;
+    this.rebuild();
+  }
+
   reinforce(unit, slot, cost, statKey) {
     if (state.tytrate < cost) return;
     state.tytrate -= cost;
@@ -251,7 +280,9 @@ export class ForgeScene extends Phaser.Scene {
     }
 
     if (recipe.resultItem) {
-      addItem({ ...getItem(tieredId(recipe.resultItem, rarity)) });
+      const made = { ...getItem(tieredId(recipe.resultItem, rarity)) };
+      addItem(made);
+      this.showCrafted(made);
       this.selectedRecipe = null;
       this.selectedMats = {};
       playSfx(this, SFX.craft);
@@ -265,6 +296,7 @@ export class ForgeScene extends Phaser.Scene {
       forClass: roleDisplayLabel(unit),
     });
     state.inventory.push(item);
+    this.showCrafted(item);
 
     // Capital questline craft-quest gate (M0-M4 redesign, Phase 3) — counts
     // crafts made while the stage is active; WorldMapScene's M3 handler
