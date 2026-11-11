@@ -230,20 +230,22 @@ export class ForgeScene extends Phaser.Scene {
     onClick('[data-craft]', () => this.craftItem(unit, this.selectedRecipe, this.selectedResultSlot));
   }
 
-  // "Crafted successfully" banner, shown for a few seconds or until tapped.
+  // Success banner after crafting or reinforcing, shown for a few seconds or
+  // until tapped.
   craftedHTML() {
-    const item = this.craftedItem;
-    if (!item) return '';
+    const notice = this.craftedItem;
+    if (!notice) return '';
+    const { item, title, sub } = notice;
     return `
       <div class="ui-crafted" data-crafted="1">
-        <div class="ui-crafted-title">✨ Crafted successfully!</div>
+        <div class="ui-crafted-title">✨ ${esc(title)}</div>
         <div class="ui-crafted-item">${rarityBadgeHTML(item.rarity)} ${esc(item.name)}</div>
-        <div class="ui-crafted-sub">Added to your inventory</div>
+        <div class="ui-crafted-sub">${esc(sub)}</div>
       </div>`;
   }
 
-  showCrafted(item) {
-    this.craftedItem = item;
+  showCrafted(item, title = 'Crafted successfully!', sub = 'Added to your inventory') {
+    this.craftedItem = { item, title, sub };
     this.craftedTimer?.remove();
     this.craftedTimer = this.time.delayedCall(2500, () => this.clearCrafted());
   }
@@ -264,6 +266,8 @@ export class ForgeScene extends Phaser.Scene {
     if (statKey && item.stats[statKey] !== undefined) {
       item.stats[statKey] += 1;
     }
+    this.showCrafted(item, 'Reinforced successfully!',
+      `Now +${item.reinforceLevel}${statKey && item.stats[statKey] !== undefined ? ` · ${statKey[0].toUpperCase()}${statKey.slice(1)} +1` : ''}`);
     playSfx(this, SFX.craft);
     this.rebuild();
   }
