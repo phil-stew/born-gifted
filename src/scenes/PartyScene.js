@@ -44,6 +44,7 @@ export class PartyScene extends Phaser.Scene {
     this.returnTo = data?.returnTo ?? { scene: 'WorldMapScene', label: 'World Map' };
     this.selId = data?.selId ?? state.party[0]?.id ?? null;
     this.detailTab = data?.tab ?? 'stats';
+    this.sys.settings.data = {}; // Phaser reuses this on a data-less start
     this.expandedAbility = null;
     this.picker = null;
     this.promoStep = null;   // null | 'prompt' | 'sport' | 'role'
