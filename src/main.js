@@ -15,6 +15,7 @@ import { HubScene }       from './scenes/HubScene.js';
 import { ShopScene }      from './scenes/ShopScene.js';
 import { ForgeScene }     from './scenes/ForgeScene.js';
 import { PartyScene }     from './scenes/PartyScene.js';
+import { PromotionScene } from './scenes/PromotionScene.js';
 import { InventoryScene } from './scenes/InventoryScene.js';
 import { RewardPopupScene } from './scenes/RewardPopupScene.js';
 import { AcademyTaskListScene } from './scenes/AcademyTaskListScene.js';
@@ -111,7 +112,7 @@ const config = {
     autoCenter: Phaser.Scale.CENTER_BOTH,
     zoom: Phaser.Scale.ZOOM_2X,
   },
-  scene: [GameScene, CharacterCreationScene, RecruitClassScene, WorldMapScene, BattleScene, PreBattleScene, VictoryScene, LootScene, LevelUpScene, StoryScene, HubScene, ShopScene, ForgeScene, PartyScene, InventoryScene, RewardPopupScene, AcademyTaskListScene, AcademyQuestListScene, HandbookScene, VillageQuestListScene, HubBattlesScene, IndexScene, SkillBookScene, TowerScene, SettingsScene],
+  scene: [GameScene, CharacterCreationScene, RecruitClassScene, WorldMapScene, BattleScene, PreBattleScene, VictoryScene, LootScene, LevelUpScene, StoryScene, HubScene, ShopScene, ForgeScene, PartyScene, PromotionScene, InventoryScene, RewardPopupScene, AcademyTaskListScene, AcademyQuestListScene, HandbookScene, VillageQuestListScene, HubBattlesScene, IndexScene, SkillBookScene, TowerScene, SettingsScene],
 };
 
 installTextScaling();

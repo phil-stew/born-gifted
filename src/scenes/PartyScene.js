@@ -426,12 +426,10 @@ export class PartyScene extends Phaser.Scene {
 
     onClick('[data-promo-role]', (e, node) => {
       const unit = state.party.find(u => u.id === this.selId);
-      promoteUnit(unit, this.promoTier, node.dataset.promoRole, this.promoSport ?? undefined);
-      // Promotion swaps in a new role's sprite sheet, which preload() hasn't
-      // loaded yet (it only ran for the pre-promotion role at scene start) —
-      // restart so preload/create rerun and the new art actually loads,
-      // instead of silently falling back to the color-block placeholder.
-      this.scene.restart({ selId: this.selId });
+      if (!promoteUnit(unit, this.promoTier, node.dataset.promoRole, this.promoSport ?? undefined)) return;
+      // Showcase first. Coming back restarts Party, so preload/create rerun
+      // and the new role's sprite sheet actually loads.
+      this.scene.start('PromotionScene', { unitId: unit.id, returnData: { selId: this.selId, returnTo: this.returnTo } });
     });
 
     onClick('[data-promo-cancel]', () => {
